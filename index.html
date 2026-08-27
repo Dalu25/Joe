@@ -109,13 +109,13 @@
         .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
         .chart-container, .calendar-container { background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
         .toggle-section { background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; margin-top: 1.5rem; overflow: hidden; }
-        .toggle-section summary { list-style: none; cursor: pointer; padding: 1rem 1.25rem; font-size: 1.1rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
-        .toggle-section summary::-webkit-details-marker { display: none; }
-        .toggle-section summary::after { content: '▾'; font-size: 0.85rem; color: var(--text-secondary); transition: transform 0.2s; }
-        .toggle-section[open] summary::after { transform: rotate(180deg); }
-        .toggle-section summary:hover { background-color: rgba(255,255,255,0.02); }
-        .toggle-section .toggle-body { padding: 0 1.25rem 1.25rem; }
-        .toggle-section .toggle-body.no-pad { padding: 0 0 0.25rem; }
+        .toggle-section > summary { list-style: none; cursor: pointer; padding: 1rem 1.25rem; font-size: 1.1rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+        .toggle-section > summary::-webkit-details-marker { display: none; }
+        .toggle-section > summary::after { content: '▾'; font-size: 0.85rem; color: var(--text-secondary); transition: transform 0.2s; }
+        .toggle-section[open] > summary::after { transform: rotate(180deg); }
+        .toggle-section > summary:hover { background-color: rgba(255,255,255,0.02); }
+        .toggle-section > .toggle-body { padding: 0 1.25rem 1.25rem; }
+        .toggle-section > .toggle-body.no-pad { padding: 0 0 0.25rem; }
         .chart-container { min-height: 320px; position: relative; }
         
         /* Calendar UI */
@@ -146,10 +146,7 @@
         .cal-week-pnl { font-size: 0.92rem; font-weight: 800; }
         .cal-week-meta { font-size: 0.62rem; color: var(--text-secondary); }
         .cal-week-days-badge { font-size: 0.58rem; background: var(--bg-surface-hover); border-radius: 10px; padding: 0.1rem 0.4rem; display: inline-block; width: fit-content; color: var(--text-secondary); margin-top: 0.15rem; }
-        .cal-footer-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; }
-        .cal-footer-stat { display: flex; flex-direction: column; gap: 0.2rem; }
-        .cal-footer-stat .card-value { font-size: 1.3rem; }
-        @media (max-width: 640px) { .cal-footer-stats { grid-template-columns: repeat(2, 1fr); } .calendar-grid { grid-template-columns: repeat(7, minmax(28px,1fr)); font-size: 0.65rem; } .cal-week-header-cell, .cal-week-cell { display: none; } }
+        @media (max-width: 640px) { .calendar-grid { grid-template-columns: repeat(7, minmax(28px,1fr)); font-size: 0.65rem; } .cal-week-header-cell, .cal-week-cell { display: none; } }
 
         /* Responsive Layouts and Tables */
         .filter-container { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
@@ -200,6 +197,15 @@
         .image-preview { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
         .checkbox-group { display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem; }
         .checkbox-item { display: flex; align-items: center; gap: 0.5rem; }
+
+        /* Toggle switch (used for Auto-sync, etc.) — big, chunky, simple */
+        .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .switch { position: relative; display: inline-block; width: 56px; height: 32px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .switch-track { position: absolute; cursor: pointer; inset: 0; background-color: var(--border); border-radius: 999px; transition: 0.2s; }
+        .switch-track::before { content: ""; position: absolute; height: 24px; width: 24px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+        .switch input:checked + .switch-track { background-color: var(--accent); }
+        .switch input:checked + .switch-track::before { transform: translateX(24px); }
 
         .view-section { display: none; }
         .view-section.active { display: flex; flex-direction: column; gap: 1.5rem; }
@@ -311,7 +317,6 @@
                         </div>
                     </div>
                     <div class="calendar-grid" id="calendar-grid"></div>
-                    <div class="cal-footer-stats" id="cal-footer-stats"></div>
                 </div>
             </div>
 
@@ -375,32 +380,32 @@
                     <form id="accountForm" onsubmit="handleAccountSubmit(event)">
                         <input type="hidden" id="editingAccountId" value="">
                         <div class="form-group">
-                            <label>Account Reference Name</label>
+                            <label>Account Name</label>
                             <input type="text" id="accName" class="form-control" placeholder="e.g. Prop Account N800k" required>
                         </div>
                         <div class="form-group">
-                            <label>Default Account Balance ($) <span style="font-weight:400;">— initial allocation</span></label>
+                            <label>Starting Balance ($)</label>
                             <input type="number" id="accBalance" class="form-control" placeholder="10000" step="0.01" required>
                         </div>
                         <div class="form-group">
-                            <label>Current Balance ($) <span style="font-weight:400;">— updates after each trade</span></label>
+                            <label>Current Balance ($)</label>
                             <input type="number" id="accCurrentBalance" class="form-control" placeholder="10000" step="0.01">
                             <small style="color:var(--text-secondary); font-size: 0.75rem;">Leave empty to auto-calculate from trades. Manually set to override.</small>
                         </div>
                         <div class="form-group">
-                            <label>Max Drawdown Limit ($) <span style="font-weight:400;">— the lowest balance allowed before margin call (e.g. 9200 for 10k account)</span></label>
+                            <label>Max Drawdown ($)</label>
                             <input type="number" id="accMaxDD" class="form-control" placeholder="e.g. 9200" step="0.01" min="0">
                         </div>
                         <div class="form-group">
-                            <label>Profit Target ($) <span style="font-weight:400;">— the balance you're aiming for (e.g. 10800 for 10k account)</span></label>
+                            <label>Profit Target ($)</label>
                             <input type="number" id="accProfitTarget" class="form-control" placeholder="e.g. 10800" step="0.01" min="0">
                         </div>
                         <div class="form-group">
-                            <label>Daily Profit Target ($) <span style="font-weight:400;">— optional, how much you're aiming to make today</span></label>
+                            <label>Daily Profit Target ($)</label>
                             <input type="number" id="accDailyProfitTarget" class="form-control" placeholder="e.g. 100" step="0.01" min="0">
                         </div>
                         <div class="form-group">
-                            <label>Consistency Rule <span style="font-weight:400;">— optional, enter your prop firm's rule manually</span></label>
+                            <label>Consistency Rule</label>
                             <select id="accConsistencyBasis" class="form-control" style="margin-bottom:0.5rem;">
                                 <option value="">No consistency rule</option>
                                 <option value="day">No single day's profit exceeds X% of total profit</option>
@@ -656,56 +661,70 @@
         
         <!-- MANAGE DATA VIEW -->
         <section id="manage" class="view-section">
-            <div class="card" style="max-width: 500px;">
-                <h3>Cloud Sync (Google Sheets)</h3>
-                <p style="color:var(--text-secondary); margin: 0.5rem 0 1rem 0; font-size: 0.9rem;">Connect a Google Sheet to back up your journal and sync it across devices signed into the same Google account.</p>
-                <details style="margin-bottom:1rem; font-size:0.85rem; color:var(--text-secondary);">
-                    <summary style="cursor:pointer; color:var(--accent); font-weight:600;">Setup instructions</summary>
-                    <ol style="padding-left:1.2rem; line-height:1.8; margin-top:0.75rem;">
-                        <li>In Google Cloud Console, create a project and enable the <strong>Google Sheets API</strong>.</li>
-                        <li>Create an <strong>OAuth 2.0 Client ID</strong> (Web application) and add this page's URL to Authorized JavaScript origins.</li>
-                        <li>Create a blank Google Sheet and copy its ID from the URL — the long string between <code>/d/</code> and <code>/edit</code>.</li>
-                        <li>Paste both values below and click Connect.</li>
-                    </ol>
-                </details>
-                <div class="form-group">
-                    <label>Google OAuth Client ID</label>
-                    <input type="text" id="gsClientId" class="form-control" placeholder="xxxx.apps.googleusercontent.com">
+            <details class="toggle-section" style="max-width:500px;">
+                <summary>Cloud Sync (Google Sheets)</summary>
+                <div class="toggle-body">
+                    <details style="margin-bottom:1rem; font-size:0.85rem; color:var(--text-secondary);">
+                        <summary style="cursor:pointer; color:var(--accent); font-weight:600;">Setup instructions</summary>
+                        <ol style="padding-left:1.2rem; line-height:1.8; margin-top:0.75rem;">
+                            <li>In Google Cloud Console, create a project and enable the <strong>Google Sheets API</strong>.</li>
+                            <li>Create an <strong>OAuth 2.0 Client ID</strong> (Web application) and add this page's URL to Authorized JavaScript origins.</li>
+                            <li>Create a blank Google Sheet and copy its ID from the URL — the long string between <code>/d/</code> and <code>/edit</code>.</li>
+                            <li>Paste both values below and click Connect.</li>
+                        </ol>
+                    </details>
+                    <div class="form-group">
+                        <label>Google OAuth Client ID</label>
+                        <input type="text" id="gsClientId" class="form-control" placeholder="xxxx.apps.googleusercontent.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Google Sheet ID</label>
+                        <input type="text" id="gsSheetId" class="form-control" placeholder="1AbC...xyz">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem; margin:0.75rem 0;">
+                        <span id="gsSyncDot" style="width:8px; height:8px; border-radius:50%; background:var(--text-secondary); display:inline-block;"></span>
+                        <span id="gsSyncStatus" style="font-size:0.85rem; color:var(--text-secondary);">Not connected</span>
+                    </div>
+                    <div class="switch-row" style="margin-bottom:0.9rem; padding:0.9rem 1rem; background:var(--bg-base); border:1px solid var(--border); border-radius:10px;">
+                        <div style="font-weight:700; font-size:1rem;">Auto-Sync</div>
+                        <label class="switch">
+                            <input type="checkbox" id="gsAutoSyncToggle" onchange="gsSetAutoSync(this.checked)">
+                            <span class="switch-track"></span>
+                        </label>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                        <button class="btn" id="gsConnectBtn" type="button" onclick="gsConnect()">Connect</button>
+                        <button class="btn btn-outline" type="button" onclick="gsPush()">Push to Sheet</button>
+                        <button class="btn btn-outline" type="button" onclick="gsPull()">Pull from Sheet</button>
+                        <button class="btn btn-outline" type="button" onclick="gsSignOut()">Sign Out</button>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Google Sheet ID</label>
-                    <input type="text" id="gsSheetId" class="form-control" placeholder="1AbC...xyz">
+            </details>
+            <details class="toggle-section" style="max-width:500px;">
+                <summary>Export & Backup</summary>
+                <div class="toggle-body">
+                    <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Download all your trade and account data as a JSON file, or export your trade log as CSV.</p>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                        <button class="btn" onclick="exportData()">Export Data</button>
+                        <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
+                    </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:0.5rem; margin:0.75rem 0;">
-                    <span id="gsSyncDot" style="width:8px; height:8px; border-radius:50%; background:var(--text-secondary); display:inline-block;"></span>
-                    <span id="gsSyncStatus" style="font-size:0.85rem; color:var(--text-secondary);">Not connected</span>
+            </details>
+            <details class="toggle-section" style="max-width:500px;">
+                <summary>Restore Data</summary>
+                <div class="toggle-body">
+                    <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Upload a previously exported JSON file to restore your journal.</p>
+                    <input type="file" id="restoreFile" accept=".json" onchange="restoreData(event)" style="display:none;">
+                    <button class="btn btn-outline" onclick="document.getElementById('restoreFile').click()">Choose File & Restore</button>
                 </div>
-                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                    <button class="btn" id="gsConnectBtn" type="button" onclick="gsConnect()">Connect</button>
-                    <button class="btn btn-outline" type="button" onclick="gsPush()">Push to Sheet</button>
-                    <button class="btn btn-outline" type="button" onclick="gsPull()">Pull from Sheet</button>
-                    <button class="btn btn-outline" type="button" onclick="gsSignOut()">Sign Out</button>
+            </details>
+            <details class="toggle-section" style="max-width:500px; border-color: var(--danger);">
+                <summary class="text-danger">Wipe Application Memory</summary>
+                <div class="toggle-body">
+                    <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Permanently drop all local metric parameters, trade diaries, and registered accounts.</p>
+                    <button class="btn" style="background-color: var(--danger); color: white;" onclick="triggerClearReset()">Reset All Journal Data</button>
                 </div>
-            </div>
-            <div class="card" style="max-width: 500px;">
-                <h3>Export & Backup</h3>
-                <p style="color:var(--text-secondary); margin: 0.5rem 0 1rem 0; font-size: 0.9rem;">Download all your trade and account data as a secure JSON file, or export your trade log as a CSV spreadsheet.</p>
-                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                    <button class="btn" onclick="exportData()">Export Data</button>
-                    <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
-                </div>
-            </div>
-            <div class="card" style="max-width: 500px;">
-                <h3>Restore Data</h3>
-                <p style="color:var(--text-secondary); margin: 0.5rem 0 1rem 0; font-size: 0.9rem;">Upload a previously exported JSON file to restore your journal.</p>
-                <input type="file" id="restoreFile" accept=".json" onchange="restoreData(event)" style="display:none;">
-                <button class="btn btn-outline" onclick="document.getElementById('restoreFile').click()">Choose File & Restore</button>
-            </div>
-            <div class="card" style="max-width: 500px; border: 1px solid var(--danger);">
-                <h3 class="text-danger">Wipe Application Memory</h3>
-                <p style="color:var(--text-secondary); margin: 0.5rem 0 1rem 0; font-size: 0.9rem;">Permanently drop all local metric parameters, trade diaries, and registered accounts.</p>
-                <button class="btn" style="background-color: var(--danger); color: white;" onclick="triggerClearReset()">Reset All Journal Data</button>
-            </div>
+            </details>
         </section>
     </main>
 
@@ -2532,19 +2551,6 @@
             monthChip.innerText = `${monthlyAggregatePnl >= 0 ? '++' : ''}${fmtMoney(monthlyAggregatePnl)}`;
             monthChip.className = 'cal-chip ' + (monthlyAggregatePnl > 0 ? 'positive' : (monthlyAggregatePnl < 0 ? 'negative' : 'neutral'));
             document.getElementById('cal-days-chip').innerText = `${monthlyTradingDays} day${monthlyTradingDays !== 1 ? 's' : ''}`;
-
-            // Footer stat bar: reuses the same math as the Stats page, scoped to this calendar month.
-            const monthStart = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01`;
-            const monthEnd = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
-            const monthTrades = trades.filter(t => t.date >= monthStart && t.date <= monthEnd);
-            const s = computePeriodStats(monthTrades);
-            const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
-            document.getElementById('cal-footer-stats').innerHTML = `
-                <div class="cal-footer-stat"><span class="card-title">Month P&L</span><span class="card-value ${s.netPnl > 0 ? 'text-success' : (s.netPnl < 0 ? 'text-danger' : '')}">${s.netPnl >= 0 ? '+' : ''}${fmtMoney(s.netPnl)}</span></div>
-                <div class="cal-footer-stat"><span class="card-title">Trades</span><span class="card-value">${s.totalTrades}</span></div>
-                <div class="cal-footer-stat"><span class="card-title">Win Rate</span><span class="card-value" style="color:var(--accent);">${s.winRate.toFixed(1)}%</span></div>
-                <div class="cal-footer-stat"><span class="card-title">Profit Factor</span><span class="card-value text-success">${pf}</span></div>
-            `;
         }
 
         function showDayTrades(dateStr) {
@@ -3020,6 +3026,14 @@
                 sheetId: localStorage.getItem('tj_gs_sheet_id') || '',
             };
         }
+        function gsAutoSyncEnabled() {
+            const v = localStorage.getItem('tj_gs_autosync');
+            return v === null ? true : v === 'true'; // default ON so existing behavior is unchanged
+        }
+        function gsSetAutoSync(enabled) {
+            localStorage.setItem('tj_gs_autosync', enabled ? 'true' : 'false');
+            if (enabled && gsTokenValid()) gsSchedulePush();
+        }
         function gsTokenValid() {
             return !!gsState.token && Date.now() < (gsState.tokenExp - 30000);
         }
@@ -3033,8 +3047,10 @@
             const cfg = gsCfg();
             const clientIn = document.getElementById('gsClientId');
             const sheetIn = document.getElementById('gsSheetId');
+            const autoToggle = document.getElementById('gsAutoSyncToggle');
             if (clientIn && !clientIn.value) clientIn.value = cfg.clientId;
             if (sheetIn && !sheetIn.value) sheetIn.value = cfg.sheetId;
+            if (autoToggle) autoToggle.checked = gsAutoSyncEnabled();
             if (!cfg.clientId || !window.google || !window.google.accounts) return;
             gsTokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: cfg.clientId,
@@ -3163,7 +3179,7 @@
             }
         }
         function gsSchedulePush() {
-            if (!gsTokenValid()) return;
+            if (!gsTokenValid() || !gsAutoSyncEnabled()) return;
             clearTimeout(gsState.pushTimer);
             gsState.pushTimer = setTimeout(() => { gsPush(); }, 1500);
         }

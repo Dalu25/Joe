@@ -121,6 +121,7 @@
         /* Calendar UI */
         .calendar-container { display: flex; flex-direction: column; gap: 1rem; }
         .calendar-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .cal-header-right { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
         .calendar-nav { display: flex; gap: 0.4rem; align-items: center; }
         .calendar-nav button { background: var(--bg-base); border: 1px solid var(--border); color: var(--text-primary); cursor: pointer; border-radius: 50%; padding: 0.2rem 0.5rem; min-height: 36px; min-width: 36px; }
         .cal-chips { display: flex; gap: 0.5rem; align-items: center; }
@@ -156,8 +157,6 @@
             .cal-day:not(.has-trade) .cal-date { color: var(--text-secondary); }
             .cal-dot { width: 5px; height: 5px; margin-top: 2px; }
             .calendar-header { align-items: flex-start; }
-            .cal-chips { width: 100%; order: 3; }
-            .calendar-nav { order: 2; }
         }
 
         /* Responsive Layouts and Tables */
@@ -317,15 +316,16 @@
                     <div class="calendar-header">
                         <div>
                             <h3 id="cal-month-display" style="font-size:1.1rem; font-weight:700;">Month Year</h3>
-                            <div id="cal-month-pnl" style="font-size:0.85rem; font-weight:600; margin-top:0.2rem;">Net: $0.00</div>
                         </div>
-                        <div class="cal-chips">
-                            <span class="cal-chip neutral" id="cal-month-chip">+$0.00</span>
-                            <span class="cal-chip neutral" id="cal-days-chip">0 days</span>
-                        </div>
-                        <div class="calendar-nav">
-                            <button onclick="changeMonth(-1)">&lt;</button>
-                            <button onclick="changeMonth(1)">&gt;</button>
+                        <div class="cal-header-right">
+                            <div class="cal-chips">
+                                <span class="cal-chip neutral" id="cal-month-chip">+$0.00</span>
+                                <span class="cal-chip neutral" id="cal-days-chip">0 days</span>
+                            </div>
+                            <div class="calendar-nav">
+                                <button onclick="changeMonth(-1)">&lt;</button>
+                                <button onclick="changeMonth(1)">&gt;</button>
+                            </div>
                         </div>
                     </div>
                     <div class="calendar-grid" id="calendar-grid"></div>
@@ -2535,7 +2535,7 @@
                         const outcomeClass = dailySumPnl > 0 ? 'win' : (dailySumPnl < 0 ? 'loss' : 'breakeven');
                         dayCssClass += ' has-trade ' + outcomeClass;
                         weekPnl += dailySumPnl; weekTrades += dailyMatches.length; weekActiveDays++; monthlyTradingDays++;
-                        innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${dailySumPnl > 0 ? '+' : ''}${fmtMoney(dailySumPnl)}</span>
+                        innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${fmtMoney(Math.abs(dailySumPnl))}</span>
                             <div class="cal-day-meta">${dailyMatches.length} trade${dailyMatches.length > 1 ? 's' : ''}<br>${dayWinRate}%</div></div>
                             <span class="cal-dot ${outcomeClass}"></span>`;
                         clickHandler = `onclick="showDayTrades('${dayString}')" style="cursor:pointer;"`;
@@ -2554,10 +2554,6 @@
                 </div>`;
                 weekNum++;
             }
-
-            const mPnlLabel = document.getElementById('cal-month-pnl');
-            mPnlLabel.innerText = `Net: ${monthlyAggregatePnl >= 0 ? '+' : ''}${fmtMoney(monthlyAggregatePnl)}`;
-            mPnlLabel.className = monthlyAggregatePnl > 0 ? 'text-success' : (monthlyAggregatePnl < 0 ? 'text-danger' : 'text-warning');
 
             const monthChip = document.getElementById('cal-month-chip');
             monthChip.innerText = `${monthlyAggregatePnl >= 0 ? '++' : ''}${fmtMoney(monthlyAggregatePnl)}`;

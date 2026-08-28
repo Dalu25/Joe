@@ -217,6 +217,9 @@
         .switch-track::before { content: ""; position: absolute; height: 24px; width: 24px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
         .switch input:checked + .switch-track { background-color: var(--accent); }
         .switch input:checked + .switch-track::before { transform: translateX(24px); }
+        .switch.switch-sm { width: 34px; height: 20px; }
+        .switch.switch-sm .switch-track::before { height: 14px; width: 14px; left: 3px; bottom: 3px; }
+        .switch.switch-sm input:checked + .switch-track::before { transform: translateX(14px); }
 
         .view-section { display: none; }
         .view-section.active { display: flex; flex-direction: column; gap: 1.5rem; }
@@ -314,8 +317,12 @@
                 </div>
                 <div class="calendar-container">
                     <div class="calendar-header">
-                        <div>
+                        <div style="display:flex; align-items:center; gap:0.6rem;">
                             <h3 id="cal-month-display" style="font-size:1.1rem; font-weight:700;">Month Year</h3>
+                            <label class="switch switch-sm" title="Hide weekends">
+                                <input type="checkbox" id="calHideWeekendsToggle" onchange="calSetHideWeekends(this.checked)">
+                                <span class="switch-track"></span>
+                            </label>
                         </div>
                         <div class="cal-header-right">
                             <div class="cal-chips">
@@ -2495,15 +2502,20 @@
             const displayLabel = new Date(calYear, calMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
             document.getElementById('cal-month-display').innerText = displayLabel;
 
+            const hideWeekends = calHideWeekendsEnabled();
+            const hwToggle = document.getElementById('calHideWeekendsToggle');
+            if (hwToggle) hwToggle.checked = hideWeekends;
             const firstDay = new Date(calYear, calMonth, 1).getDay();
             const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
             const grid = document.getElementById('calendar-grid');
             grid.innerHTML = '';
+            grid.style.gridTemplateColumns = hideWeekends ? 'repeat(5, 1fr) 92px' : 'repeat(7, 1fr) 92px';
 
             let monthlyAggregatePnl = 0;
             let monthlyTradingDays = 0;
 
-            ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => grid.innerHTML += `<div class="cal-header-cell">${d}</div>`);
+            const dayLabels = hideWeekends ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            dayLabels.forEach(d => grid.innerHTML += `<div class="cal-header-cell">${d}</div>`);
             grid.innerHTML += `<div class="cal-week-header-cell">Wk P&L</div>`;
 
             // Build cells (nulls for the leading/trailing blanks), then slice into 7-day week rows
@@ -2518,7 +2530,9 @@
                 const weekCells = cells.slice(w, w + 7);
                 let weekPnl = 0, weekTrades = 0, weekActiveDays = 0;
 
-                weekCells.forEach(dayNum => {
+                weekCells.forEach((dayNum, dowIndex) => {
+                    // dowIndex 0=Sun ... 6=Sat within this week row. Skip Sat/Sun entirely when hiding weekends.
+                    if (hideWeekends && (dowIndex === 0 || dowIndex === 6)) return;
                     if (dayNum === null) { grid.innerHTML += `<div class="cal-empty"></div>`; return; }
                     const dayString = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
                     const dailyMatches = trades.filter(t => t.date === dayString);
@@ -2548,7 +2562,7 @@
                 const weekPnlClass = weekPnl > 0 ? 'text-success' : (weekPnl < 0 ? 'text-danger' : 'text-warning');
                 grid.innerHTML += `<div class="cal-week-cell">
                     <span class="cal-week-label">Week ${weekNum}</span>
-                    <span class="cal-week-pnl ${weekTrades ? weekPnlClass : ''}">${weekTrades ? (weekPnl > 0 ? '+' : '') + fmtMoney(weekPnl) : '$0'}</span>
+                    <span class="cal-week-pnl ${weekTrades ? weekPnlClass : ''}">${weekTrades ? fmtMoney(weekPnl) : '$0'}</span>
                     <span class="cal-week-meta">${weekTrades} trade${weekTrades !== 1 ? 's' : ''}</span>
                     <span class="cal-week-days-badge">${weekActiveDays} day${weekActiveDays !== 1 ? 's' : ''}</span>
                 </div>`;
@@ -2559,6 +2573,13 @@
             monthChip.innerText = `${monthlyAggregatePnl >= 0 ? '++' : ''}${fmtMoney(monthlyAggregatePnl)}`;
             monthChip.className = 'cal-chip ' + (monthlyAggregatePnl > 0 ? 'positive' : (monthlyAggregatePnl < 0 ? 'negative' : 'neutral'));
             document.getElementById('cal-days-chip').innerText = `${monthlyTradingDays} day${monthlyTradingDays !== 1 ? 's' : ''}`;
+        }
+        function calHideWeekendsEnabled() {
+            return localStorage.getItem('tj_cal_hide_weekends') === 'true';
+        }
+        function calSetHideWeekends(enabled) {
+            localStorage.setItem('tj_cal_hide_weekends', enabled ? 'true' : 'false');
+            renderCalendar();
         }
 
         function showDayTrades(dateStr) {

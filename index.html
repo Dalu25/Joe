@@ -148,7 +148,8 @@
         .cal-week-meta { font-size: 0.62rem; color: var(--text-secondary); }
         .cal-week-days-badge { font-size: 0.58rem; background: var(--bg-surface-hover); border-radius: 10px; padding: 0.1rem 0.4rem; display: inline-block; width: fit-content; color: var(--text-secondary); margin-top: 0.15rem; }
         @media (max-width: 640px) {
-            .calendar-grid { grid-template-columns: repeat(7, 1fr); gap: 4px; }
+            .calendar-container { overflow-x: hidden; }
+            .calendar-grid { gap: 4px; }
             .cal-week-header-cell, .cal-week-cell { display: none; }
             .cal-header-cell { font-size: 0.6rem; padding-bottom: 0.25rem; }
             .cal-day { min-height: 42px; padding: 0.25rem; border-radius: 6px; justify-content: flex-start; }
@@ -157,6 +158,14 @@
             .cal-day:not(.has-trade) .cal-date { color: var(--text-secondary); }
             .cal-dot { width: 5px; height: 5px; margin-top: 2px; }
             .calendar-header { align-items: flex-start; }
+            .cal-chip { padding: 0.22rem 0.55rem; font-size: 0.68rem; }
+            .calendar-nav button { min-height: 30px; min-width: 30px; padding: 0.1rem 0.35rem; }
+            .cal-header-right { gap: 0.35rem; }
+        }
+        @media (max-width: 360px) {
+            .calendar-container .card, .card { padding: 0.85rem; }
+            .cal-day { min-height: 36px; }
+            .cal-header-cell { font-size: 0.55rem; }
         }
 
         /* Responsive Layouts and Tables */
@@ -307,7 +316,7 @@
                 <div class="card kpi-card"><span class="card-title">Total Net P&L</span><span class="card-value" id="dash-total-pnl">$0.00</span></div>
                 <div class="card kpi-card"><span class="card-title">Total Trades</span><span class="card-value" id="dash-total-trades">0</span></div>
                 <div class="card kpi-card"><span class="card-title">Win Rate</span><span class="card-value" id="dash-win-rate">0%</span></div>
-                <div class="card kpi-card"><span class="card-title">Total R:R Generated</span><span class="card-value text-success" id="dash-total-rr">0.00R</span></div>
+                <div class="card kpi-card"><span class="card-title">Total RR</span><span class="card-value text-success" id="dash-total-rr">0.00R</span></div>
             </div>
 
             <div class="dashboard-grid">
@@ -480,10 +489,11 @@
             <details class="toggle-section" style="margin-top:0; border-color: var(--accent);">
                 <summary style="color: var(--accent);">📊 Portfolio Overview</summary>
                 <div class="toggle-body">
-                    <div class="grid-cards">
+                    <div class="grid-cards" style="grid-template-columns: 1fr;">
                         <div class="card" style="background:transparent; border:1px solid var(--border);"><span class="card-title">Total Capital</span><span class="card-value text-success" id="port-total-capital">$0.00</span></div>
-                        <div class="card" style="background:transparent; border:1px solid var(--border);"><span class="card-title">Combined P&L</span><span class="card-value" id="port-combined-pnl">$0.00</span></div>
-                        <div class="card" style="background:transparent; border:1px solid var(--border);"><span class="card-title">Aggregate Win Rate</span><span class="card-value" id="port-win-rate">0%</span></div>
+                    </div>
+                    <div class="grid-cards" style="grid-template-columns: 1fr 1fr; margin-top:0.75rem;">
+                        <div class="card" style="background:transparent; border:1px solid var(--border);"><span class="card-title">Win Rate</span><span class="card-value" id="port-win-rate">0%</span></div>
                         <div class="card" style="background:transparent; border:1px solid var(--border);"><span class="card-title">Total Trades</span><span class="card-value" id="port-total-trades">0</span></div>
                     </div>
                 </div>
@@ -508,21 +518,21 @@
             </div>
 
             <div class="grid-cards">
-                <div class="card kpi-card"><span class="card-title">Total Wins ($)</span><span class="card-value text-success" id="stat-total-wins-amt">$0.00</span></div>
-                <div class="card kpi-card"><span class="card-title">Total Losses ($)</span><span class="card-value text-danger" id="stat-total-losses-amt">$0.00</span></div>
                 <div class="card kpi-card"><span class="card-title">Net P&amp;L</span><span class="card-value" id="stat-net-pnl">$0.00</span></div>
-                <div class="card kpi-card"><span class="card-title">Profit Factor</span><span class="card-value" id="stat-profit-factor">0.00</span></div>
+                <div class="card kpi-card"><span class="card-title">Total R:R</span><span class="card-value" id="stat-total-rr">0.00R</span></div>
+                <div class="card kpi-card"><span class="card-title">Wins</span><span class="card-value text-success" id="stat-wins">0</span></div>
+                <div class="card kpi-card"><span class="card-title">Losses</span><span class="card-value text-danger" id="stat-losses">0</span></div>
             </div>
 
             <div class="grid-cards">
-                <div class="card kpi-card"><span class="card-title">Wins</span><span class="card-value text-success" id="stat-wins">0</span></div>
-                <div class="card kpi-card"><span class="card-title">Losses</span><span class="card-value text-danger" id="stat-losses">0</span></div>
                 <div class="card kpi-card"><span class="card-title">Breakevens</span><span class="card-value text-warning" id="stat-be">0</span></div>
                 <div class="card kpi-card"><span class="card-title">Win Rate</span><span class="card-value" id="stat-win-rate">0%</span></div>
                 <div class="card kpi-card"><span class="card-title">Avg Win Value</span><span class="card-value text-success" id="stat-avg-win">$0.00</span></div>
                 <div class="card kpi-card"><span class="card-title">Avg Loss Value</span><span class="card-value text-danger" id="stat-avg-loss">$0.00</span></div>
-                <div class="card kpi-card"><span class="card-title">Total R:R Tracked</span><span class="card-value" id="stat-total-rr">0.00R</span></div>
                 <div class="card kpi-card"><span class="card-title">Avg R:R Performance</span><span class="card-value" id="stat-avg-rr">0.00R</span></div>
+                <div class="card kpi-card"><span class="card-title">Total Wins ($)</span><span class="card-value text-success" id="stat-total-wins-amt">$0.00</span></div>
+                <div class="card kpi-card"><span class="card-title">Total Losses ($)</span><span class="card-value text-danger" id="stat-total-losses-amt">$0.00</span></div>
+                <div class="card kpi-card"><span class="card-title">Profit Factor</span><span class="card-value" id="stat-profit-factor">0.00</span></div>
             </div>
 
             <h3 style="font-size:1.1rem; margin-top:0.5rem;">Streaks &amp; Extremes</h3>
@@ -1367,7 +1377,10 @@
                 return;
             }
 
-            let html = `<h3 style="font-size:1.1rem; margin-bottom:1rem; color:var(--text-secondary);">🗄️ Archived Accounts</h3><div style="display:flex; flex-direction:column; gap:0.75rem;">`;
+            let html = `<details class="toggle-section" style="margin-top:0;">
+                <summary style="color: var(--text-secondary);">🗄️ Archived Accounts (${closedAccounts.length})</summary>
+                <div class="toggle-body">
+                <div style="display:flex; flex-direction:column; gap:0.75rem;">`;
             closedAccounts.forEach(acc => {
                 const accTrades = trades.filter(t => t.accountId === acc.id);
                 const netAccountPnl = accTrades.reduce((s, t) => s + t.pnl, 0);
@@ -1401,7 +1414,7 @@
                         </div>
                     </details>`;
             });
-            html += `</div>`;
+            html += `</div></div></details>`;
             archiveContainer.innerHTML = html;
         }
 
@@ -2052,8 +2065,6 @@
             const portWinRate = validDenom > 0 ? ((totalWins / validDenom) * 100).toFixed(1) : 0;
 
             document.getElementById('port-total-capital').innerText = fmtMoney(totalCapital);
-            document.getElementById('port-combined-pnl').innerText = fmtMoney(combinedPnl);
-            document.getElementById('port-combined-pnl').className = 'card-value ' + (combinedPnl > 0 ? 'text-success' : (combinedPnl < 0 ? 'text-danger' : ''));
             document.getElementById('port-win-rate').innerText = `${portWinRate}%`;
             document.getElementById('port-total-trades').innerText = totalTradeCount;
         }
@@ -2509,7 +2520,9 @@
             const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
             const grid = document.getElementById('calendar-grid');
             grid.innerHTML = '';
-            grid.style.gridTemplateColumns = hideWeekends ? 'repeat(5, 1fr) 92px' : 'repeat(7, 1fr) 92px';
+            const isMobileCal = window.matchMedia('(max-width: 640px)').matches;
+            const dayColCount = hideWeekends ? 5 : 7;
+            grid.style.gridTemplateColumns = isMobileCal ? `repeat(${dayColCount}, 1fr)` : `repeat(${dayColCount}, 1fr) 92px`;
 
             let monthlyAggregatePnl = 0;
             let monthlyTradingDays = 0;
@@ -3044,10 +3057,16 @@
         const GS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
         let gsTokenClient = null;
         let gsState = {
-            token: sessionStorage.getItem('tj_gs_token') || null,
-            tokenExp: Number(sessionStorage.getItem('tj_gs_token_exp') || 0),
+            // Token lives in localStorage (not sessionStorage) so closing the tab/app
+            // doesn't force a fresh login — Google access tokens last ~1hr regardless,
+            // but once that expires we silently re-request a new one in the background
+            // (gsSilentRefresh) instead of making the user click Connect again.
+            token: localStorage.getItem('tj_gs_token') || null,
+            tokenExp: Number(localStorage.getItem('tj_gs_token_exp') || 0),
             signedIn: false,
             pushTimer: null,
+            refreshTimer: null,
+            authIntent: null, // 'manual' (user clicked Connect) or 'silent' (background re-auth)
         };
         function gsCfg() {
             return {
@@ -3072,6 +3091,18 @@
             if (dot) dot.style.background = on === true ? '#10b981' : (on === false ? 'var(--danger)' : 'var(--text-secondary)');
             if (label) label.textContent = text;
         }
+        function gsScheduleSilentRefresh() {
+            clearTimeout(gsState.refreshTimer);
+            // Refresh ~10 min before the ~1hr token actually expires, so a long-open
+            // tab never sits on a dead token waiting for the user to notice.
+            const msUntilRefresh = Math.max(gsState.tokenExp - Date.now() - 10 * 60 * 1000, 30000);
+            gsState.refreshTimer = setTimeout(() => gsSilentRefresh(), msUntilRefresh);
+        }
+        function gsSilentRefresh() {
+            if (!gsTokenClient) return;
+            gsState.authIntent = 'silent';
+            gsTokenClient.requestAccessToken({ prompt: '' });
+        }
         function gsInit() {
             const cfg = gsCfg();
             const clientIn = document.getElementById('gsClientId');
@@ -3085,12 +3116,27 @@
                 client_id: cfg.clientId,
                 scope: GS_SCOPE,
                 callback: async (resp) => {
-                    if (resp.error) { gsSetStatus('Sign-in failed: ' + resp.error, false); return; }
+                    const intent = gsState.authIntent;
+                    gsState.authIntent = null;
+                    if (resp.error) {
+                        if (intent === 'silent') { gsSetStatus('Reconnect needed — tap Connect', false); return; }
+                        gsSetStatus('Sign-in failed: ' + resp.error, false);
+                        return;
+                    }
                     gsState.token = resp.access_token;
                     gsState.tokenExp = Date.now() + (Number(resp.expires_in || 3300) * 1000);
-                    sessionStorage.setItem('tj_gs_token', gsState.token);
-                    sessionStorage.setItem('tj_gs_token_exp', String(gsState.tokenExp));
+                    localStorage.setItem('tj_gs_token', gsState.token);
+                    localStorage.setItem('tj_gs_token_exp', String(gsState.tokenExp));
                     gsState.signedIn = true;
+                    gsScheduleSilentRefresh();
+
+                    if (intent !== 'manual') {
+                        // Background/silent re-auth on page load or before expiry — just refresh
+                        // the token quietly, no dialogs, no re-syncing prompts.
+                        gsSetStatus('Connected', true);
+                        return;
+                    }
+
                     gsSetStatus('Connected — syncing…', null);
                     try {
                         await gsEnsureStructure();
@@ -3105,6 +3151,7 @@
                         } else {
                             await gsPush();
                         }
+                        localStorage.setItem('tj_gs_granted', 'true');
                     } catch (err) {
                         gsSetStatus('Error: ' + err.message, false);
                     }
@@ -3113,6 +3160,13 @@
             if (gsTokenValid()) {
                 gsState.signedIn = true;
                 gsSetStatus('Connected', true);
+                gsScheduleSilentRefresh();
+            } else if (localStorage.getItem('tj_gs_granted') === 'true') {
+                // Previously connected but the token's expired (or the tab was closed
+                // long enough for it to lapse) — try to reconnect quietly in the
+                // background instead of leaving it stuck on "Not connected".
+                gsSetStatus('Reconnecting…', null);
+                gsSilentRefresh();
             }
         }
         function gsConnect() {
@@ -3123,12 +3177,14 @@
             localStorage.setItem('tj_gs_sheet_id', sheetId);
             gsInit();
             if (!gsTokenClient) { alert('Google sign-in library is still loading — please try again in a moment.'); return; }
+            gsState.authIntent = 'manual';
             gsTokenClient.requestAccessToken({ prompt: gsState.token ? '' : 'consent' });
         }
         function gsSignOut() {
             if (gsState.token) { try { google.accounts.oauth2.revoke(gsState.token, () => {}); } catch (e) {} }
             gsState.token = null; gsState.signedIn = false;
-            sessionStorage.removeItem('tj_gs_token'); sessionStorage.removeItem('tj_gs_token_exp');
+            clearTimeout(gsState.refreshTimer);
+            localStorage.removeItem('tj_gs_token'); localStorage.removeItem('tj_gs_token_exp'); localStorage.removeItem('tj_gs_granted');
             gsSetStatus('Not connected', null);
         }
         async function gsFetch(path, opts) {

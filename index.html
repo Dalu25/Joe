@@ -146,7 +146,19 @@
         .cal-week-pnl { font-size: 0.92rem; font-weight: 800; }
         .cal-week-meta { font-size: 0.62rem; color: var(--text-secondary); }
         .cal-week-days-badge { font-size: 0.58rem; background: var(--bg-surface-hover); border-radius: 10px; padding: 0.1rem 0.4rem; display: inline-block; width: fit-content; color: var(--text-secondary); margin-top: 0.15rem; }
-        @media (max-width: 640px) { .calendar-grid { grid-template-columns: repeat(7, minmax(28px,1fr)); font-size: 0.65rem; } .cal-week-header-cell, .cal-week-cell { display: none; } }
+        @media (max-width: 640px) {
+            .calendar-grid { grid-template-columns: repeat(7, 1fr); gap: 4px; }
+            .cal-week-header-cell, .cal-week-cell { display: none; }
+            .cal-header-cell { font-size: 0.6rem; padding-bottom: 0.25rem; }
+            .cal-day { min-height: 42px; padding: 0.25rem; border-radius: 6px; justify-content: flex-start; }
+            .cal-day-stats { display: none; }
+            .cal-date { font-size: 0.78rem; font-weight: 600; color: var(--text-primary); }
+            .cal-day:not(.has-trade) .cal-date { color: var(--text-secondary); }
+            .cal-dot { width: 5px; height: 5px; margin-top: 2px; }
+            .calendar-header { align-items: flex-start; }
+            .cal-chips { width: 100%; order: 3; }
+            .calendar-nav { order: 2; }
+        }
 
         /* Responsive Layouts and Tables */
         .filter-container { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
@@ -2523,7 +2535,7 @@
                         const outcomeClass = dailySumPnl > 0 ? 'win' : (dailySumPnl < 0 ? 'loss' : 'breakeven');
                         dayCssClass += ' has-trade ' + outcomeClass;
                         weekPnl += dailySumPnl; weekTrades += dailyMatches.length; weekActiveDays++; monthlyTradingDays++;
-                        innerHtml += `<div><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${dailySumPnl > 0 ? '+' : ''}${fmtMoney(dailySumPnl)}</span>
+                        innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${dailySumPnl > 0 ? '+' : ''}${fmtMoney(dailySumPnl)}</span>
                             <div class="cal-day-meta">${dailyMatches.length} trade${dailyMatches.length > 1 ? 's' : ''}<br>${dayWinRate}%</div></div>
                             <span class="cal-dot ${outcomeClass}"></span>`;
                         clickHandler = `onclick="showDayTrades('${dayString}')" style="cursor:pointer;"`;
@@ -3066,7 +3078,7 @@
                     try {
                         await gsEnsureStructure();
                         const rows = await gsGetValues('JournalData!A1:B2');
-                        const hasRemoteData = rows.some(r => r[1]);
+                        const hasRemoteData = rows.length > 1 && (parseInt(rows[1][0], 10) > 0 || parseInt(rows[1][1], 10) > 0);
                         if (hasRemoteData) {
                             if (confirm('This Google Sheet already has journal data.\n\nOK = Pull it down (overwrites what\'s on this device)\nCancel = Push this device\'s data up (overwrites the Sheet)')) {
                                 await gsPull();
@@ -3133,6 +3145,9 @@
                 method: 'PUT', body: JSON.stringify({ range, values }),
             });
         }
+        async function gsClearValues(range) {
+            return gsFetch('/values/' + encodeURIComponent(range) + ':clear', { method: 'POST', body: '{}' });
+        }
         async function gsBatchUpdate(requests) {
             return gsFetch(':batchUpdate', { method: 'POST', body: JSON.stringify({ requests }) });
         }
@@ -3141,18 +3156,37 @@
             const existing = (meta.sheets || []).map(s => s.properties.title);
             if (!existing.includes('JournalData')) {
                 await gsBatchUpdate([{ addSheet: { properties: { title: 'JournalData' } } }]);
-                await gsUpdateValues('JournalData!A1:A2', [['trades'], ['accounts']]);
             }
+        }
+
+        // A single Google Sheets cell tops out around 50,000 characters, and a full
+        // trade history (with notes/chart links/images) as one JSON blob blows past
+        // that fast. So instead of one giant cell, the JSON is split into ~40,000
+        // character chunks and written one-per-row — trades down column A, accounts
+        // down column B — with a small header row recording how many chunks each has.
+        const GS_CHUNK_SIZE = 40000;
+        function gsChunkString(str) {
+            const chunks = [];
+            for (let i = 0; i < str.length; i += GS_CHUNK_SIZE) chunks.push(str.slice(i, i + GS_CHUNK_SIZE));
+            if (chunks.length === 0) chunks.push('');
+            return chunks;
         }
         async function gsPush() {
             if (!gsTokenValid()) { alert('Please connect to Google Sheets first.'); return; }
             gsSetStatus('Pushing…', null);
             try {
                 await gsEnsureStructure();
-                await gsUpdateValues('JournalData!A1:B2', [
-                    ['trades', JSON.stringify(trades)],
-                    ['accounts', JSON.stringify(accounts)],
-                ]);
+                const tradeChunks = gsChunkString(JSON.stringify(trades));
+                const acctChunks = gsChunkString(JSON.stringify(accounts));
+                const rowCount = Math.max(tradeChunks.length, acctChunks.length);
+                const grid = [
+                    ['trades', 'accounts'],
+                    [tradeChunks.length, acctChunks.length],
+                ];
+                for (let i = 0; i < rowCount; i++) grid.push([tradeChunks[i] || '', acctChunks[i] || '']);
+                // Clear a generous range first so a shorter push never leaves stale chunk rows behind.
+                await gsClearValues('JournalData!A1:B5000');
+                await gsUpdateValues('JournalData!A1:B' + grid.length, grid);
                 gsSetStatus('Synced just now', true);
             } catch (err) {
                 gsSetStatus('Push failed: ' + err.message, false);
@@ -3163,11 +3197,15 @@
             gsSetStatus('Pulling…', null);
             try {
                 await gsEnsureStructure();
-                const rows = await gsGetValues('JournalData!A1:B2');
-                const map = {};
-                rows.forEach(r => { if (r[0]) map[r[0]] = r[1]; });
-                if (map.trades) trades = normalizeTrades(JSON.parse(map.trades));
-                if (map.accounts) accounts = normalizeAccounts(JSON.parse(map.accounts));
+                const rows = await gsGetValues('JournalData!A1:B5000');
+                if (rows.length < 2) { gsSetStatus('Nothing to pull yet', null); return; }
+                const tradeCount = parseInt(rows[1][0], 10) || 0;
+                const acctCount = parseInt(rows[1][1], 10) || 0;
+                const dataRows = rows.slice(2);
+                const tradesJson = dataRows.slice(0, tradeCount).map(r => r[0] || '').join('');
+                const acctJson = dataRows.slice(0, acctCount).map(r => r[1] || '').join('');
+                if (tradesJson) trades = normalizeTrades(JSON.parse(tradesJson));
+                if (acctJson) accounts = normalizeAccounts(JSON.parse(acctJson));
                 localStorage.setItem('tj_accounts', JSON.stringify(accounts));
                 localStorage.setItem('tj_trades', JSON.stringify(trades));
                 closeAccountFocus();

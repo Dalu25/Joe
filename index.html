@@ -310,7 +310,13 @@
 
         <!-- DASHBOARD VIEW -->
         <section id="dashboard" class="view-section active">
-            <div class="dash-range-note">Stats for: <strong id="dash-range-label" style="color:var(--text-primary);">All Time</strong></div>
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
+                <div class="dash-range-note" style="margin-bottom:0;">Stats for: <strong id="dash-range-label" style="color:var(--text-primary);">All Time</strong></div>
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span id="dashSaveStatus" style="font-size:0.8rem; color:var(--text-secondary);"></span>
+                    <button class="btn btn-outline" type="button" id="dashSaveBtn" onclick="gsManualSave()" title="Push the latest data to Google Sheets right now — useful before closing the app">Save Now</button>
+                </div>
+            </div>
 
             <div class="grid-cards">
                 <div class="card kpi-card"><span class="card-title">Total Net P&L</span><span class="card-value" id="dash-total-pnl">$0.00</span></div>
@@ -882,6 +888,64 @@
                 return t;
             });
         }
+        // ===================== TRADE STORAGE COMPACTION =====================
+        // A single logged trade often applies across several funded accounts at
+        // once (same setup, same entry, different account/P&L/risk) — those
+        // account "legs" share a groupId. Historically every leg stored its own
+        // full copy of the fields that are identical across the whole group
+        // (symbol, date, note, chart link, images), so a long note or an
+        // attached image got duplicated once per account on every save, every
+        // localStorage write, and every Google Sheets push. These helpers store
+        // the shared fields once per group instead of once per leg. The rest of
+        // the app is untouched — it still works with `trades` as a flat array
+        // of legs in memory; compaction only happens at the point of writing to
+        // storage, and expansion happens right after reading it back in.
+        function compactTrades(flatTrades) {
+            const groups = new Map();
+            (flatTrades || []).forEach(t => {
+                const gid = t.groupId || t.id;
+                if (!groups.has(gid)) {
+                    groups.set(gid, {
+                        groupId: gid, symbol: t.symbol, date: t.date, outcome: t.outcome,
+                        session: t.session, isSignal: t.isSignal, isMe: t.isMe,
+                        note: t.note, link: t.link, images: [], createdAt: t.createdAt,
+                        legs: [],
+                    });
+                }
+                const g = groups.get(gid);
+                // Legacy data could in theory have had different images per account
+                // leg — merge/dedupe them into the one shared set rather than drop
+                // anything, matching how the details view already displays them
+                // (it flatMaps every leg's images together for one trade anyway).
+                (t.images || []).forEach(img => { if (!g.images.includes(img)) g.images.push(img); });
+                g.legs.push({ id: t.id, accountId: t.accountId, pnl: t.pnl, riskAmount: t.riskAmount, rr: t.rr });
+            });
+            return Array.from(groups.values());
+        }
+        function expandTrades(compact) {
+            const flat = [];
+            (compact || []).forEach(g => {
+                (g.legs || []).forEach(leg => {
+                    flat.push({
+                        id: leg.id, groupId: g.groupId, accountId: leg.accountId,
+                        symbol: g.symbol, date: g.date, outcome: g.outcome, rr: leg.rr,
+                        pnl: leg.pnl, session: g.session, riskAmount: leg.riskAmount,
+                        isSignal: g.isSignal, isMe: g.isMe, note: g.note, link: g.link,
+                        images: g.images, createdAt: g.createdAt,
+                    });
+                });
+            });
+            return flat;
+        }
+        function isCompactTradeFormat(raw) {
+            return Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0].legs);
+        }
+        // Accepts either the old flat per-leg array (from data saved before this
+        // change) or the new compact per-group array, auto-detects which, and
+        // always returns the flat per-leg shape the rest of the app expects.
+        function parseStoredTrades(raw) {
+            return normalizeTrades(isCompactTradeFormat(raw) ? expandTrades(raw) : raw);
+        }
         function normalizeAccounts(arr) {
             return (arr || []).map(a => {
                 if(a.maxDD === undefined) a.maxDD = null;
@@ -909,7 +973,7 @@
         }
 
         let accounts = normalizeAccounts(JSON.parse(localStorage.getItem('tj_accounts')) || []);
-        let trades = normalizeTrades(JSON.parse(localStorage.getItem('tj_trades')) || []);
+        let trades = parseStoredTrades(JSON.parse(localStorage.getItem('tj_trades')) || []);
         let editingGroupId = null;
         let selectedFocusAccountId = null;
         
@@ -1631,7 +1695,7 @@
         function saveData() {
             try {
                 localStorage.setItem('tj_accounts', JSON.stringify(accounts));
-                localStorage.setItem('tj_trades', JSON.stringify(trades));
+                localStorage.setItem('tj_trades', JSON.stringify(compactTrades(trades)));
                 if (typeof gsSchedulePush === 'function') gsSchedulePush();
             } catch (e) { alert('LocalStorage capacity optimization limits triggered. Please reduce base image size inputs.'); }
         }
@@ -1736,7 +1800,7 @@
         }
 
         function exportData() {
-            const blob = new Blob([JSON.stringify({ accounts, trades })], {type: 'application/json'});
+            const blob = new Blob([JSON.stringify({ accounts, trades: compactTrades(trades) })], {type: 'application/json'});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = `crt_journal_backup_${new Date().toISOString().split('T')[0]}.json`;
@@ -1782,7 +1846,7 @@
                     const data = JSON.parse(e.target.result);
                     if (data.accounts && data.trades) {
                         accounts = normalizeAccounts(data.accounts);
-                        trades = normalizeTrades(data.trades);
+                        trades = parseStoredTrades(data.trades);
                         saveData(); alert('Data processing mapping restored successfully.'); updateUI();
                     } else alert('Incorrect JSON scheme structural layout mapping.');
                 } catch (err) { alert('System parsing error occurred.'); }
@@ -3257,7 +3321,7 @@
             gsSetStatus('Pushing…', null);
             try {
                 await gsEnsureStructure();
-                const tradeChunks = gsChunkString(JSON.stringify(trades));
+                const tradeChunks = gsChunkString(JSON.stringify(compactTrades(trades)));
                 const acctChunks = gsChunkString(JSON.stringify(accounts));
                 const rowCount = Math.max(tradeChunks.length, acctChunks.length);
                 const grid = [
@@ -3285,10 +3349,10 @@
                 const dataRows = rows.slice(2);
                 const tradesJson = dataRows.slice(0, tradeCount).map(r => r[0] || '').join('');
                 const acctJson = dataRows.slice(0, acctCount).map(r => r[1] || '').join('');
-                if (tradesJson) trades = normalizeTrades(JSON.parse(tradesJson));
+                if (tradesJson) trades = parseStoredTrades(JSON.parse(tradesJson));
                 if (acctJson) accounts = normalizeAccounts(JSON.parse(acctJson));
                 localStorage.setItem('tj_accounts', JSON.stringify(accounts));
-                localStorage.setItem('tj_trades', JSON.stringify(trades));
+                localStorage.setItem('tj_trades', JSON.stringify(compactTrades(trades)));
                 closeAccountFocus();
                 resetAccountForm();
                 updateUI();
@@ -3301,6 +3365,43 @@
             if (!gsTokenValid() || !gsAutoSyncEnabled()) return;
             clearTimeout(gsState.pushTimer);
             gsState.pushTimer = setTimeout(() => { gsPush(); }, 1500);
+        }
+        // Manual "Save Now" button on the homepage — pushes immediately instead
+        // of waiting on the debounce, for right before closing the app. Auto-pull
+        // on connect/reconnect is untouched by this; this only ever pushes.
+        async function gsManualSave() {
+            const label = document.getElementById('dashSaveStatus');
+            const btn = document.getElementById('dashSaveBtn');
+            if (!gsCfg().clientId || !gsCfg().sheetId) {
+                if (label) { label.textContent = 'Set up Google Sheets sync in Settings first.'; label.style.color = 'var(--danger)'; }
+                return;
+            }
+            if (btn) btn.disabled = true;
+            if (label) { label.textContent = 'Saving…'; label.style.color = 'var(--text-secondary)'; }
+            clearTimeout(gsState.pushTimer); // a manual save supersedes any pending debounced push
+            if (!gsTokenValid() && localStorage.getItem('tj_gs_granted') === 'true') {
+                // Token's lapsed — reconnect quietly, then push once that resolves.
+                await new Promise(resolve => {
+                    const check = setInterval(() => {
+                        if (gsTokenValid() || gsState.authIntent === null) { clearInterval(check); resolve(); }
+                    }, 300);
+                    gsSilentRefresh();
+                    setTimeout(() => { clearInterval(check); resolve(); }, 8000);
+                });
+            }
+            if (!gsTokenValid()) {
+                if (label) { label.textContent = 'Not connected — open Settings and hit Connect.'; label.style.color = 'var(--danger)'; }
+                if (btn) btn.disabled = false;
+                return;
+            }
+            await gsPush();
+            const sourceLabel = document.getElementById('gsSyncStatus');
+            const sourceDot = document.getElementById('gsSyncDot');
+            if (label) {
+                label.textContent = sourceLabel ? sourceLabel.textContent : 'Done';
+                label.style.color = sourceDot ? sourceDot.style.background : '';
+            }
+            if (btn) btn.disabled = false;
         }
     </script>
 </body>

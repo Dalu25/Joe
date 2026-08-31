@@ -3131,9 +3131,12 @@
                     gsScheduleSilentRefresh();
 
                     if (intent !== 'manual') {
-                        // Background/silent re-auth on page load or before expiry — just refresh
-                        // the token quietly, no dialogs, no re-syncing prompts.
+                        // Background/silent re-auth on page load or before expiry — refresh the
+                        // token quietly, then auto-pull so opening the app on another device
+                        // (or after the token lapsed) picks up the latest journal with no
+                        // manual "Pull from Sheet" click needed.
                         gsSetStatus('Connected', true);
+                        if (gsAutoSyncEnabled()) gsPull();
                         return;
                     }
 
@@ -3161,6 +3164,11 @@
                 gsState.signedIn = true;
                 gsSetStatus('Connected', true);
                 gsScheduleSilentRefresh();
+                // Already signed in with a live token (e.g. reopening the app) —
+                // auto-pull so this device is up to date with whatever the last
+                // device pushed, instead of showing stale local data until a
+                // manual pull.
+                if (gsAutoSyncEnabled()) gsPull();
             } else if (localStorage.getItem('tj_gs_granted') === 'true') {
                 // Previously connected but the token's expired (or the tab was closed
                 // long enough for it to lapse) — try to reconnect quietly in the

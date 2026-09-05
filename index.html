@@ -2362,61 +2362,89 @@
                 return;
             }
 
-            const s = computePeriodStats(periodTrades);
-            lastReportData = { heading, typeLabel: typeLabels[type], periodLabel: label, stats: s };
+            // Signals are trades taken from someone else's call, not your own analysis —
+            // reported separately so they never blend into your own performance numbers.
+            const myTrades = periodTrades.filter(t => !t.isSignal);
+            const signalTrades = periodTrades.filter(t => t.isSignal);
+            const myStats = myTrades.length ? computePeriodStats(myTrades) : null;
+            const sigStats = signalTrades.length ? computePeriodStats(signalTrades) : null;
 
-            const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
+            lastReportData = { heading, typeLabel: typeLabels[type], periodLabel: label, myStats, sigStats };
+
             const row = (label, value, cls) => `<div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">${label}</span><span class="${cls || ''}" style="font-weight:600;">${value}</span></div>`;
             const sectionTitle = (t) => `<h4 style="margin:1.25rem 0 0.5rem; color:var(--accent); font-size:0.95rem;">${t}</h4>`;
             const bwLine = (label, item, unit) => item ? `${label}: <strong>${item.key}</strong> (${fmtMoney(item.pnl)}${unit ? ', ' + item.winRate.toFixed(1) + '% WR' : ''})` : `${label}: N/A`;
 
+            const renderBlock = (s, blockLabel) => {
+                const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
+                let html = `<h3 style="margin-bottom:0.25rem;">${blockLabel}</h3>`;
+                html += `<p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.5rem;">${s.totalTrades} trade${s.totalTrades === 1 ? '' : 's'} logged this period</p>`;
+
+                html += sectionTitle('Performance Overview');
+                html += row('Total Wins ($)', fmtMoney(s.totalWinAmt), 'text-success');
+                html += row('Total Losses ($)', fmtMoney(-s.totalLossAmt), 'text-danger');
+                html += row('Net P&amp;L', fmtMoney(s.netPnl), s.netPnl >= 0 ? 'text-success' : 'text-danger');
+                html += row('Profit Factor', pf);
+                html += row('Wins / Losses / Breakevens', `${s.wins}W / ${s.losses}L / ${s.breakevens}BE`);
+                html += row('Win Rate', `${s.winRate.toFixed(1)}%`);
+                html += row('Avg Win Value', fmtMoney(s.avgWin), 'text-success');
+                html += row('Avg Loss Value', fmtMoney(-s.avgLoss), 'text-danger');
+                html += row('Total R:R Tracked', `${s.totalRR.toFixed(2)}R`);
+                html += row('Avg R:R Performance', `${s.avgRR.toFixed(2)}R`);
+
+                html += sectionTitle('Streaks &amp; Extremes');
+                html += row('Max Win Streak', s.maxWinStreak, 'text-success');
+                html += row('Max Loss Streak', s.maxLossStreak, 'text-danger');
+                html += row('Top Win Execution', fmtMoney(s.topWin), 'text-success');
+                html += row('Top Loss Execution', fmtMoney(s.topLoss), 'text-danger');
+                html += row('Winning Days', s.winningDays, 'text-success');
+                html += row('Losing Days', s.losingDays, 'text-danger');
+                html += row('Best Day', s.bestDay ? `${s.bestDay.date} (${fmtMoney(s.bestDay.pnl)})` : 'N/A', 'text-success');
+                html += row('Worst Day', s.worstDay ? `${s.worstDay.date} (${fmtMoney(s.worstDay.pnl)})` : 'N/A', 'text-danger');
+                html += row('Biggest Win', s.biggestWin ? `${s.biggestWin.symbol} on ${s.biggestWin.date} (${fmtMoney(s.biggestWin.pnl)})` : 'N/A', 'text-success');
+                html += row('Biggest Loss', s.biggestLoss ? `${s.biggestLoss.symbol} on ${s.biggestLoss.date} (${fmtMoney(s.biggestLoss.pnl)})` : 'N/A', 'text-danger');
+
+                html += sectionTitle('Consistency');
+                html += row('Risk Consistency Score', s.riskConsistency ? `${s.riskConsistency.pct.toFixed(0)}% (${s.riskConsistency.inRange}/${s.riskConsistency.total} trades in range ${fmtMoney(s.riskConsistency.low)}–${fmtMoney(s.riskConsistency.high)})` : 'Not enough risk data');
+                html += row('Daily Consistency Score', s.dailyConsistency !== null ? `${Math.round(s.dailyConsistency)}%` : 'Not enough trading days');
+
+                html += sectionTitle('Best &amp; Worst — Symbol / Day / Session');
+                html += `<div style="padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span class="text-success">▲ ${bwLine('Best Symbol', s.symbolBreakdown.best, true)}</span></div>`;
+                html += `<div style="padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span class="text-danger">▼ ${bwLine('Worst Symbol', s.symbolBreakdown.worst, true)}</span></div>`;
+                html += `<div style="padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span class="text-success">▲ ${bwLine('Best Day of Week', s.dayBreakdown.best, true)}</span></div>`;
+                html += `<div style="padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span class="text-danger">▼ ${bwLine('Worst Day of Week', s.dayBreakdown.worst, true)}</span></div>`;
+                html += `<div style="padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span class="text-success">▲ ${bwLine('Best Session', s.sessionBreakdown.best, true)}</span></div>`;
+                html += `<div style="padding:0.4rem 0; font-size:0.9rem;"><span class="text-danger">▼ ${bwLine('Worst Session', s.sessionBreakdown.worst, true)}</span></div>`;
+
+                html += sectionTitle('Summarized Trade History');
+                html += `<div class="table-container" style="border:none; border-radius:0; margin-top:0.25rem;"><table><thead><tr><th>Date</th><th>Symbol</th><th>Outcome</th><th>R:R</th><th>P&amp;L</th></tr></thead><tbody>`;
+                s.trades.forEach(t => {
+                    const outcomeLabel = t.outcome === 'win' ? 'Win' : (t.outcome === 'loss' ? 'Loss' : 'BE');
+                    html += `<tr><td>${t.date}</td><td style="font-weight:600;">${t.symbol}</td><td>${outcomeLabel}</td><td>${(parseFloat(t.rr) || 0).toFixed(2)}R</td><td class="${t.pnl >= 0 ? 'text-success' : 'text-danger'}">${fmtMoney(t.pnl)}</td></tr>`;
+                });
+                html += `</tbody></table></div>`;
+                return html;
+            };
+
             let html = `<div style="background:var(--bg-base); padding:1.25rem; border-radius:6px; border:1px solid var(--border);">`;
             html += `<h3 style="margin-bottom:0.25rem;">${heading}</h3>`;
-            html += `<p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.5rem;">${s.totalTrades} trade${s.totalTrades === 1 ? '' : 's'} logged this period</p>`;
+            html += `<p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.5rem;">${periodTrades.length} trade${periodTrades.length === 1 ? '' : 's'} logged this period (${myTrades.length} mine, ${signalTrades.length} signal)</p>`;
 
-            html += sectionTitle('Performance Overview');
-            html += row('Total Wins ($)', fmtMoney(s.totalWinAmt), 'text-success');
-            html += row('Total Losses ($)', fmtMoney(-s.totalLossAmt), 'text-danger');
-            html += row('Net P&amp;L', fmtMoney(s.netPnl), s.netPnl >= 0 ? 'text-success' : 'text-danger');
-            html += row('Profit Factor', pf);
-            html += row('Wins / Losses / Breakevens', `${s.wins}W / ${s.losses}L / ${s.breakevens}BE`);
-            html += row('Win Rate', `${s.winRate.toFixed(1)}%`);
-            html += row('Avg Win Value', fmtMoney(s.avgWin), 'text-success');
-            html += row('Avg Loss Value', fmtMoney(-s.avgLoss), 'text-danger');
-            html += row('Total R:R Tracked', `${s.totalRR.toFixed(2)}R`);
-            html += row('Avg R:R Performance', `${s.avgRR.toFixed(2)}R`);
+            html += `<div style="border-top:2px solid var(--accent); margin-top:0.75rem; padding-top:0.5rem;">`;
+            if(myStats) {
+                html += renderBlock(myStats, '📈 My Trades');
+            } else {
+                html += `<h3 style="margin-bottom:0.25rem;">📈 My Trades</h3><p style="color:var(--text-secondary); font-size:0.85rem;">No non-signal trades logged this period.</p>`;
+            }
+            html += `</div>`;
 
-            html += sectionTitle('Streaks &amp; Extremes');
-            html += row('Max Win Streak', s.maxWinStreak, 'text-success');
-            html += row('Max Loss Streak', s.maxLossStreak, 'text-danger');
-            html += row('Top Win Execution', fmtMoney(s.topWin), 'text-success');
-            html += row('Top Loss Execution', fmtMoney(s.topLoss), 'text-danger');
-            html += row('Winning Days', s.winningDays, 'text-success');
-            html += row('Losing Days', s.losingDays, 'text-danger');
-            html += row('Best Day', s.bestDay ? `${s.bestDay.date} (${fmtMoney(s.bestDay.pnl)})` : 'N/A', 'text-success');
-            html += row('Worst Day', s.worstDay ? `${s.worstDay.date} (${fmtMoney(s.worstDay.pnl)})` : 'N/A', 'text-danger');
-            html += row('Biggest Win', s.biggestWin ? `${s.biggestWin.symbol} on ${s.biggestWin.date} (${fmtMoney(s.biggestWin.pnl)})` : 'N/A', 'text-success');
-            html += row('Biggest Loss', s.biggestLoss ? `${s.biggestLoss.symbol} on ${s.biggestLoss.date} (${fmtMoney(s.biggestLoss.pnl)})` : 'N/A', 'text-danger');
-
-            html += sectionTitle('Consistency');
-            html += row('Risk Consistency Score', s.riskConsistency ? `${s.riskConsistency.pct.toFixed(0)}% (${s.riskConsistency.inRange}/${s.riskConsistency.total} trades in range ${fmtMoney(s.riskConsistency.low)}–${fmtMoney(s.riskConsistency.high)})` : 'Not enough risk data');
-            html += row('Daily Consistency Score', s.dailyConsistency !== null ? `${Math.round(s.dailyConsistency)}%` : 'Not enough trading days');
-
-            html += sectionTitle('Best &amp; Worst — Symbol / Day / Session');
-            html += `<div style="padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span class="text-success">▲ ${bwLine('Best Symbol', s.symbolBreakdown.best, true)}</span></div>`;
-            html += `<div style="padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span class="text-danger">▼ ${bwLine('Worst Symbol', s.symbolBreakdown.worst, true)}</span></div>`;
-            html += `<div style="padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span class="text-success">▲ ${bwLine('Best Day of Week', s.dayBreakdown.best, true)}</span></div>`;
-            html += `<div style="padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span class="text-danger">▼ ${bwLine('Worst Day of Week', s.dayBreakdown.worst, true)}</span></div>`;
-            html += `<div style="padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span class="text-success">▲ ${bwLine('Best Session', s.sessionBreakdown.best, true)}</span></div>`;
-            html += `<div style="padding:0.4rem 0; font-size:0.9rem;"><span class="text-danger">▼ ${bwLine('Worst Session', s.sessionBreakdown.worst, true)}</span></div>`;
-
-            html += sectionTitle('Summarized Trade History');
-            html += `<div class="table-container" style="border:none; border-radius:0; margin-top:0.25rem;"><table><thead><tr><th>Date</th><th>Symbol</th><th>Outcome</th><th>R:R</th><th>P&amp;L</th></tr></thead><tbody>`;
-            s.trades.forEach(t => {
-                const outcomeLabel = t.outcome === 'win' ? 'Win' : (t.outcome === 'loss' ? 'Loss' : 'BE');
-                html += `<tr><td>${t.date}</td><td style="font-weight:600;">${t.symbol}</td><td>${outcomeLabel}</td><td>${(parseFloat(t.rr) || 0).toFixed(2)}R</td><td class="${t.pnl >= 0 ? 'text-success' : 'text-danger'}">${fmtMoney(t.pnl)}</td></tr>`;
-            });
-            html += `</tbody></table></div>`;
+            html += `<div style="border-top:2px solid var(--border); margin-top:1.5rem; padding-top:0.5rem;">`;
+            if(sigStats) {
+                html += renderBlock(sigStats, '📡 Signal Trades');
+            } else {
+                html += `<h3 style="margin-bottom:0.25rem;">📡 Signal Trades</h3><p style="color:var(--text-secondary); font-size:0.85rem;">No signal trades logged this period.</p>`;
+            }
+            html += `</div>`;
 
             html += `</div>`;
 
@@ -2441,6 +2469,7 @@
             const marginX = 50;
             let y = 60;
             const checkPageBreak = (needed) => { if(y + needed > pageHeight - 50) { doc.addPage(); y = 60; } };
+            const green = [16, 150, 90], red = [220, 50, 50];
 
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(18);
@@ -2454,10 +2483,6 @@
             doc.setDrawColor(220, 220, 220);
             doc.line(marginX, y, pageWidth - marginX, y);
             y += 25;
-
-            const s = lastReportData.stats;
-            const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
-            const green = [16, 150, 90], red = [220, 50, 50];
 
             const drawSectionTitle = (title) => {
                 checkPageBreak(30);
@@ -2474,66 +2499,101 @@
                 y += 17;
             };
 
-            drawSectionTitle('Performance Overview');
-            drawRow('Total Wins ($)', fmtMoney(s.totalWinAmt), green);
-            drawRow('Total Losses ($)', fmtMoney(-s.totalLossAmt), red);
-            drawRow('Net P&L', fmtMoney(s.netPnl), s.netPnl >= 0 ? green : red);
-            drawRow('Profit Factor', pf);
-            drawRow('Wins / Losses / Breakevens', `${s.wins}W / ${s.losses}L / ${s.breakevens}BE`);
-            drawRow('Win Rate', `${s.winRate.toFixed(1)}%`);
-            drawRow('Avg Win Value', fmtMoney(s.avgWin), green);
-            drawRow('Avg Loss Value', fmtMoney(-s.avgLoss), red);
-            drawRow('Total R:R Tracked', `${s.totalRR.toFixed(2)}R`);
-            drawRow('Avg R:R Performance', `${s.avgRR.toFixed(2)}R`);
-            y += 8;
+            const drawBlock = (s, blockLabel) => {
+                checkPageBreak(40);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(20, 20, 20);
+                doc.text(blockLabel, marginX, y); y += 18;
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(120, 120, 120);
+                doc.text(`${s.totalTrades} trade${s.totalTrades === 1 ? '' : 's'} logged this period`, marginX, y); y += 18;
 
-            drawSectionTitle('Streaks & Extremes');
-            drawRow('Max Win Streak', s.maxWinStreak, green);
-            drawRow('Max Loss Streak', s.maxLossStreak, red);
-            drawRow('Top Win Execution', fmtMoney(s.topWin), green);
-            drawRow('Top Loss Execution', fmtMoney(s.topLoss), red);
-            drawRow('Winning Days', s.winningDays, green);
-            drawRow('Losing Days', s.losingDays, red);
-            drawRow('Best Day', s.bestDay ? `${s.bestDay.date}  (${fmtMoney(s.bestDay.pnl)})` : 'N/A', green);
-            drawRow('Worst Day', s.worstDay ? `${s.worstDay.date}  (${fmtMoney(s.worstDay.pnl)})` : 'N/A', red);
-            drawRow('Biggest Win', s.biggestWin ? `${s.biggestWin.symbol} on ${s.biggestWin.date}  (${fmtMoney(s.biggestWin.pnl)})` : 'N/A', green);
-            drawRow('Biggest Loss', s.biggestLoss ? `${s.biggestLoss.symbol} on ${s.biggestLoss.date}  (${fmtMoney(s.biggestLoss.pnl)})` : 'N/A', red);
-            y += 8;
+                const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
 
-            drawSectionTitle('Consistency');
-            drawRow('Risk Consistency Score', s.riskConsistency ? `${s.riskConsistency.pct.toFixed(0)}% (${s.riskConsistency.inRange}/${s.riskConsistency.total} in range)` : 'Not enough data');
-            drawRow('Daily Consistency Score', s.dailyConsistency !== null ? `${Math.round(s.dailyConsistency)}%` : 'Not enough data');
-            y += 8;
+                drawSectionTitle('Performance Overview');
+                drawRow('Total Wins ($)', fmtMoney(s.totalWinAmt), green);
+                drawRow('Total Losses ($)', fmtMoney(-s.totalLossAmt), red);
+                drawRow('Net P&L', fmtMoney(s.netPnl), s.netPnl >= 0 ? green : red);
+                drawRow('Profit Factor', pf);
+                drawRow('Wins / Losses / Breakevens', `${s.wins}W / ${s.losses}L / ${s.breakevens}BE`);
+                drawRow('Win Rate', `${s.winRate.toFixed(1)}%`);
+                drawRow('Avg Win Value', fmtMoney(s.avgWin), green);
+                drawRow('Avg Loss Value', fmtMoney(-s.avgLoss), red);
+                drawRow('Total R:R Tracked', `${s.totalRR.toFixed(2)}R`);
+                drawRow('Avg R:R Performance', `${s.avgRR.toFixed(2)}R`);
+                y += 8;
 
-            drawSectionTitle('Best & Worst — Symbol / Day / Session');
-            const bwText = (label, item) => item ? `${label}: ${item.key} (${fmtMoney(item.pnl)}, ${item.winRate.toFixed(1)}% WR)` : `${label}: N/A`;
-            drawRow(bwText('Best Symbol', s.symbolBreakdown.best), '', green);
-            drawRow(bwText('Worst Symbol', s.symbolBreakdown.worst), '', red);
-            drawRow(bwText('Best Day of Week', s.dayBreakdown.best), '', green);
-            drawRow(bwText('Worst Day of Week', s.dayBreakdown.worst), '', red);
-            drawRow(bwText('Best Session', s.sessionBreakdown.best), '', green);
-            drawRow(bwText('Worst Session', s.sessionBreakdown.worst), '', red);
+                drawSectionTitle('Streaks & Extremes');
+                drawRow('Max Win Streak', s.maxWinStreak, green);
+                drawRow('Max Loss Streak', s.maxLossStreak, red);
+                drawRow('Top Win Execution', fmtMoney(s.topWin), green);
+                drawRow('Top Loss Execution', fmtMoney(s.topLoss), red);
+                drawRow('Winning Days', s.winningDays, green);
+                drawRow('Losing Days', s.losingDays, red);
+                drawRow('Best Day', s.bestDay ? `${s.bestDay.date}  (${fmtMoney(s.bestDay.pnl)})` : 'N/A', green);
+                drawRow('Worst Day', s.worstDay ? `${s.worstDay.date}  (${fmtMoney(s.worstDay.pnl)})` : 'N/A', red);
+                drawRow('Biggest Win', s.biggestWin ? `${s.biggestWin.symbol} on ${s.biggestWin.date}  (${fmtMoney(s.biggestWin.pnl)})` : 'N/A', green);
+                drawRow('Biggest Loss', s.biggestLoss ? `${s.biggestLoss.symbol} on ${s.biggestLoss.date}  (${fmtMoney(s.biggestLoss.pnl)})` : 'N/A', red);
+                y += 8;
 
-            // Summarized trade history table
-            y += 15;
-            checkPageBreak(60);
-            drawSectionTitle('Summarized Trade History');
-            doc.setFontSize(9.5); doc.setTextColor(120, 120, 120); doc.setFont('helvetica', 'bold');
-            doc.text('Date', marginX, y); doc.text('Symbol', marginX + 90, y); doc.text('Outcome', marginX + 200, y); doc.text('R:R', marginX + 290, y); doc.text('P&L', marginX + 360, y);
-            y += 8;
-            doc.setDrawColor(230, 230, 230); doc.line(marginX, y, pageWidth - marginX, y); y += 16;
-            s.trades.forEach(t => {
-                checkPageBreak(16);
-                const outcomeLabel = t.outcome === 'win' ? 'Win' : (t.outcome === 'loss' ? 'Loss' : 'BE');
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(30, 30, 30);
-                doc.text(t.date, marginX, y);
-                doc.text(t.symbol, marginX + 90, y);
-                doc.text(outcomeLabel, marginX + 200, y);
-                doc.text(`${(parseFloat(t.rr) || 0).toFixed(2)}R`, marginX + 290, y);
-                const c = t.pnl >= 0 ? green : red; doc.setTextColor(c[0], c[1], c[2]);
-                doc.text(fmtMoney(t.pnl), marginX + 360, y);
+                drawSectionTitle('Consistency');
+                drawRow('Risk Consistency Score', s.riskConsistency ? `${s.riskConsistency.pct.toFixed(0)}% (${s.riskConsistency.inRange}/${s.riskConsistency.total} in range)` : 'Not enough data');
+                drawRow('Daily Consistency Score', s.dailyConsistency !== null ? `${Math.round(s.dailyConsistency)}%` : 'Not enough data');
+                y += 8;
+
+                drawSectionTitle('Best & Worst — Symbol / Day / Session');
+                const bwText = (label, item) => item ? `${label}: ${item.key} (${fmtMoney(item.pnl)}, ${item.winRate.toFixed(1)}% WR)` : `${label}: N/A`;
+                drawRow(bwText('Best Symbol', s.symbolBreakdown.best), '', green);
+                drawRow(bwText('Worst Symbol', s.symbolBreakdown.worst), '', red);
+                drawRow(bwText('Best Day of Week', s.dayBreakdown.best), '', green);
+                drawRow(bwText('Worst Day of Week', s.dayBreakdown.worst), '', red);
+                drawRow(bwText('Best Session', s.sessionBreakdown.best), '', green);
+                drawRow(bwText('Worst Session', s.sessionBreakdown.worst), '', red);
+
                 y += 15;
-            });
+                checkPageBreak(60);
+                drawSectionTitle('Summarized Trade History');
+                doc.setFontSize(9.5); doc.setTextColor(120, 120, 120); doc.setFont('helvetica', 'bold');
+                doc.text('Date', marginX, y); doc.text('Symbol', marginX + 90, y); doc.text('Outcome', marginX + 200, y); doc.text('R:R', marginX + 290, y); doc.text('P&L', marginX + 360, y);
+                y += 8;
+                doc.setDrawColor(230, 230, 230); doc.line(marginX, y, pageWidth - marginX, y); y += 16;
+                s.trades.forEach(t => {
+                    checkPageBreak(16);
+                    const outcomeLabel = t.outcome === 'win' ? 'Win' : (t.outcome === 'loss' ? 'Loss' : 'BE');
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(30, 30, 30);
+                    doc.text(t.date, marginX, y);
+                    doc.text(t.symbol, marginX + 90, y);
+                    doc.text(outcomeLabel, marginX + 200, y);
+                    doc.text(`${(parseFloat(t.rr) || 0).toFixed(2)}R`, marginX + 290, y);
+                    const c = t.pnl >= 0 ? green : red; doc.setTextColor(c[0], c[1], c[2]);
+                    doc.text(fmtMoney(t.pnl), marginX + 360, y);
+                    y += 15;
+                });
+            };
+
+            if(lastReportData.myStats) {
+                drawBlock(lastReportData.myStats, 'My Trades');
+            } else {
+                checkPageBreak(30);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(20, 20, 20);
+                doc.text('My Trades', marginX, y); y += 18;
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(120, 120, 120);
+                doc.text('No non-signal trades logged this period.', marginX, y); y += 20;
+            }
+
+            y += 20;
+            checkPageBreak(30);
+            doc.setDrawColor(220, 220, 220);
+            doc.line(marginX, y, pageWidth - marginX, y);
+            y += 25;
+
+            if(lastReportData.sigStats) {
+                drawBlock(lastReportData.sigStats, 'Signal Trades');
+            } else {
+                checkPageBreak(30);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(20, 20, 20);
+                doc.text('Signal Trades', marginX, y); y += 18;
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(120, 120, 120);
+                doc.text('No signal trades logged this period.', marginX, y); y += 20;
+            }
 
             doc.setFontSize(8);
             doc.setTextColor(150, 150, 150);
@@ -2545,30 +2605,39 @@
 
         function copyPeriodReport() {
             if(!lastReportData) { alert('Generate a report first'); return; }
-            const s = lastReportData.stats;
-            const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
-            let text = `${lastReportData.heading}\n${s.totalTrades} trade${s.totalTrades === 1 ? '' : 's'} logged this period\n\n`;
-            text += `PERFORMANCE OVERVIEW\n`;
-            text += `Total Wins ($): ${fmtMoney(s.totalWinAmt)}\nTotal Losses ($): ${fmtMoney(-s.totalLossAmt)}\nNet P&L: ${fmtMoney(s.netPnl)}\nProfit Factor: ${pf}\n`;
-            text += `Wins/Losses/BE: ${s.wins}W / ${s.losses}L / ${s.breakevens}BE\nWin Rate: ${s.winRate.toFixed(1)}%\n`;
-            text += `Avg Win: ${fmtMoney(s.avgWin)}\nAvg Loss: ${fmtMoney(-s.avgLoss)}\nTotal R:R: ${s.totalRR.toFixed(2)}R\nAvg R:R: ${s.avgRR.toFixed(2)}R\n\n`;
-            text += `STREAKS & EXTREMES\n`;
-            text += `Max Win Streak: ${s.maxWinStreak}\nMax Loss Streak: ${s.maxLossStreak}\nTop Win: ${fmtMoney(s.topWin)}\nTop Loss: ${fmtMoney(s.topLoss)}\n`;
-            text += `Winning Days: ${s.winningDays}\nLosing Days: ${s.losingDays}\n`;
-            text += `Best Day: ${s.bestDay ? s.bestDay.date + ' (' + fmtMoney(s.bestDay.pnl) + ')' : 'N/A'}\nWorst Day: ${s.worstDay ? s.worstDay.date + ' (' + fmtMoney(s.worstDay.pnl) + ')' : 'N/A'}\n`;
-            text += `Biggest Win: ${s.biggestWin ? s.biggestWin.symbol + ' on ' + s.biggestWin.date + ' (' + fmtMoney(s.biggestWin.pnl) + ')' : 'N/A'}\nBiggest Loss: ${s.biggestLoss ? s.biggestLoss.symbol + ' on ' + s.biggestLoss.date + ' (' + fmtMoney(s.biggestLoss.pnl) + ')' : 'N/A'}\n\n`;
-            text += `CONSISTENCY\n`;
-            text += `Risk Consistency: ${s.riskConsistency ? s.riskConsistency.pct.toFixed(0) + '%' : 'N/A'}\nDaily Consistency: ${s.dailyConsistency !== null ? Math.round(s.dailyConsistency) + '%' : 'N/A'}\n\n`;
-            const bw = (label, item) => `${label}: ${item ? item.key + ' (' + fmtMoney(item.pnl) + ', ' + item.winRate.toFixed(1) + '% WR)' : 'N/A'}\n`;
-            text += `BEST & WORST\n`;
-            text += bw('Best Symbol', s.symbolBreakdown.best) + bw('Worst Symbol', s.symbolBreakdown.worst);
-            text += bw('Best Day of Week', s.dayBreakdown.best) + bw('Worst Day of Week', s.dayBreakdown.worst);
-            text += bw('Best Session', s.sessionBreakdown.best) + bw('Worst Session', s.sessionBreakdown.worst);
-            text += `\nSUMMARIZED TRADE HISTORY\n`;
-            s.trades.forEach(t => {
-                const outcomeLabel = t.outcome === 'win' ? 'Win' : (t.outcome === 'loss' ? 'Loss' : 'BE');
-                text += `${t.date} | ${t.symbol} | ${outcomeLabel} | ${(parseFloat(t.rr) || 0).toFixed(2)}R | ${fmtMoney(t.pnl)}\n`;
-            });
+
+            const buildBlockText = (s, blockLabel) => {
+                const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
+                let text = `=== ${blockLabel} ===\n${s.totalTrades} trade${s.totalTrades === 1 ? '' : 's'} logged this period\n\n`;
+                text += `PERFORMANCE OVERVIEW\n`;
+                text += `Total Wins ($): ${fmtMoney(s.totalWinAmt)}\nTotal Losses ($): ${fmtMoney(-s.totalLossAmt)}\nNet P&L: ${fmtMoney(s.netPnl)}\nProfit Factor: ${pf}\n`;
+                text += `Wins/Losses/BE: ${s.wins}W / ${s.losses}L / ${s.breakevens}BE\nWin Rate: ${s.winRate.toFixed(1)}%\n`;
+                text += `Avg Win: ${fmtMoney(s.avgWin)}\nAvg Loss: ${fmtMoney(-s.avgLoss)}\nTotal R:R: ${s.totalRR.toFixed(2)}R\nAvg R:R: ${s.avgRR.toFixed(2)}R\n\n`;
+                text += `STREAKS & EXTREMES\n`;
+                text += `Max Win Streak: ${s.maxWinStreak}\nMax Loss Streak: ${s.maxLossStreak}\nTop Win: ${fmtMoney(s.topWin)}\nTop Loss: ${fmtMoney(s.topLoss)}\n`;
+                text += `Winning Days: ${s.winningDays}\nLosing Days: ${s.losingDays}\n`;
+                text += `Best Day: ${s.bestDay ? s.bestDay.date + ' (' + fmtMoney(s.bestDay.pnl) + ')' : 'N/A'}\nWorst Day: ${s.worstDay ? s.worstDay.date + ' (' + fmtMoney(s.worstDay.pnl) + ')' : 'N/A'}\n`;
+                text += `Biggest Win: ${s.biggestWin ? s.biggestWin.symbol + ' on ' + s.biggestWin.date + ' (' + fmtMoney(s.biggestWin.pnl) + ')' : 'N/A'}\nBiggest Loss: ${s.biggestLoss ? s.biggestLoss.symbol + ' on ' + s.biggestLoss.date + ' (' + fmtMoney(s.biggestLoss.pnl) + ')' : 'N/A'}\n\n`;
+                text += `CONSISTENCY\n`;
+                text += `Risk Consistency: ${s.riskConsistency ? s.riskConsistency.pct.toFixed(0) + '%' : 'N/A'}\nDaily Consistency: ${s.dailyConsistency !== null ? Math.round(s.dailyConsistency) + '%' : 'N/A'}\n\n`;
+                const bw = (label, item) => `${label}: ${item ? item.key + ' (' + fmtMoney(item.pnl) + ', ' + item.winRate.toFixed(1) + '% WR)' : 'N/A'}\n`;
+                text += `BEST & WORST\n`;
+                text += bw('Best Symbol', s.symbolBreakdown.best) + bw('Worst Symbol', s.symbolBreakdown.worst);
+                text += bw('Best Day of Week', s.dayBreakdown.best) + bw('Worst Day of Week', s.dayBreakdown.worst);
+                text += bw('Best Session', s.sessionBreakdown.best) + bw('Worst Session', s.sessionBreakdown.worst);
+                text += `\nSUMMARIZED TRADE HISTORY\n`;
+                s.trades.forEach(t => {
+                    const outcomeLabel = t.outcome === 'win' ? 'Win' : (t.outcome === 'loss' ? 'Loss' : 'BE');
+                    text += `${t.date} | ${t.symbol} | ${outcomeLabel} | ${(parseFloat(t.rr) || 0).toFixed(2)}R | ${fmtMoney(t.pnl)}\n`;
+                });
+                return text;
+            };
+
+            let text = `${lastReportData.heading}\n\n`;
+            text += lastReportData.myStats ? buildBlockText(lastReportData.myStats, 'MY TRADES') : `=== MY TRADES ===\nNo non-signal trades logged this period.\n`;
+            text += `\n`;
+            text += lastReportData.sigStats ? buildBlockText(lastReportData.sigStats, 'SIGNAL TRADES') : `=== SIGNAL TRADES ===\nNo signal trades logged this period.\n`;
+
             navigator.clipboard.writeText(text).then(() => alert('Report copied to clipboard!'));
         }
 

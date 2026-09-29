@@ -253,6 +253,89 @@
             /* Viewport optimization: ensures the last line of tables or view blocks is completely scrollable on small mobile wrappers */
             .main-content { padding: 1rem 1rem 110px 1rem; overflow-y: auto; height: auto; max-height: calc(100vh - 75px); }
         }
+
+        /* ===== Journal cards, reviews, evaluations, history, comparison ===== */
+        .cal-day, .cal-week-cell { position: relative; }
+        .cal-card-btn { position: absolute; top: 4px; right: 4px; display: inline-flex; align-items: center; gap: 3px; background: rgba(139,92,246,0.14); border: 1px solid rgba(139,92,246,0.35); color: var(--accent); border-radius: 6px; padding: 2px 5px; cursor: pointer; font-size: 0.62rem; font-weight: 800; line-height: 1; font-family: inherit; }
+        .cal-card-btn:hover { background: rgba(139,92,246,0.28); }
+        .cal-card-btn svg { width: 11px; height: 11px; }
+        .cal-week-review-btn { position: absolute; top: 4px; right: 4px; display: inline-flex; align-items: center; justify-content: center; background: rgba(139,92,246,0.14); border: 1px solid rgba(139,92,246,0.35); color: var(--accent); border-radius: 6px; width: 22px; height: 22px; cursor: pointer; padding: 0; }
+        .cal-week-review-btn:hover { background: rgba(139,92,246,0.28); }
+        .cal-week-review-btn svg { width: 12px; height: 12px; }
+        @media (max-width: 640px) {
+            .cal-card-btn { top: 2px; right: 2px; padding: 1px 3px; font-size: 0.55rem; }
+            .cal-card-btn svg { display: none; }
+        }
+
+        .modal.modal-wide { max-width: 1080px; width: 100%; }
+        .card-modal-body { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+        .card-preview { border-radius: 16px; overflow: hidden; border: 1px solid var(--border); line-height: 0; }
+        .card-preview canvas { width: 100%; height: auto; display: block; }
+        .card-side { display: flex; flex-direction: column; gap: 0.75rem; border: 1px solid var(--border); border-radius: 12px; padding: 1rem; background: var(--bg-base); }
+        .card-side label { font-size: 0.9rem; font-weight: 600; }
+        .card-side textarea { min-height: 200px; }
+        .card-count { display: flex; justify-content: flex-end; font-size: 0.75rem; color: var(--text-secondary); }
+        .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+        .seg button { background: transparent; border: none; color: var(--text-secondary); padding: 0.4rem 0.9rem; cursor: pointer; font-family: inherit; font-size: 0.8rem; }
+        .seg button.active { background: var(--bg-surface-hover); color: var(--text-primary); }
+        .grade-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+        .grade-chip { border: 1px solid var(--border); background: transparent; color: var(--text-secondary); border-radius: 8px; padding: 0.35rem 0.75rem; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.8rem; }
+        .grade-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(139,92,246,0.12); }
+        @media (max-width: 760px) { .card-modal-body { grid-template-columns: 1fr; } }
+
+        .slide-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: flex; justify-content: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .slide-overlay.active { opacity: 1; pointer-events: auto; }
+        .slide-panel { width: 100%; max-width: 760px; height: 100%; background: var(--bg-base); border-left: 1px solid var(--border); overflow-y: auto; transform: translateX(30px); transition: transform 0.2s; -webkit-overflow-scrolling: touch; }
+        .slide-overlay.active .slide-panel { transform: translateX(0); }
+        .slide-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-base); z-index: 2; }
+        .slide-kicker { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+        .slide-title { font-size: 1.35rem; font-weight: 700; margin-top: 0.15rem; }
+        .slide-body { padding: 1.25rem 1.5rem 2rem; display: flex; flex-direction: column; gap: 0.85rem; }
+        .stat-row { display: grid; gap: 0.75rem; }
+        .stat-row.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .stat-row.c2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .stat-row.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .stat-tile { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+        .stat-label { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+        .stat-value { font-size: 1.15rem; font-weight: 700; }
+        .stat-sub { font-size: 0.75rem; color: var(--text-secondary); }
+        .trade-tile { flex-direction: row; justify-content: space-between; align-items: center; gap: 0.75rem; }
+        .review-notes textarea { min-height: 120px; }
+        @media (max-width: 640px) { .stat-row.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat-row.c3 { grid-template-columns: 1fr; } .slide-panel { max-width: 100%; } }
+
+        .ev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .ev-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column; gap: 0.9rem; }
+        .ev-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; }
+        .ev-name { font-weight: 700; font-size: 1.05rem; }
+        .ev-bal { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.1rem; }
+        .ev-pill { padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+        .ev-pill.passed { background: var(--success-bg); color: var(--success); }
+        .ev-pill.track { background: rgba(139,92,246,0.15); color: var(--accent); }
+        .ev-pill.risk { background: var(--warning-bg); color: var(--warning); }
+        .ev-pill.breached { background: var(--danger-bg); color: var(--danger); }
+        .ev-pill.idle { background: var(--bg-surface-hover); color: var(--text-secondary); }
+        .ev-meter-top { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.35rem; gap: 0.5rem; }
+        .ev-meter-top strong { color: var(--text-primary); font-weight: 600; }
+        .ev-bar { height: 8px; background: var(--bg-base); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+        .ev-bar > span { display: block; height: 100%; border-radius: 999px; }
+        .ev-foot { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; border-top: 1px solid var(--border); padding-top: 0.75rem; }
+        .ev-foot div { display: flex; flex-direction: column; gap: 0.15rem; }
+        .ev-foot .stat-value { font-size: 0.95rem; }
+
+        .hist-toggle { display: inline-flex; }
+        .hist-pager { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; flex-wrap: wrap; gap: 0.5rem; }
+        tr.clickable { cursor: pointer; }
+        tr.clickable:hover td { background: var(--bg-surface-hover); }
+
+        .cmp-side { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+        .cmp-side .stat-label.accent { color: var(--accent); }
+        .cmp-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+        .cmp-fields label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+        .cmp-table { width: 100%; border-collapse: collapse; }
+        .cmp-table th, .cmp-table td { padding: 0.7rem 0.85rem; text-align: right; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .cmp-table th:first-child, .cmp-table td:first-child { text-align: left; font-weight: 600; }
+        .cmp-table th { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+        @media (max-width: 640px) { .cmp-sides { grid-template-columns: 1fr !important; } }
     </style>
 </head>
 <body>
@@ -274,6 +357,14 @@
         <div class="nav-item" onclick="switchTab('stats')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
             <span class="nav-text">Charts & Stats</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('history')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>
+            <span class="nav-text">Trades & History</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('evaluations')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="12" x2="12" y2="12.01"/></svg>
+            <span class="nav-text">Evaluations</span>
         </div>
         <div class="nav-section-label">Manage</div>
         <div class="nav-item" onclick="switchTab('manage')">
@@ -761,6 +852,64 @@
                 </div>
             </details>
         </section>
+        <!-- TRADES & HISTORY VIEW -->
+        <section id="history" class="view-section">
+            <div class="grid-cards">
+                <div class="card kpi-card"><span class="card-title">Net P&L</span><span class="card-value" id="hist-pnl">$0.00</span></div>
+                <div class="card kpi-card"><span class="card-title">Trades</span><span class="card-value" id="hist-count">0</span></div>
+                <div class="card kpi-card"><span class="card-title">Win Rate</span><span class="card-value" id="hist-wr">0%</span></div>
+                <div class="card kpi-card"><span class="card-title">Total R</span><span class="card-value" id="hist-r">0.00R</span></div>
+            </div>
+            <div class="filter-container" style="margin-top:1rem;">
+                <div class="filter-group">
+                    <select id="histAccount" class="form-control" style="width:auto; min-width:140px; padding:0.5rem;" onchange="histFilterChanged()"></select>
+                    <select id="histOutcome" class="form-control" style="width:auto; min-width:120px; padding:0.5rem;" onchange="histFilterChanged()">
+                        <option value="all">All Outcomes</option>
+                        <option value="win">Wins</option>
+                        <option value="loss">Losses</option>
+                        <option value="breakeven">Breakeven</option>
+                    </select>
+                    <select id="histType" class="form-control" style="width:auto; min-width:120px; padding:0.5rem;" onchange="histFilterChanged()">
+                        <option value="all">All Types</option>
+                        <option value="me">Me</option>
+                        <option value="signal">Signal</option>
+                    </select>
+                    <select id="histSession" class="form-control" style="width:auto; min-width:120px; padding:0.5rem;" onchange="histFilterChanged()">
+                        <option value="all">All Sessions</option>
+                        <option value="AS">AS</option>
+                        <option value="LO">LO</option>
+                        <option value="NY AM">NY AM</option>
+                        <option value="NY PM">NY PM</option>
+                        <option value="LC">LC</option>
+                    </select>
+                    <input id="histSymbol" class="form-control" style="width:auto; min-width:120px; padding:0.5rem;" placeholder="Symbol" oninput="histFilterChanged()">
+                    <input id="histFrom" type="date" class="form-control" style="width:auto; padding:0.5rem;" onchange="histFilterChanged()">
+                    <input id="histTo" type="date" class="form-control" style="width:auto; padding:0.5rem;" onchange="histFilterChanged()">
+                    <button class="btn btn-outline" type="button" onclick="histClear()">Clear</button>
+                </div>
+                <div class="seg hist-toggle" id="histModeSeg">
+                    <button type="button" data-mode="trades" class="active" onclick="histSetMode('trades')">Trades</button>
+                    <button type="button" data-mode="daily" onclick="histSetMode('daily')">Daily</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead id="hist-head"></thead>
+                    <tbody id="hist-body"></tbody>
+                </table>
+            </div>
+            <div class="hist-pager" id="hist-pager"></div>
+        </section>
+
+        <!-- EVALUATIONS VIEW -->
+        <section id="evaluations" class="view-section">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
+                <div class="grid-cards" id="eval-kpis" style="flex:1; min-width:260px;"></div>
+                <button class="btn btn-outline" type="button" onclick="openCompare()">Compare</button>
+            </div>
+            <div class="ev-grid" id="eval-list"></div>
+        </section>
+
     </main>
 
     <!-- NEW/EDIT TRADE MODAL -->
@@ -866,6 +1015,70 @@
                 <button class="close-btn" onclick="closeModal('detailsModal')">&times;</button>
             </div>
             <div id="detailsContent" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+        </div>
+    </div>
+
+    <!-- SCORE CARD MODAL (day / week) -->
+    <div class="modal-overlay" id="cardModal" onclick="if(event.target===this) closeModal('cardModal')">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h2 id="cardModalTitle">Day Score Card</h2>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <div class="seg" id="cardThemeSeg">
+                        <button type="button" data-theme="light" onclick="setCardTheme('light')">Light</button>
+                        <button type="button" data-theme="dark" onclick="setCardTheme('dark')">Dark</button>
+                    </div>
+                    <button class="btn btn-outline" type="button" onclick="closeModal('cardModal')" style="border-radius:50%; width:40px; padding:0;">✕</button>
+                </div>
+            </div>
+            <div class="card-modal-body">
+                <div class="card-preview"><canvas id="cardCanvas"></canvas></div>
+                <div class="card-side">
+                    <label id="cardNoteLabel">Day notes</label>
+                    <div class="grade-row" id="cardGradeRow"></div>
+                    <textarea id="cardNote" class="form-control" maxlength="260" placeholder="Add a clean note for this card..." oninput="onCardNoteInput()"></textarea>
+                    <div class="card-count"><span id="cardNoteCount">0/260</span></div>
+                    <div><button class="btn" type="button" onclick="saveCardImage()">Save image</button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WEEKLY REVIEW PANEL -->
+    <div class="slide-overlay" id="reviewPanel" onclick="if(event.target===this) closeSlide('reviewPanel')">
+        <div class="slide-panel">
+            <div class="slide-head">
+                <div>
+                    <div class="slide-kicker">Weekly review</div>
+                    <div class="slide-title" id="reviewTitle"></div>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button class="btn btn-outline" type="button" onclick="openWeekCardFromReview()">Weekly card</button>
+                    <button class="btn btn-outline" type="button" onclick="closeSlide('reviewPanel')" style="border-radius:50%; width:40px; padding:0;">✕</button>
+                </div>
+            </div>
+            <div class="slide-body" id="reviewBody"></div>
+        </div>
+    </div>
+
+    <!-- PERFORMANCE COMPARISON PANEL -->
+    <div class="slide-overlay" id="comparePanel" onclick="if(event.target===this) closeSlide('comparePanel')">
+        <div class="slide-panel">
+            <div class="slide-head">
+                <div>
+                    <div class="slide-kicker">Analytics</div>
+                    <div class="slide-title">Performance comparison</div>
+                </div>
+                <button class="btn btn-outline" type="button" onclick="closeSlide('comparePanel')" style="border-radius:50%; width:40px; padding:0;">✕</button>
+            </div>
+            <div class="slide-body">
+                <div class="stat-row c2 cmp-sides">
+                    <div class="cmp-side" id="cmpSideA"></div>
+                    <div class="cmp-side" id="cmpSideB"></div>
+                </div>
+                <div class="table-container"><table class="cmp-table"><thead><tr><th>Metric</th><th>A</th><th>B</th><th>A - B</th></tr></thead><tbody id="cmpBody"></tbody></table></div>
+                <div class="stat-row c2 cmp-sides" id="cmpFoot"></div>
+            </div>
         </div>
     </div>
 
@@ -1055,11 +1268,611 @@
             document.getElementById(tabId).classList.add('active');
             event.currentTarget.classList.add('active');
             
-            const titles = { dashboard: 'Dashboard', accounts: 'Accounts Management', stats: 'Advanced Performance Statistics', manage: 'System Data Control' };
-            const subtitles = { dashboard: 'Real-time performance overview', accounts: 'Manage balances, targets & drawdown limits', stats: 'Deep dive into your trading performance', manage: 'Backup, restore, and cloud sync' };
+            const titles = { dashboard: 'Dashboard', accounts: 'Accounts Management', stats: 'Advanced Performance Statistics', manage: 'System Data Control', history: 'Trades & History', evaluations: 'Evaluation Progress' };
+            const subtitles = { dashboard: 'Real-time performance overview', accounts: 'Manage balances, targets & drawdown limits', stats: 'Deep dive into your trading performance', manage: 'Backup, restore, and cloud sync', history: 'Every trade and trading day', evaluations: 'Prop account targets, drawdown and consistency' };
             document.getElementById('page-title').innerText = titles[tabId] || 'Journal';
             document.getElementById('page-subtitle').innerText = subtitles[tabId] || '';
             updateUI();
+        }
+
+        // ===================== JOURNAL CARDS, REVIEWS, EVALUATIONS, HISTORY =====================
+        const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sept','Oct','Nov','Dec'];
+        const MONTH_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const DOW_LONG = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+        function jEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+        function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+        function parseYmd(s) { const p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+        function weekStartOf(dateStr) { const d = parseYmd(dateStr); d.setDate(d.getDate() - d.getDay()); return ymd(d); }
+        function weekEndOf(startStr) { const d = parseYmd(startStr); d.setDate(d.getDate() + 6); return ymd(d); }
+        function weekLabel(startStr) {
+            const a = parseYmd(startStr), b = parseYmd(weekEndOf(startStr));
+            return `${a.getDate()} ${MONTH_SHORT[a.getMonth()]}–${b.getDate()} ${MONTH_SHORT[b.getMonth()]}, ${b.getFullYear()}`;
+        }
+        function dayShortLabel(dateStr) { const d = parseYmd(dateStr); return `${DOW_SHORT[d.getDay()]} ${d.getDate()} ${MONTH_SHORT[d.getMonth()]}`; }
+        function dayLongLabel(dateStr) { const d = parseYmd(dateStr); return `${DOW_LONG[d.getDay()]}, ${MONTH_LONG[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; }
+        function fmtSigned(v) { return (v > 0 ? '+' : '') + fmtMoney(v); }
+        function fmtR(v) { return `${(v || 0).toFixed(2)}R`; }
+        function pnlClass(v) { return v > 0 ? 'text-success' : (v < 0 ? 'text-danger' : ''); }
+
+        // ---- Journal store (day notes/grades, weekly reviews). Synced with trades/accounts. ----
+        function normalizeJournal(j) {
+            j = (j && typeof j === 'object') ? j : {};
+            return { days: j.days || {}, weeks: j.weeks || {} };
+        }
+        let journal = (function () {
+            try { return normalizeJournal(JSON.parse(localStorage.getItem('tj_journal') || 'null')); }
+            catch (e) { return normalizeJournal(null); }
+        })();
+        function saveJournal() {
+            try {
+                localStorage.setItem('tj_journal', JSON.stringify(journal));
+                if (typeof gsSchedulePush === 'function') gsSchedulePush();
+            } catch (e) { /* storage full — notes stay in memory for this session */ }
+        }
+        function journalDay(dateStr) { if (!journal.days[dateStr]) journal.days[dateStr] = { note: '', grade: '' }; return journal.days[dateStr]; }
+        function journalWeek(startStr) { if (!journal.weeks[startStr]) journal.weeks[startStr] = { takeaway: '', worked: '', needs: '', focus: '' }; return journal.weeks[startStr]; }
+
+        // ---- Stats helpers ----
+        function summarize(list) {
+            const n = list.length;
+            const pnl = list.reduce((s, t) => s + t.pnl, 0);
+            const r = list.reduce((s, t) => s + (parseFloat(t.rr) || 0), 0);
+            const wins = list.filter(t => t.outcome === 'win').length;
+            const be = list.filter(t => t.outcome === 'breakeven').length;
+            const den = n - be;
+            const wr = den > 0 ? (wins / den) * 100 : 0;
+            const gp = list.filter(t => t.pnl > 0).reduce((s, t) => s + t.pnl, 0);
+            const gl = Math.abs(list.filter(t => t.pnl < 0).reduce((s, t) => s + t.pnl, 0));
+            const pf = gl > 0 ? gp / gl : (gp > 0 ? Infinity : null);
+            return { n, pnl, r, wins, be, wr, gp, gl, pf, exp: n ? pnl / n : 0 };
+        }
+
+        function daySummary(dateStr) {
+            const list = trades.filter(t => t.date === dateStr);
+            const s = summarize(list);
+            const ids = [...new Set(list.map(t => t.accountId))];
+            let base = 0;
+            ids.forEach(id => {
+                const acc = accounts.find(a => a.id === id);
+                if (!acc) return;
+                const before = trades.filter(t => t.accountId === id && t.date < dateStr).reduce((x, t) => x + t.pnl, 0);
+                base += acc.balance + (acc.balanceAdjustment || 0) + before;
+            });
+            const perf = base > 0 ? (s.pnl / base) * 100 : null;
+            const sessions = [...new Set(list.map(t => t.session).filter(Boolean))];
+            return { list, s, perf, session: sessions.length ? sessions.join(' / ') : '-' };
+        }
+
+        function weekSummary(startStr) {
+            const endStr = weekEndOf(startStr);
+            const list = trades.filter(t => t.date >= startStr && t.date <= endStr);
+            const s = summarize(list);
+            const byDay = {};
+            list.forEach(t => { byDay[t.date] = (byDay[t.date] || 0) + t.pnl; });
+            let best = null, worst = null;
+            Object.entries(byDay).forEach(([d, p]) => {
+                if (!best || p > best.pnl) best = { date: d, pnl: p };
+                if (!worst || p < worst.pnl) worst = { date: d, pnl: p };
+            });
+            const bySess = {};
+            list.forEach(t => { const k = t.session || 'Unknown'; bySess[k] = (bySess[k] || 0) + t.pnl; });
+            let sess = null;
+            Object.entries(bySess).forEach(([k, p]) => { if (!sess || p > sess.pnl) sess = { name: k, pnl: p }; });
+            const groups = {};
+            list.forEach(t => {
+                const g = t.groupId || t.id;
+                if (!groups[g]) groups[g] = { groupId: g, symbol: t.symbol, date: t.date, pnl: 0, rr: parseFloat(t.rr) || 0 };
+                groups[g].pnl += t.pnl;
+            });
+            let bt = null, wt = null;
+            Object.values(groups).forEach(g => { if (!bt || g.pnl > bt.pnl) bt = g; if (!wt || g.pnl < wt.pnl) wt = g; });
+            return { startStr, endStr, list, s, best, worst, sess, bt, wt };
+        }
+
+        // ---- Calendar entry points ----
+        const CAL_CARD_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg>';
+        const CAL_REVIEW_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>';
+        function calCardBtn(dateStr, count) {
+            return `<button type="button" class="cal-card-btn" title="Day card" onclick="event.stopPropagation(); openDayCard('${dateStr}')">${CAL_CARD_ICON}<span>${count}</span></button>`;
+        }
+        function calWeekBtn(startStr) {
+            return `<button type="button" class="cal-week-review-btn" title="Weekly review" onclick="event.stopPropagation(); openWeekReview('${startStr}')">${CAL_REVIEW_ICON}</button>`;
+        }
+        function openCurrentWeekReview() {
+            const today = getCurrentTradingDayEST();
+            const t = parseYmd(today);
+            const inView = t.getFullYear() === calYear && t.getMonth() === calMonth;
+            openWeekReview(weekStartOf(inView ? today : ymd(new Date(calYear, calMonth, 1))));
+        }
+
+        // ---- Score card rendering (canvas) ----
+        let cardCtx = null; // { kind: 'day'|'week', key }
+        function getCardTheme() { return localStorage.getItem('tj_card_theme') === 'light' ? 'light' : 'dark'; }
+        function setCardTheme(t) { localStorage.setItem('tj_card_theme', t); renderCard(); }
+
+        function cRoundRect(c, x, y, w, h, r) {
+            c.beginPath();
+            c.moveTo(x + r, y);
+            c.arcTo(x + w, y, x + w, y + h, r);
+            c.arcTo(x + w, y + h, x, y + h, r);
+            c.arcTo(x, y + h, x, y, r);
+            c.arcTo(x, y, x + w, y, r);
+            c.closePath();
+        }
+        function cSpaced(c, text, x, y, spacing, align) {
+            const chars = text.split('');
+            let total = 0;
+            chars.forEach(ch => { total += c.measureText(ch).width + spacing; });
+            total -= spacing;
+            let cx = align === 'center' ? x - total / 2 : x;
+            const prev = c.textAlign; c.textAlign = 'left';
+            chars.forEach(ch => { c.fillText(ch, cx, y); cx += c.measureText(ch).width + spacing; });
+            c.textAlign = prev;
+        }
+        function cWrap(c, text, x, y, maxW, lineH, maxLines) {
+            const paras = String(text || '').split(/\r?\n/);
+            const lines = [];
+            paras.forEach(p => {
+                const words = p.split(/\s+/).filter(Boolean);
+                if (!words.length) { lines.push(''); return; }
+                let cur = '';
+                words.forEach(w => {
+                    const test = cur ? cur + ' ' + w : w;
+                    if (c.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test;
+                });
+                lines.push(cur);
+            });
+            const shown = lines.slice(0, maxLines);
+            if (lines.length > maxLines) shown[maxLines - 1] = shown[maxLines - 1].replace(/\s*\S*$/, '') + '…';
+            shown.forEach((ln, i) => c.fillText(ln, x, y + i * lineH));
+            return y + shown.length * lineH;
+        }
+        function drawScoreCard(canvas, o) {
+            const W = 1080, H = 1350, pad = 80;
+            canvas.width = W; canvas.height = H;
+            const c = canvas.getContext('2d');
+            const dark = o.theme !== 'light';
+            const tx = dark ? '#f8fafc' : '#0f172a';
+            const sub = dark ? '#8d99b5' : '#64748b';
+            const tileBg = dark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.05)';
+            const tileLine = dark ? 'rgba(255,255,255,0.10)' : 'rgba(15,23,42,0.12)';
+            const green = dark ? '#4ade80' : '#16a34a', red = dark ? '#f87171' : '#dc2626';
+            const font = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+            const g = c.createLinearGradient(0, 0, W, H);
+            g.addColorStop(0, dark ? '#0b0f1a' : '#f6f8fc'); g.addColorStop(1, dark ? '#151c30' : '#e7ebf5');
+            c.fillStyle = g; c.fillRect(0, 0, W, H);
+            const rg = c.createRadialGradient(W * 0.85, H * 0.04, 0, W * 0.85, H * 0.04, W * 0.75);
+            rg.addColorStop(0, dark ? 'rgba(139,92,246,0.30)' : 'rgba(139,92,246,0.16)'); rg.addColorStop(1, 'rgba(139,92,246,0)');
+            c.fillStyle = rg; c.fillRect(0, 0, W, H);
+
+            c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+            c.fillStyle = sub; c.font = '600 26px ' + font;
+            cSpaced(c, o.kicker.toUpperCase(), pad, 125, 5);
+
+            c.fillStyle = tx; c.font = '700 60px ' + font;
+            const titleEnd = cWrap(c, o.title, pad, 205, W - pad * 2, 70, 2);
+
+            const pnlY = titleEnd + 165;
+            c.fillStyle = o.pnlValue > 0 ? green : (o.pnlValue < 0 ? red : tx);
+            c.font = '800 168px ' + font;
+            c.fillText(o.pnlText, pad, pnlY);
+            c.fillStyle = sub; c.font = '400 34px ' + font;
+            c.fillText(o.pnlLabel, pad, pnlY + 62);
+
+            const gap = 30, tw = (W - pad * 2 - gap) / 2, th = 190;
+            let ty = pnlY + 120;
+            o.tiles.forEach((t, i) => {
+                const col = i % 2, row = Math.floor(i / 2);
+                const x = pad + col * (tw + gap), y = ty + row * (th + 30);
+                cRoundRect(c, x, y, tw, th, 28); c.fillStyle = tileBg; c.fill();
+                c.lineWidth = 2; c.strokeStyle = tileLine; c.stroke();
+                c.fillStyle = sub; c.font = '600 22px ' + font;
+                cSpaced(c, t.label.toUpperCase(), x + 34, y + 58, 4);
+                c.fillStyle = tx;
+                if (Array.isArray(t.value)) {
+                    c.font = '700 40px ' + font;
+                    c.fillText(t.value[0], x + 34, y + 120);
+                    c.fillText(t.value[1], x + 34, y + 166);
+                } else {
+                    c.font = '700 56px ' + font;
+                    c.fillText(t.value, x + 34, y + 140);
+                }
+            });
+
+            if (o.note) {
+                c.fillStyle = tx; c.font = '400 34px ' + font;
+                cWrap(c, o.note, pad, 1120, W - pad * 2, 46, 4);
+            }
+            c.fillStyle = sub; c.font = '600 22px ' + font; c.textAlign = 'center';
+            cSpaced(c, 'TRADETRACKER', W / 2, H - 55, 6, 'center');
+            c.textAlign = 'left';
+        }
+
+        function openDayCard(dateStr) { cardCtx = { kind: 'day', key: dateStr }; openCardModal(); }
+        function openWeekCard(startStr) { cardCtx = { kind: 'week', key: startStr }; openCardModal(); }
+        function openCardModal() {
+            const isDay = cardCtx.kind === 'day';
+            document.getElementById('cardModalTitle').innerText = isDay ? 'Day Score Card' : 'Weekly Score Card';
+            document.getElementById('cardNoteLabel').innerText = isDay ? 'Day notes' : 'Weekly takeaway';
+            const noteEl = document.getElementById('cardNote');
+            noteEl.value = isDay ? ((journal.days[cardCtx.key] || {}).note || '') : ((journal.weeks[cardCtx.key] || {}).takeaway || '');
+            document.getElementById('cardNoteCount').innerText = `${noteEl.value.length}/260`;
+            const gradeRow = document.getElementById('cardGradeRow');
+            gradeRow.style.display = isDay ? 'flex' : 'none';
+            if (isDay) {
+                const cur = (journal.days[cardCtx.key] || {}).grade || '';
+                gradeRow.innerHTML = ['A+', 'A', 'B', 'C', 'D'].map(gr => `<button type="button" class="grade-chip ${cur === gr ? 'active' : ''}" onclick="setCardGrade('${gr}')">${gr}</button>`).join('');
+            }
+            document.getElementById('cardModal').classList.add('active');
+            renderCard();
+        }
+        function setCardGrade(gr) {
+            const d = journalDay(cardCtx.key);
+            d.grade = d.grade === gr ? '' : gr;
+            saveJournal();
+            openCardModal();
+        }
+        function onCardNoteInput() {
+            const el = document.getElementById('cardNote');
+            document.getElementById('cardNoteCount').innerText = `${el.value.length}/260`;
+            if (cardCtx.kind === 'day') journalDay(cardCtx.key).note = el.value;
+            else journalWeek(cardCtx.key).takeaway = el.value;
+            clearTimeout(onCardNoteInput._t);
+            onCardNoteInput._t = setTimeout(saveJournal, 400);
+            renderCard();
+        }
+        function renderCard() {
+            if (!cardCtx) return;
+            const theme = getCardTheme();
+            document.querySelectorAll('#cardThemeSeg button').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
+            const canvas = document.getElementById('cardCanvas');
+            if (cardCtx.kind === 'day') {
+                const d = daySummary(cardCtx.key);
+                const j = journal.days[cardCtx.key] || {};
+                drawScoreCard(canvas, {
+                    theme, kicker: 'Trading journal', title: dayLongLabel(cardCtx.key),
+                    pnlValue: d.s.pnl, pnlText: fmtSigned(d.s.pnl), pnlLabel: 'Net day PnL',
+                    tiles: [
+                        { label: 'Performance', value: d.perf === null ? '-' : `${d.perf > 0 ? '+' : ''}${d.perf.toFixed(1)}%` },
+                        { label: 'R:R', value: fmtR(d.s.r) },
+                        { label: 'Session', value: d.session },
+                        { label: 'Grade', value: j.grade || '-' },
+                    ],
+                    note: j.note || ''
+                });
+            } else {
+                const w = weekSummary(cardCtx.key);
+                const j = journal.weeks[cardCtx.key] || {};
+                drawScoreCard(canvas, {
+                    theme, kicker: 'Trading journal', title: weekLabel(cardCtx.key),
+                    pnlValue: w.s.pnl, pnlText: fmtSigned(w.s.pnl), pnlLabel: 'Net weekly P&L',
+                    tiles: [
+                        { label: 'Total R', value: fmtR(w.s.r) },
+                        { label: 'Trades', value: String(w.s.n) },
+                        { label: 'Win rate', value: `${w.s.wr.toFixed(1)}%` },
+                        { label: 'Best day', value: w.best ? [dayShortLabel(w.best.date), fmtMoney(w.best.pnl)] : '-' },
+                    ],
+                    note: j.takeaway || ''
+                });
+            }
+        }
+        function saveCardImage() {
+            const canvas = document.getElementById('cardCanvas');
+            canvas.toBlob(blob => {
+                if (!blob) return;
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `tradetracker_${cardCtx.kind}_${cardCtx.key}.png`;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+            }, 'image/png');
+        }
+
+        // ---- Slide-over panels ----
+        function openSlide(id) { document.getElementById(id).classList.add('active'); }
+        function closeSlide(id) { document.getElementById(id).classList.remove('active'); }
+
+        // ---- Weekly review ----
+        let reviewCtx = null;
+        function openWeekReview(startStr) { reviewCtx = { start: startStr }; renderWeekReview(); openSlide('reviewPanel'); }
+        function openWeekCardFromReview() { if (reviewCtx) openWeekCard(reviewCtx.start); }
+        function onReviewNote(field, el) {
+            if (!reviewCtx) return;
+            journalWeek(reviewCtx.start)[field] = el.value;
+            clearTimeout(onReviewNote._t);
+            onReviewNote._t = setTimeout(saveJournal, 400);
+        }
+        function renderWeekReview() {
+            const start = reviewCtx.start;
+            const w = weekSummary(start);
+            const j = journal.weeks[start] || {};
+            document.getElementById('reviewTitle').innerText = weekLabel(start);
+            const tile = (label, valueHtml, sub) => `<div class="stat-tile"><span class="stat-label">${label}</span><span class="stat-value">${valueHtml}</span>${sub ? `<span class="stat-sub">${sub}</span>` : ''}</div>`;
+            const dayTile = (label, d) => tile(label, d ? `<span class="${pnlClass(d.pnl)}">${dayShortLabel(d.date)} · ${fmtMoney(d.pnl)}</span>` : '-');
+            const tradeTile = (label, t) => `<div class="stat-tile trade-tile"><div><span class="stat-label">${label}</span>${t ? `<div class="stat-value" style="font-size:1rem;">${jEsc(t.symbol)}</div><div class="stat-sub">${t.date} · ${fmtR(t.rr)}</div>` : '<div class="stat-value">-</div>'}</div>${t ? `<span class="stat-value ${pnlClass(t.pnl)}">${fmtMoney(t.pnl)}</span>` : ''}</div>`;
+            const noteBox = (label, field, val) => `<div class="review-notes"><div class="stat-label" style="margin-bottom:0.4rem;">${label}</div><textarea class="form-control" placeholder="Optional" oninput="onReviewNote('${field}', this)">${jEsc(val || '')}</textarea></div>`;
+            document.getElementById('reviewBody').innerHTML = `
+                <div class="stat-row c4">
+                    ${tile('Net P&L', `<span class="${pnlClass(w.s.pnl)}">${fmtMoney(w.s.pnl)}</span>`)}
+                    ${tile('Total R', `<span class="${pnlClass(w.s.r)}">${fmtR(w.s.r)}</span>`)}
+                    ${tile('Trades', String(w.s.n))}
+                    ${tile('Win rate', `${w.s.wr.toFixed(1)}%`)}
+                </div>
+                <div class="stat-row c2">${dayTile('Best day', w.best)}${dayTile('Worst day', w.worst)}</div>
+                <div class="stat-row c2">${tile('Strongest session', w.sess ? `<span class="${pnlClass(w.sess.pnl)}">${jEsc(w.sess.name)} · ${fmtMoney(w.sess.pnl)}</span>` : '-')}</div>
+                <div class="stat-row c2">${tradeTile('Best trade', w.bt)}${tradeTile('Worst trade', w.wt)}</div>
+                <div class="stat-row c3">
+                    ${noteBox('What worked', 'worked', j.worked)}
+                    ${noteBox('What needs work', 'needs', j.needs)}
+                    ${noteBox("Next week's focus", 'focus', j.focus)}
+                </div>`;
+        }
+
+        // ---- Evaluation progress ----
+        function evalAccount(acc) {
+            const at = trades.filter(t => t.accountId === acc.id);
+            const bal = getAccountCurrentBalance(acc);
+            const s = summarize(at);
+            const byDay = {};
+            at.forEach(t => { byDay[t.date] = (byDay[t.date] || 0) + t.pnl; });
+            const days = Object.keys(byDay).length;
+            let bestDay = null;
+            Object.entries(byDay).forEach(([d, p]) => { if (!bestDay || p > bestDay.pnl) bestDay = { date: d, pnl: p }; });
+
+            let progress = null, toGo = null;
+            if (acc.profitTarget && acc.profitTarget > acc.balance) {
+                progress = Math.max(0, Math.min(100, ((bal - acc.balance) / (acc.profitTarget - acc.balance)) * 100));
+                toGo = Math.max(0, acc.profitTarget - bal);
+            }
+            let ddPct = null, ddBuffer = null;
+            if (acc.maxDD && acc.balance - acc.maxDD > 0) {
+                const allowed = acc.balance - acc.maxDD;
+                const remain = Math.max(0, allowed - (acc.balance - bal));
+                ddPct = Math.min(100, (remain / allowed) * 100);
+                ddBuffer = bal - acc.maxDD;
+            }
+            let daily = null;
+            if (acc.dailyProfitTarget) {
+                const todayPnl = trades.filter(t => t.accountId === acc.id && t.date === getCurrentTradingDayEST()).reduce((x, t) => x + t.pnl, 0);
+                daily = { pnl: todayPnl, target: acc.dailyProfitTarget, pct: Math.max(0, Math.min(100, (todayPnl / acc.dailyProfitTarget) * 100)) };
+            }
+            let cons = null;
+            if (acc.consistencyBasis && acc.consistencyPct) {
+                const totalProfit = at.reduce((x, t) => x + Math.max(0, t.pnl), 0);
+                let bestUnit = 0;
+                if (acc.consistencyBasis === 'trade') at.forEach(t => { if (t.pnl > bestUnit) bestUnit = t.pnl; });
+                else Object.values(byDay).forEach(p => { if (p > bestUnit) bestUnit = p; });
+                const score = totalProfit > 0 ? (bestUnit / totalProfit) * 100 : 0;
+                cons = { score, limit: acc.consistencyPct, breached: score > acc.consistencyPct };
+            }
+            const breached = !!(acc.maxDD && bal <= acc.maxDD);
+            const reached = !!(acc.profitTarget && bal >= acc.profitTarget);
+            let status = { key: 'idle', text: 'No rules' };
+            if (breached) status = { key: 'breached', text: 'Breached' };
+            else if (reached && cons && cons.breached) status = { key: 'risk', text: 'Consistency' };
+            else if (reached) status = { key: 'passed', text: 'Passed' };
+            else if (ddPct !== null && ddPct < 15) status = { key: 'risk', text: 'At risk' };
+            else if (progress !== null || ddPct !== null || daily || cons) status = { key: 'track', text: 'On track' };
+            return { acc, bal, s, days, bestDay, progress, toGo, ddPct, ddBuffer, daily, cons, status };
+        }
+        function evalMeter(label, rightText, pct, color) {
+            return `<div><div class="ev-meter-top"><span>${label}</span><strong>${rightText}</strong></div><div class="ev-bar"><span style="width:${pct}%; background:${color};"></span></div></div>`;
+        }
+        function renderEvaluations() {
+            const rows = accounts.filter(a => !a.isClosed).map(evalAccount);
+            rows.sort((a, b) => (b.progress === null ? -1 : b.progress) - (a.progress === null ? -1 : a.progress));
+            const passed = rows.filter(r => r.status.key === 'passed').length;
+            const risk = rows.filter(r => r.status.key === 'risk').length;
+            const breached = rows.filter(r => r.status.key === 'breached').length;
+            const withProg = rows.filter(r => r.progress !== null);
+            const avg = withProg.length ? withProg.reduce((x, r) => x + r.progress, 0) / withProg.length : 0;
+            const kpi = (t, v) => `<div class="card kpi-card"><span class="card-title">${t}</span><span class="card-value">${v}</span></div>`;
+            document.getElementById('eval-kpis').innerHTML = kpi('Active accounts', rows.length) + kpi('Passed', passed) + kpi('At risk', risk) + kpi('Breached', breached) + kpi('Avg progress', `${avg.toFixed(0)}%`);
+            const host = document.getElementById('eval-list');
+            if (!rows.length) { host.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-secondary);">No active accounts</div>`; return; }
+            host.innerHTML = rows.map(r => {
+                const a = r.acc;
+                const meters = [];
+                if (r.progress !== null) meters.push(evalMeter('Profit target', `${r.progress.toFixed(1)}% · ${fmtMoney(r.toGo)} to go`, r.progress, 'var(--success)'));
+                if (r.ddPct !== null) meters.push(evalMeter('Drawdown buffer', `${r.ddPct.toFixed(1)}% · ${fmtMoney(r.ddBuffer)} above floor`, r.ddPct, r.ddPct >= 40 ? 'var(--accent)' : (r.ddPct >= 15 ? 'var(--warning)' : 'var(--danger)')));
+                if (r.daily) meters.push(evalMeter('Daily target', `${fmtMoney(r.daily.pnl)} / ${fmtMoney(r.daily.target)}`, r.daily.pct, r.daily.pnl >= r.daily.target ? 'var(--success)' : (r.daily.pnl < 0 ? 'var(--danger)' : 'var(--accent)')));
+                if (r.cons) meters.push(evalMeter('Consistency', `${r.cons.score.toFixed(1)}% / ${r.cons.limit}% max`, Math.min(100, (r.cons.score / r.cons.limit) * 100), r.cons.breached ? 'var(--danger)' : (r.cons.score > r.cons.limit * 0.8 ? 'var(--warning)' : 'var(--success)')));
+                const foot = (l, v) => `<div><span class="stat-label">${l}</span><span class="stat-value">${v}</span></div>`;
+                return `<div class="ev-card">
+                    <div class="ev-head">
+                        <div><div class="ev-name">${jEsc(a.name)}</div><div class="ev-bal">${fmtMoney(r.bal)} · started ${fmtMoney(a.balance)}</div></div>
+                        <span class="ev-pill ${r.status.key}">${r.status.text}</span>
+                    </div>
+                    ${meters.length ? meters.join('') : '<div class="ev-bal">No target or drawdown set</div>'}
+                    <div class="ev-foot">
+                        ${foot('Net P&L', `<span class="${pnlClass(r.s.pnl)}">${fmtMoney(r.s.pnl)}</span>`)}
+                        ${foot('Trades', r.s.n)}
+                        ${foot('Win rate', `${r.s.wr.toFixed(0)}%`)}
+                        ${foot('Days', r.days)}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ---- Trades & History page ----
+        const hist = { mode: 'trades', page: 1, size: 25 };
+        function histSetMode(m) {
+            hist.mode = m; hist.page = 1;
+            document.querySelectorAll('#histModeSeg button').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+            renderHistory();
+        }
+        function histFilterChanged() { hist.page = 1; renderHistory(); }
+        function histClear() {
+            ['histOutcome', 'histType', 'histSession'].forEach(id => { document.getElementById(id).value = 'all'; });
+            document.getElementById('histAccount').value = 'all';
+            ['histSymbol', 'histFrom', 'histTo'].forEach(id => { document.getElementById(id).value = ''; });
+            histFilterChanged();
+        }
+        function histPage(p) { hist.page = p; renderHistory(); }
+        function histFilteredTrades() {
+            const acc = document.getElementById('histAccount').value;
+            const out = document.getElementById('histOutcome').value;
+            const type = document.getElementById('histType').value;
+            const sess = document.getElementById('histSession').value;
+            const sym = document.getElementById('histSymbol').value.trim().toUpperCase();
+            const from = document.getElementById('histFrom').value;
+            const to = document.getElementById('histTo').value;
+            return trades.filter(t =>
+                (acc === 'all' || t.accountId === acc) &&
+                (out === 'all' || t.outcome === out) &&
+                (type === 'all' || (type === 'me' ? t.isMe : t.isSignal)) &&
+                (sess === 'all' || t.session === sess) &&
+                (!sym || String(t.symbol || '').toUpperCase().includes(sym)) &&
+                (!from || t.date >= from) && (!to || t.date <= to)
+            );
+        }
+        function histBalanceAfter(dateStr, accId) {
+            const scope = accId === 'all' ? accounts : accounts.filter(a => a.id === accId);
+            const ids = new Set(scope.map(a => a.id));
+            const base = scope.reduce((x, a) => x + a.balance + (a.balanceAdjustment || 0), 0);
+            return base + trades.filter(t => ids.has(t.accountId) && t.date <= dateStr).reduce((x, t) => x + t.pnl, 0);
+        }
+        function renderHistory() {
+            const accSel = document.getElementById('histAccount');
+            const prev = accSel.value || 'all';
+            accSel.innerHTML = '<option value="all">All Accounts</option>' + accounts.map(a => `<option value="${jEsc(a.id)}">${jEsc(a.name)}${a.isClosed ? ' (archived)' : ''}</option>`).join('');
+            accSel.value = accounts.some(a => a.id === prev) ? prev : 'all';
+
+            const list = histFilteredTrades();
+            const s = summarize(list);
+            const pnlEl = document.getElementById('hist-pnl');
+            pnlEl.innerText = fmtMoney(s.pnl); pnlEl.className = 'card-value ' + pnlClass(s.pnl);
+            document.getElementById('hist-count').innerText = s.n;
+            document.getElementById('hist-wr').innerText = `${s.wr.toFixed(1)}%`;
+            const rEl = document.getElementById('hist-r');
+            rEl.innerText = fmtR(s.r); rEl.className = 'card-value ' + pnlClass(s.r);
+
+            const head = document.getElementById('hist-head'), body = document.getElementById('hist-body');
+            let rows = [], rowsHtml;
+            if (hist.mode === 'trades') {
+                head.innerHTML = '<tr><th>Status</th><th>Date</th><th>Account</th><th>Symbol</th><th>Session</th><th>R:R</th><th>P&L</th></tr>';
+                rows = [...list].sort((a, b) => (b.date + (b.createdAt || '')).localeCompare(a.date + (a.createdAt || '')));
+                const pages = Math.max(1, Math.ceil(rows.length / hist.size));
+                hist.page = Math.min(hist.page, pages);
+                const slice = rows.slice((hist.page - 1) * hist.size, hist.page * hist.size);
+                rowsHtml = slice.map(t => {
+                    const acc = accounts.find(a => a.id === t.accountId);
+                    const badge = t.outcome === 'win' ? '<span class="badge badge-win">Win</span>' : (t.outcome === 'loss' ? '<span class="badge badge-loss">Loss</span>' : '<span class="badge badge-breakeven">BE</span>');
+                    return `<tr class="clickable" onclick="showTradeDetails('${jEsc(t.groupId || t.id)}')"><td>${badge}</td><td>${t.date}</td><td>${jEsc(acc ? acc.name : '-')}</td><td style="font-weight:600;">${jEsc(t.symbol)}</td><td>${jEsc(t.session || '-')}</td><td>${t.rr ? t.rr + 'R' : '0.00R'}</td><td class="${pnlClass(t.pnl)}">${fmtMoney(t.pnl)}</td></tr>`;
+                }).join('');
+                body.innerHTML = rowsHtml || '<tr><td colspan="7" style="text-align:center; color:var(--text-secondary);">No trades</td></tr>';
+                histPager(rows.length, pages);
+            } else {
+                head.innerHTML = '<tr><th>Date</th><th>Trades</th><th>Win rate</th><th>R</th><th>Net P&L</th><th>Balance</th></tr>';
+                const byDate = {};
+                list.forEach(t => { (byDate[t.date] = byDate[t.date] || []).push(t); });
+                rows = Object.keys(byDate).sort().reverse();
+                const pages = Math.max(1, Math.ceil(rows.length / hist.size));
+                hist.page = Math.min(hist.page, pages);
+                const slice = rows.slice((hist.page - 1) * hist.size, hist.page * hist.size);
+                const accId = accSel.value;
+                rowsHtml = slice.map(d => {
+                    const ds = summarize(byDate[d]);
+                    return `<tr class="clickable" onclick="openDayCard('${d}')"><td>${dayShortLabel(d)}, ${d.slice(0, 4)}</td><td>${ds.n}</td><td>${ds.wr.toFixed(0)}%</td><td class="${pnlClass(ds.r)}">${fmtR(ds.r)}</td><td class="${pnlClass(ds.pnl)}">${fmtMoney(ds.pnl)}</td><td>${fmtMoney(histBalanceAfter(d, accId))}</td></tr>`;
+                }).join('');
+                body.innerHTML = rowsHtml || '<tr><td colspan="6" style="text-align:center; color:var(--text-secondary);">No trading days</td></tr>';
+                histPager(rows.length, pages);
+            }
+        }
+        function histPager(total, pages) {
+            const el = document.getElementById('hist-pager');
+            if (total <= hist.size) { el.innerHTML = `<span class="stat-sub">${total} ${hist.mode === 'trades' ? 'trades' : 'days'}</span>`; return; }
+            el.innerHTML = `<span class="stat-sub">${total} ${hist.mode === 'trades' ? 'trades' : 'days'} · Page ${hist.page} of ${pages}</span>
+                <div style="display:flex; gap:0.5rem;">
+                    <button class="btn btn-outline" type="button" ${hist.page <= 1 ? 'disabled' : ''} onclick="histPage(${hist.page - 1})">Prev</button>
+                    <button class="btn btn-outline" type="button" ${hist.page >= pages ? 'disabled' : ''} onclick="histPage(${hist.page + 1})">Next</button>
+                </div>`;
+        }
+
+        // ---- Account performance comparison ----
+        const CMP_PERIODS = [['all', 'All time'], ['thisWeek', 'This week'], ['lastWeek', 'Last week'], ['thisMonth', 'This month'], ['lastMonth', 'Last month'], ['thisQuarter', 'This quarter'], ['lastQuarter', 'Last quarter'], ['thisYear', 'This year'], ['lastYear', 'Last year']];
+        const cmpState = {
+            A: { period: 'thisMonth', account: 'all', session: 'all', type: 'all', ticker: '' },
+            B: { period: 'lastMonth', account: 'all', session: 'all', type: 'all', ticker: '' }
+        };
+        function periodRange(key) {
+            const today = parseYmd(getCurrentTradingDayEST());
+            const y = today.getFullYear(), m = today.getMonth();
+            const opt = CMP_PERIODS.find(p => p[0] === key);
+            let from = null, to = null, label = opt ? opt[1] : '';
+            if (key === 'thisWeek' || key === 'lastWeek') {
+                const s = parseYmd(weekStartOf(ymd(today)));
+                if (key === 'lastWeek') s.setDate(s.getDate() - 7);
+                from = ymd(s); to = weekEndOf(from); label = weekLabel(from);
+            } else if (key === 'thisMonth' || key === 'lastMonth') {
+                const d = new Date(y, key === 'lastMonth' ? m - 1 : m, 1);
+                from = ymd(d); to = ymd(new Date(d.getFullYear(), d.getMonth() + 1, 0)); label = `${MONTH_LONG[d.getMonth()]} ${d.getFullYear()}`;
+            } else if (key === 'thisQuarter' || key === 'lastQuarter') {
+                let qs = Math.floor(m / 3) * 3 - (key === 'lastQuarter' ? 3 : 0), qy = y;
+                if (qs < 0) { qs += 12; qy -= 1; }
+                from = ymd(new Date(qy, qs, 1)); to = ymd(new Date(qy, qs + 3, 0)); label = `Q${qs / 3 + 1} ${qy}`;
+            } else if (key === 'thisYear' || key === 'lastYear') {
+                const yy = key === 'lastYear' ? y - 1 : y;
+                from = `${yy}-01-01`; to = `${yy}-12-31`; label = String(yy);
+            }
+            return { from, to, label };
+        }
+        function cmpFilter(cfg) {
+            const r = periodRange(cfg.period);
+            const tk = cfg.ticker.trim().toUpperCase();
+            return {
+                range: r,
+                list: trades.filter(t =>
+                    (!r.from || t.date >= r.from) && (!r.to || t.date <= r.to) &&
+                    (cfg.account === 'all' || t.accountId === cfg.account) &&
+                    (cfg.session === 'all' || t.session === cfg.session) &&
+                    (cfg.type === 'all' || (cfg.type === 'me' ? t.isMe : t.isSignal)) &&
+                    (!tk || String(t.symbol || '').toUpperCase().includes(tk)))
+            };
+        }
+        function cmpSideHtml(side) {
+            const c = cmpState[side];
+            const sel = (field, opts) => `<select class="form-control" style="padding:0.5rem;" onchange="cmpChange('${side}','${field}',this.value)">${opts.map(o => `<option value="${jEsc(o[0])}" ${c[field] === o[0] ? 'selected' : ''}>${jEsc(o[1])}</option>`).join('')}</select>`;
+            return `<span class="stat-label accent">Side ${side}</span>
+                <div class="cmp-fields">
+                    <label>Period ${sel('period', CMP_PERIODS)}</label>
+                    <label>Account ${sel('account', [['all', 'All accounts']].concat(accounts.map(a => [a.id, a.name])))}</label>
+                    <label>Session ${sel('session', [['all', 'Any session'], ['AS', 'AS'], ['LO', 'LO'], ['NY AM', 'NY AM'], ['NY PM', 'NY PM'], ['LC', 'LC']])}</label>
+                    <label>Type ${sel('type', [['all', 'Any type'], ['me', 'Me'], ['signal', 'Signal']])}</label>
+                </div>
+                <label style="display:flex; flex-direction:column; gap:0.25rem; font-size:0.66rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-secondary);">Ticker
+                    <input class="form-control" style="padding:0.5rem; text-transform:uppercase;" placeholder="ANY TICKER" value="${jEsc(c.ticker)}" oninput="cmpChange('${side}','ticker',this.value)">
+                </label>`;
+        }
+        function openCompare() {
+            document.getElementById('cmpSideA').innerHTML = cmpSideHtml('A');
+            document.getElementById('cmpSideB').innerHTML = cmpSideHtml('B');
+            renderCompare();
+            openSlide('comparePanel');
+        }
+        function cmpChange(side, field, value) { cmpState[side][field] = value; renderCompare(); }
+        function renderCompare() {
+            const a = cmpFilter(cmpState.A), b = cmpFilter(cmpState.B);
+            const sa = summarize(a.list), sb = summarize(b.list);
+            const fPf = v => v === null ? '—' : (v === Infinity ? '∞' : v.toFixed(2));
+            const rows = [
+                ['Net P&L', fmtMoney(sa.pnl), fmtMoney(sb.pnl), sa.pnl - sb.pnl, v => fmtMoney(v), true],
+                ['Total R', fmtR(sa.r), fmtR(sb.r), sa.r - sb.r, v => fmtR(v), true],
+                ['Trades', sa.n, sb.n, sa.n - sb.n, v => String(v), false],
+                ['Win rate', `${sa.wr.toFixed(1)}%`, `${sb.wr.toFixed(1)}%`, sa.wr - sb.wr, v => `${v.toFixed(1)}%`, true],
+                ['Expectancy', fmtMoney(sa.exp), fmtMoney(sb.exp), sa.exp - sb.exp, v => fmtMoney(v), true],
+                ['Profit factor', fPf(sa.pf), fPf(sb.pf), (isFinite(sa.pf) && isFinite(sb.pf) && sa.pf !== null && sb.pf !== null) ? sa.pf - sb.pf : null, v => v.toFixed(2), true],
+            ];
+            document.getElementById('cmpBody').innerHTML = rows.map(r => {
+                const diff = r[3] === null ? '—' : r[4](r[3]);
+                const cls = (r[5] && r[3] !== null) ? pnlClass(r[3]) : '';
+                return `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="${cls}">${diff}</td></tr>`;
+            }).join('');
+            const foot = (side, f, s) => `<div class="stat-tile"><span class="stat-value" style="font-size:1rem;">${jEsc(f.range.label)}</span><span class="stat-sub">${s.n} matching trade${s.n === 1 ? '' : 's'}</span></div>`;
+            document.getElementById('cmpFoot').innerHTML = foot('A', a, sa) + foot('B', b, sb);
         }
 
         // ===================== CURRENCY & EXCHANGE RATES =====================
@@ -1800,7 +2613,7 @@
         }
 
         function exportData() {
-            const blob = new Blob([JSON.stringify({ accounts, trades: compactTrades(trades) })], {type: 'application/json'});
+            const blob = new Blob([JSON.stringify({ accounts, trades: compactTrades(trades), journal })], {type: 'application/json'});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = `crt_journal_backup_${new Date().toISOString().split('T')[0]}.json`;
@@ -1847,6 +2660,7 @@
                     if (data.accounts && data.trades) {
                         accounts = normalizeAccounts(data.accounts);
                         trades = parseStoredTrades(data.trades);
+                        if (data.journal) { journal = normalizeJournal(data.journal); saveJournal(); }
                         saveData(); alert('Data processing mapping restored successfully.'); updateUI();
                     } else alert('Incorrect JSON scheme structural layout mapping.');
                 } catch (err) { alert('System parsing error occurred.'); }
@@ -1858,7 +2672,8 @@
             if(confirm('DANGER VERIFICATION: This operation completely deletes all operational records and account indices permanently. Confirm?')) {
                 localStorage.removeItem('tj_accounts');
                 localStorage.removeItem('tj_trades');
-                accounts = []; trades = [];
+                localStorage.removeItem('tj_journal');
+                accounts = []; trades = []; journal = normalizeJournal(null);
                 closeAccountFocus(); resetAccountForm(); updateUI();
                 alert('Application memory reset completely executed.');
             }
@@ -1875,6 +2690,8 @@
                 updateDashboard();
                 renderCalendar();
             }
+            if(document.getElementById('history').classList.contains('active')) renderHistory();
+            if(document.getElementById('evaluations').classList.contains('active')) renderEvaluations();
             if(selectedFocusAccountId) {
                 renderFocusedAccountSection();
             }
@@ -2695,6 +3512,7 @@
                         const outcomeClass = dailySumPnl > 0 ? 'win' : (dailySumPnl < 0 ? 'loss' : 'breakeven');
                         dayCssClass += ' has-trade ' + outcomeClass;
                         weekPnl += dailySumPnl; weekTrades += dailyMatches.length; weekActiveDays++; monthlyTradingDays++;
+                        innerHtml += calCardBtn(dayString, dailyMatches.length);
                         innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${fmtMoney(Math.abs(dailySumPnl))}</span>
                             <div class="cal-day-meta">${dailyMatches.length} trade${dailyMatches.length > 1 ? 's' : ''}<br>${dayWinRate}%</div></div>
                             <span class="cal-dot ${outcomeClass}"></span>`;
@@ -2706,7 +3524,9 @@
                 });
 
                 const weekPnlClass = weekPnl > 0 ? 'text-success' : (weekPnl < 0 ? 'text-danger' : 'text-warning');
+                const weekStartStr = ymd(new Date(calYear, calMonth, 1 - firstDay + w));
                 grid.innerHTML += `<div class="cal-week-cell">
+                    ${calWeekBtn(weekStartStr)}
                     <span class="cal-week-label">Week ${weekNum}</span>
                     <span class="cal-week-pnl ${weekTrades ? weekPnlClass : ''}">${weekTrades ? fmtMoney(weekPnl) : '$0'}</span>
                     <span class="cal-week-meta">${weekTrades} trade${weekTrades !== 1 ? 's' : ''}</span>
@@ -3392,15 +4212,16 @@
                 await gsEnsureStructure();
                 const tradeChunks = gsChunkString(JSON.stringify(compactTrades(trades)));
                 const acctChunks = gsChunkString(JSON.stringify(accounts));
-                const rowCount = Math.max(tradeChunks.length, acctChunks.length);
+                const journalChunks = gsChunkString(JSON.stringify(journal));
+                const rowCount = Math.max(tradeChunks.length, acctChunks.length, journalChunks.length);
                 const grid = [
-                    ['trades', 'accounts'],
-                    [tradeChunks.length, acctChunks.length],
+                    ['trades', 'accounts', 'journal'],
+                    [tradeChunks.length, acctChunks.length, journalChunks.length],
                 ];
-                for (let i = 0; i < rowCount; i++) grid.push([tradeChunks[i] || '', acctChunks[i] || '']);
+                for (let i = 0; i < rowCount; i++) grid.push([tradeChunks[i] || '', acctChunks[i] || '', journalChunks[i] || '']);
                 // Clear a generous range first so a shorter push never leaves stale chunk rows behind.
-                await gsClearValues('JournalData!A1:B5000');
-                await gsUpdateValues('JournalData!A1:B' + grid.length, grid);
+                await gsClearValues('JournalData!A1:C5000');
+                await gsUpdateValues('JournalData!A1:C' + grid.length, grid);
                 gsSetStatus('Synced just now', true);
             } catch (err) {
                 gsSetStatus('Push failed: ' + err.message, false);
@@ -3411,15 +4232,19 @@
             gsSetStatus('Pulling…', null);
             try {
                 await gsEnsureStructure();
-                const rows = await gsGetValues('JournalData!A1:B5000');
+                const rows = await gsGetValues('JournalData!A1:C5000');
                 if (rows.length < 2) { gsSetStatus('Nothing to pull yet', null); return; }
                 const tradeCount = parseInt(rows[1][0], 10) || 0;
                 const acctCount = parseInt(rows[1][1], 10) || 0;
                 const dataRows = rows.slice(2);
                 const tradesJson = dataRows.slice(0, tradeCount).map(r => r[0] || '').join('');
                 const acctJson = dataRows.slice(0, acctCount).map(r => r[1] || '').join('');
+                const journalCount = parseInt(rows[1][2], 10) || 0;
+                const journalJson = dataRows.slice(0, journalCount).map(r => r[2] || '').join('');
                 if (tradesJson) trades = parseStoredTrades(JSON.parse(tradesJson));
                 if (acctJson) accounts = normalizeAccounts(JSON.parse(acctJson));
+                if (journalJson) journal = normalizeJournal(JSON.parse(journalJson));
+                localStorage.setItem('tj_journal', JSON.stringify(journal));
                 localStorage.setItem('tj_accounts', JSON.stringify(accounts));
                 localStorage.setItem('tj_trades', JSON.stringify(compactTrades(trades)));
                 closeAccountFocus();

@@ -6,6 +6,7 @@
     <title>Trading Journal</title>
     <link rel="manifest" href="manifest_2.json">
     <meta name="theme-color" content="#0b0e14">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a78bfa'/%3E%3Cstop offset='1' stop-color='%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M16 40l10-10 8 8 14-16' stroke='white' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M40 21h8v8' stroke='white' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Trading Journal">
@@ -52,14 +53,17 @@
 
         .logo {
             font-size: 1.15rem; font-weight: 800; padding: 0 1.5rem 1.25rem;
-            border-bottom: 1px solid var(--border); margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.15rem;
+            border-bottom: 1px solid var(--border); margin-bottom: 1rem; display: flex; flex-direction: row; align-items: center; gap: 0.65rem;
             letter-spacing: 0.04em;
         }
-        .logo svg { display: none; }
+        .logo-mark { flex-shrink: 0; line-height: 0; }
+        .logo-mark svg { width: 32px; height: 32px; display: block; }
+        .logo-copy { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
         .logo-text { color: var(--text-primary); }
         .logo-text span { color: var(--accent); }
         .logo-sub { font-size: 0.62rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.15em; }
-        .sidebar.collapsed .logo-text, .sidebar.collapsed .logo-sub { display: none; }
+        .sidebar.collapsed .logo { padding: 0; justify-content: center; }
+        .sidebar.collapsed .logo-copy { display: none; }
 
         .nav-section-label {
             padding: 1rem 1.5rem 0.4rem; font-size: 0.68rem; font-weight: 700; color: var(--text-secondary);
@@ -342,8 +346,18 @@
 
     <nav class="sidebar" id="sidebar">
         <div class="logo">
-            <span class="logo-text">TRADE<span>TRACKER</span></span>
-            <span class="logo-sub">TRADING JOURNAL</span>
+            <div class="logo-mark">
+                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs><linearGradient id="tjLogoGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs>
+                    <rect width="64" height="64" rx="16" fill="url(#tjLogoGrad)"/>
+                    <path d="M16 40l10-10 8 8 14-16" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M40 21h8v8" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="logo-copy">
+                <span class="logo-text">TRADE<span>TRACKER</span></span>
+                <span class="logo-sub">TRADING JOURNAL</span>
+            </div>
         </div>
         <div class="nav-section-label">Main</div>
         <div class="nav-item active" onclick="switchTab('dashboard')">
@@ -362,9 +376,9 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>
             <span class="nav-text">Trades & History</span>
         </div>
-        <div class="nav-item" onclick="switchTab('evaluations')">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="12" x2="12" y2="12.01"/></svg>
-            <span class="nav-text">Evaluations</span>
+        <div class="nav-item" onclick="switchTab('performance')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+            <span class="nav-text">Account Performance</span>
         </div>
         <div class="nav-section-label">Manage</div>
         <div class="nav-item" onclick="switchTab('manage')">
@@ -445,56 +459,28 @@
                 </div>
             </div>
 
-            <details class="toggle-section" style="margin-top: 0;">
-                <summary>Trade History</summary>
-                <div class="toggle-body">
-                    <div class="filter-container" style="margin-top:0.5rem;">
-                        <div class="filter-group">
-                            <select id="dashDateRangeFilter" class="form-control" style="width: auto; min-width: 140px; padding: 0.5rem;" onchange="onDashboardFilterChange()">
-                                <option value="all">All Time</option>
-                                <option value="thisWeek">This Week</option>
-                                <option value="lastWeek">Last Week</option>
-                                <option value="thisMonth" selected>This Month</option>
-                                <option value="lastMonth">Last Month</option>
-                                <option value="thisQuarter">This Quarter</option>
-                                <option value="lastQuarter">Last Quarter</option>
-                                <option value="thisYear">This Year</option>
-                            </select>
-                            <select id="pairFilter" class="form-control" style="width: auto; min-width: 120px; padding: 0.5rem;" onchange="onDashboardFilterChange()">
-                                <option value="all">All Pairs</option>
-                            </select>
-                            <select id="tradeFilter" class="form-control" style="width: auto; min-width: 130px; padding: 0.5rem;" onchange="onDashboardFilterChange()">
-                                <option value="all">All Trades</option>
-                                <option value="win">Wins</option>
-                                <option value="loss">Losses</option>
-                                <option value="breakeven">Breakeven</option>
-                            </select>
-                            <select id="tradeTypeFilter" class="form-control" style="width: auto; min-width: 130px; padding: 0.5rem;" onchange="onDashboardFilterChange()">
-                                <option value="all">Trade Type: All</option>
-                                <option value="me">Me</option>
-                                <option value="signal">Signal</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="table-container" style="border:none; border-radius:0;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                    <th>Account</th>
-                                    <th>Symbol</th>
-                                    <th>R:R</th>
-                                    <th>P&L</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="recent-trades-body"></tbody>
-                        </table>
-                    </div>
-                    <div id="tradeHistoryPagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; flex-wrap:wrap; gap:0.5rem;"></div>
+            <div class="filter-container" style="margin-top: 0.75rem;">
+                <div class="filter-group">
+                    <select id="dashDateRangeFilter" class="form-control" style="width: auto; min-width: 140px; padding: 0.5rem;" onchange="onDashboardFilterChange()">
+                        <option value="all">All Time</option>
+                        <option value="thisWeek">This Week</option>
+                        <option value="lastWeek">Last Week</option>
+                        <option value="thisMonth" selected>This Month</option>
+                        <option value="lastMonth">Last Month</option>
+                        <option value="thisQuarter">This Quarter</option>
+                        <option value="lastQuarter">Last Quarter</option>
+                        <option value="thisYear">This Year</option>
+                    </select>
+                    <select id="pairFilter" class="form-control" style="width: auto; min-width: 120px; padding: 0.5rem;" onchange="onDashboardFilterChange()">
+                        <option value="all">All Pairs</option>
+                    </select>
+                    <select id="tradeTypeFilter" class="form-control" style="width: auto; min-width: 130px; padding: 0.5rem;" onchange="onDashboardFilterChange()">
+                        <option value="all">Trade Type: All</option>
+                        <option value="me">Me</option>
+                        <option value="signal">Signal</option>
+                    </select>
                 </div>
-            </details>
+            </div>
         </section>
 
         <!-- ACCOUNTS VIEW -->
@@ -507,6 +493,14 @@
                         <div class="form-group">
                             <label>Account Name</label>
                             <input type="text" id="accName" class="form-control" placeholder="e.g. Prop Account N800k" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Account Type</label>
+                            <select id="accType" class="form-control">
+                                <option value="evaluation">Evaluation</option>
+                                <option value="funded">Funded</option>
+                                <option value="live">Live</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Starting Balance ($)</label>
@@ -901,13 +895,21 @@
             <div class="hist-pager" id="hist-pager"></div>
         </section>
 
-        <!-- EVALUATIONS VIEW -->
-        <section id="evaluations" class="view-section">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
-                <div class="grid-cards" id="eval-kpis" style="flex:1; min-width:260px;"></div>
-                <button class="btn btn-outline" type="button" onclick="openCompare()">Compare</button>
+        <!-- ACCOUNT PERFORMANCE VIEW -->
+        <section id="performance" class="view-section">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
+                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                    <select id="perfAccountSelect" class="form-control" style="width:auto; min-width:180px; padding:0.5rem;" onchange="perfSetAccount(this.value)"></select>
+                    <span class="stat-sub" id="perfTradeCount"></span>
+                </div>
+                <button class="btn btn-outline" type="button" onclick="openCompare()">Compare accounts</button>
             </div>
-            <div class="ev-grid" id="eval-list"></div>
+            <div id="perfProgressCard"></div>
+            <div class="grid-cards" id="perfKpis" style="margin-top:1rem;"></div>
+            <div class="chart-container" style="margin-top:1rem;">
+                <h3 style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">Equity Curve</h3>
+                <div style="position: relative; height: 260px; width: 100%;"><canvas id="perfEquityChart"></canvas></div>
+            </div>
         </section>
 
     </main>
@@ -1167,6 +1169,7 @@
                 if(a.isClosed === undefined) a.isClosed = false;
                 if(a.consistencyBasis === undefined) a.consistencyBasis = '';
                 if(a.consistencyPct === undefined) a.consistencyPct = null;
+                if(a.accountType === undefined) a.accountType = a.profitTarget ? 'evaluation' : 'funded';
                 // Legacy versions froze "currentBalance" at creation time so it never
                 // reflected added trades. Balances are now always derived live from
                 // balance + balanceAdjustment + net P&L of that account's trades.
@@ -1194,7 +1197,6 @@
         let rMultipleChartInstance = null;
         let calYear = new Date().getFullYear();
         let calMonth = new Date().getMonth();
-        let dashboardTradePage = 1;
 
         // Global currency state with live exchange rates
         let currentCurrency = localStorage.getItem('tj_currency') || 'USD';
@@ -1268,8 +1270,8 @@
             document.getElementById(tabId).classList.add('active');
             event.currentTarget.classList.add('active');
             
-            const titles = { dashboard: 'Dashboard', accounts: 'Accounts Management', stats: 'Advanced Performance Statistics', manage: 'System Data Control', history: 'Trades & History', evaluations: 'Evaluation Progress' };
-            const subtitles = { dashboard: 'Real-time performance overview', accounts: 'Manage balances, targets & drawdown limits', stats: 'Deep dive into your trading performance', manage: 'Backup, restore, and cloud sync', history: 'Every trade and trading day', evaluations: 'Prop account targets, drawdown and consistency' };
+            const titles = { dashboard: 'Dashboard', accounts: 'Accounts Management', stats: 'Advanced Performance Statistics', manage: 'System Data Control', history: 'Trades & History', performance: 'Account Performance' };
+            const subtitles = { dashboard: 'Real-time performance overview', accounts: 'Manage balances, targets & drawdown limits', stats: 'Deep dive into your trading performance', manage: 'Backup, restore, and cloud sync', history: 'Every trade and trading day', performance: 'Prop account targets, drawdown, consistency and equity curve' };
             document.getElementById('page-title').innerText = titles[tabId] || 'Journal';
             document.getElementById('page-subtitle').innerText = subtitles[tabId] || '';
             updateUI();
@@ -1661,41 +1663,112 @@
         function evalMeter(label, rightText, pct, color) {
             return `<div><div class="ev-meter-top"><span>${label}</span><strong>${rightText}</strong></div><div class="ev-bar"><span style="width:${pct}%; background:${color};"></span></div></div>`;
         }
-        function renderEvaluations() {
-            const rows = accounts.filter(a => !a.isClosed).map(evalAccount);
-            rows.sort((a, b) => (b.progress === null ? -1 : b.progress) - (a.progress === null ? -1 : a.progress));
-            const passed = rows.filter(r => r.status.key === 'passed').length;
-            const risk = rows.filter(r => r.status.key === 'risk').length;
-            const breached = rows.filter(r => r.status.key === 'breached').length;
-            const withProg = rows.filter(r => r.progress !== null);
-            const avg = withProg.length ? withProg.reduce((x, r) => x + r.progress, 0) / withProg.length : 0;
-            const kpi = (t, v) => `<div class="card kpi-card"><span class="card-title">${t}</span><span class="card-value">${v}</span></div>`;
-            document.getElementById('eval-kpis').innerHTML = kpi('Active accounts', rows.length) + kpi('Passed', passed) + kpi('At risk', risk) + kpi('Breached', breached) + kpi('Avg progress', `${avg.toFixed(0)}%`);
-            const host = document.getElementById('eval-list');
-            if (!rows.length) { host.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-secondary);">No active accounts</div>`; return; }
-            host.innerHTML = rows.map(r => {
-                const a = r.acc;
-                const meters = [];
-                if (r.progress !== null) meters.push(evalMeter('Profit target', `${r.progress.toFixed(1)}% · ${fmtMoney(r.toGo)} to go`, r.progress, 'var(--success)'));
-                if (r.ddPct !== null) meters.push(evalMeter('Drawdown buffer', `${r.ddPct.toFixed(1)}% · ${fmtMoney(r.ddBuffer)} above floor`, r.ddPct, r.ddPct >= 40 ? 'var(--accent)' : (r.ddPct >= 15 ? 'var(--warning)' : 'var(--danger)')));
-                if (r.daily) meters.push(evalMeter('Daily target', `${fmtMoney(r.daily.pnl)} / ${fmtMoney(r.daily.target)}`, r.daily.pct, r.daily.pnl >= r.daily.target ? 'var(--success)' : (r.daily.pnl < 0 ? 'var(--danger)' : 'var(--accent)')));
-                if (r.cons) meters.push(evalMeter('Consistency', `${r.cons.score.toFixed(1)}% / ${r.cons.limit}% max`, Math.min(100, (r.cons.score / r.cons.limit) * 100), r.cons.breached ? 'var(--danger)' : (r.cons.score > r.cons.limit * 0.8 ? 'var(--warning)' : 'var(--success)')));
-                const foot = (l, v) => `<div><span class="stat-label">${l}</span><span class="stat-value">${v}</span></div>`;
-                return `<div class="ev-card">
-                    <div class="ev-head">
-                        <div><div class="ev-name">${jEsc(a.name)}</div><div class="ev-bal">${fmtMoney(r.bal)} · started ${fmtMoney(a.balance)}</div></div>
-                        <span class="ev-pill ${r.status.key}">${r.status.text}</span>
-                    </div>
-                    ${meters.length ? meters.join('') : '<div class="ev-bal">No target or drawdown set</div>'}
-                    <div class="ev-foot">
-                        ${foot('Net P&L', `<span class="${pnlClass(r.s.pnl)}">${fmtMoney(r.s.pnl)}</span>`)}
-                        ${foot('Trades', r.s.n)}
-                        ${foot('Win rate', `${r.s.wr.toFixed(0)}%`)}
-                        ${foot('Days', r.days)}
-                    </div>
-                </div>`;
-            }).join('');
+
+        // ---- Account Performance page ----
+        let perfAccountId = null;
+        let perfChartInstance = null;
+        function perfSetAccount(id) { perfAccountId = id; renderPerformancePage(); }
+        function perfEnsureAccount() {
+            const active = accounts.filter(a => !a.isClosed);
+            if (!perfAccountId || !active.some(a => a.id === perfAccountId)) perfAccountId = active[0] ? active[0].id : null;
         }
+        function markAccountPassed(id) {
+            const acc = accounts.find(a => a.id === id);
+            if (!acc) return;
+            if (confirm(`Mark "${acc.name}" as passed and archive it? It will move to Archived Accounts. Trade history and stats are kept — you can reopen it anytime.`)) {
+                acc.isClosed = true;
+                if (selectedFocusAccountId === id) closeAccountFocus();
+                saveData();
+                updateUI();
+            }
+        }
+        function renderPerformancePage() {
+            perfEnsureAccount();
+            const active = accounts.filter(a => !a.isClosed);
+            const sel = document.getElementById('perfAccountSelect');
+            sel.innerHTML = active.length
+                ? active.map(a => `<option value="${jEsc(a.id)}" ${a.id === perfAccountId ? 'selected' : ''}>${jEsc(a.name)}</option>`).join('')
+                : '<option value="">No active accounts</option>';
+
+            if (!perfAccountId) {
+                document.getElementById('perfTradeCount').innerText = '';
+                document.getElementById('perfProgressCard').innerHTML = `<div class="card" style="text-align:center; padding:2rem; color:var(--text-secondary);">Add an account to see its performance</div>`;
+                document.getElementById('perfKpis').innerHTML = '';
+                if (perfChartInstance) { perfChartInstance.destroy(); perfChartInstance = null; }
+                return;
+            }
+
+            const acc = accounts.find(a => a.id === perfAccountId);
+            const r = evalAccount(acc);
+            document.getElementById('perfTradeCount').innerText = `${r.s.n} trade${r.s.n === 1 ? '' : 's'}`;
+
+            const typeLabel = { evaluation: 'Evaluation', funded: 'Funded', live: 'Live' }[acc.accountType] || 'Evaluation';
+            const hasRules = !!(acc.profitTarget || acc.maxDD || acc.dailyProfitTarget || acc.consistencyPct);
+            let progressHtml;
+            if (hasRules) {
+                const pct = r.progress;
+                progressHtml = `<div class="card" style="padding:1.25rem 1.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+                        <div>
+                            <span class="ev-pill ${r.status.key}" style="margin-bottom:0.6rem; display:inline-block;">${typeLabel}</span>
+                            <div style="font-size:1.15rem; font-weight:700;">${jEsc(acc.name)} target progress</div>
+                            <div class="stat-sub" style="margin-top:0.3rem; max-width:480px;">Trading P&amp;L counts toward the target. Deposits, payouts and reset-excluded trades do not.</div>
+                        </div>
+                        ${pct !== null ? `<div style="text-align:right;">
+                            <div class="stat-label">Profit</div>
+                            <div class="stat-value" style="font-size:1.5rem;">${fmtMoney(r.bal - acc.balance)} <span class="stat-sub" style="font-size:0.85rem;">/ ${fmtMoney(acc.profitTarget - acc.balance)}</span></div>
+                            <div style="color:var(--success); font-weight:700;">${pct.toFixed(0)}%</div>
+                        </div>` : ''}
+                    </div>
+                    ${pct !== null ? `<div class="ev-bar" style="margin-top:1rem;"><span style="width:${Math.min(100, pct)}%; background:var(--success);"></span></div>` : ''}
+                    <div class="stat-row c3" style="margin-top:1.1rem;">
+                        ${r.ddPct !== null ? evalMeter('Drawdown buffer', `${r.ddPct.toFixed(1)}% · ${fmtMoney(r.ddBuffer)} above floor`, r.ddPct, r.ddPct >= 40 ? 'var(--accent)' : (r.ddPct >= 15 ? 'var(--warning)' : 'var(--danger)')) : ''}
+                        ${r.daily ? evalMeter('Daily target', `${fmtMoney(r.daily.pnl)} / ${fmtMoney(r.daily.target)}`, r.daily.pct, r.daily.pnl >= r.daily.target ? 'var(--success)' : (r.daily.pnl < 0 ? 'var(--danger)' : 'var(--accent)')) : ''}
+                        ${r.cons ? evalMeter('Consistency', `${r.cons.score.toFixed(1)}% / ${r.cons.limit}% max`, Math.min(100, (r.cons.score / r.cons.limit) * 100), r.cons.breached ? 'var(--danger)' : (r.cons.score > r.cons.limit * 0.8 ? 'var(--warning)' : 'var(--success)')) : ''}
+                    </div>
+                    ${(r.status.key === 'passed') ? `<button class="btn" style="margin-top:1.1rem; background:var(--success);" type="button" onclick="markAccountPassed('${acc.id}')">Mark Passed &amp; Archive</button>` : ''}
+                </div>`;
+            } else {
+                progressHtml = `<div class="card" style="padding:1.25rem 1.5rem;">
+                    <span class="ev-pill ${typeLabel === 'Live' ? 'passed' : 'idle'}" style="margin-bottom:0.5rem; display:inline-block;">${typeLabel}</span>
+                    <div class="stat-sub">No profit target or drawdown rule set for this account.</div>
+                </div>`;
+            }
+            document.getElementById('perfProgressCard').innerHTML = progressHtml;
+
+            const today = getCurrentTradingDayEST();
+            const todayPnl = trades.filter(t => t.accountId === acc.id && t.date === today).reduce((s, t) => s + t.pnl, 0);
+            const wkStart = weekStartOf(today), wkEnd = weekEndOf(wkStart);
+            const weekPnl = trades.filter(t => t.accountId === acc.id && t.date >= wkStart && t.date <= wkEnd).reduce((s, t) => s + t.pnl, 0);
+            const mRange = periodRange('thisMonth');
+            const monthPnl = trades.filter(t => t.accountId === acc.id && t.date >= mRange.from && t.date <= mRange.to).reduce((s, t) => s + t.pnl, 0);
+            const overallPnl = r.s.pnl;
+            const startBal = acc.balance || 1;
+            const kpi = (title, val, sub) => `<div class="card kpi-card"><span class="card-title">${title}</span><span class="card-value ${pnlClass(val)}">${fmtSigned(val)}</span>${sub ? `<span class="stat-sub">${sub}</span>` : ''}</div>`;
+            document.getElementById('perfKpis').innerHTML =
+                kpi("Today's P&L", todayPnl) +
+                kpi('This Week', weekPnl) +
+                kpi('This Month', monthPnl) +
+                kpi('Overall Performance', overallPnl, `${((overallPnl / startBal) * 100).toFixed(1)}%`);
+
+            const accTrades = trades.filter(t => t.accountId === acc.id);
+            const logical = getLogicalTrades(accTrades).sort((a, b) => {
+                const d = new Date(a.date) - new Date(b.date);
+                if (d !== 0) return d;
+                return (a.createdAt || 0) - (b.createdAt || 0);
+            });
+            let run = acc.balance + (acc.balanceAdjustment || 0);
+            const labels = ['Start'], data = [run];
+            logical.forEach(t => { run += t.pnl; labels.push(t.date); data.push(run); });
+            const ctx = document.getElementById('perfEquityChart').getContext('2d');
+            if (perfChartInstance) perfChartInstance.destroy();
+            perfChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets: [{ label: 'Balance', data, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.08)', fill: true, tension: 0.35, borderWidth: 2, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 4, pointBackgroundColor: '#0b0e14', pointHoverBorderColor: '#8b5cf6' }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#2b3342' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } }
+            });
+        }
+
 
         // ---- Trades & History page ----
         const hist = { mode: 'trades', page: 1, size: 25 };
@@ -2145,6 +2218,7 @@
             const consistencyBasis = document.getElementById('accConsistencyBasis').value;
             const consistencyPctVal = document.getElementById('accConsistencyPct').value;
             const consistencyPct = consistencyPctVal === '' ? null : Math.abs(parseFloat(consistencyPctVal));
+            const accountType = document.getElementById('accType').value;
 
             if(id) {
                 const idx = accounts.findIndex(a => a.id === id);
@@ -2156,6 +2230,7 @@
                     accounts[idx].dailyProfitTarget = dailyProfitTarget;
                     accounts[idx].consistencyBasis = consistencyBasis;
                     accounts[idx].consistencyPct = consistencyPct;
+                    accounts[idx].accountType = accountType;
                     if(currentBalanceVal !== '') {
                         // Manual override: treat the entered value as the true balance
                         // right now, then keep auto-updating with future trades from here.
@@ -2169,7 +2244,7 @@
             } else {
                 const newId = Date.now().toString();
                 const balanceAdjustment = currentBalanceVal === '' ? 0 : (parseFloat(currentBalanceVal) - balance);
-                accounts.push({ id: newId, name, balance, balanceAdjustment, maxDD, profitTarget, dailyProfitTarget, consistencyBasis, consistencyPct });
+                accounts.push({ id: newId, name, balance, balanceAdjustment, maxDD, profitTarget, dailyProfitTarget, consistencyBasis, consistencyPct, accountType });
             }
             saveData();
             resetAccountForm();
@@ -2189,6 +2264,7 @@
             document.getElementById('accDailyProfitTarget').value = (acc.dailyProfitTarget !== null && acc.dailyProfitTarget !== undefined) ? acc.dailyProfitTarget : '';
             document.getElementById('accConsistencyBasis').value = acc.consistencyBasis || '';
             document.getElementById('accConsistencyPct').value = (acc.consistencyPct !== null && acc.consistencyPct !== undefined) ? acc.consistencyPct : '';
+            document.getElementById('accType').value = acc.accountType || 'evaluation';
             document.getElementById('account-action-title').innerText = 'Modify Account Capital Elements';
             document.getElementById('account-btn-text').innerText = 'Update Allocation Settings';
             document.getElementById('account-cancel-btn').style.display = 'inline-flex';
@@ -2691,7 +2767,7 @@
                 renderCalendar();
             }
             if(document.getElementById('history').classList.contains('active')) renderHistory();
-            if(document.getElementById('evaluations').classList.contains('active')) renderEvaluations();
+            if(document.getElementById('performance').classList.contains('active')) renderPerformancePage();
             if(selectedFocusAccountId) {
                 renderFocusedAccountSection();
             }
@@ -3573,7 +3649,6 @@
         function updateDashboard() {
             const dateRange = document.getElementById('dashDateRangeFilter').value;
             const pair = document.getElementById('pairFilter').value;
-            const outcomeFilter = document.getElementById('tradeFilter').value;
             const tradeTypeFilter = document.getElementById('tradeTypeFilter').value;
 
             let baseTradesRaw = filterByDateRange(trades, dateRange);
@@ -3604,76 +3679,10 @@
             if(pair !== 'all') rangeLabel += ` · ${pair}`;
             document.getElementById('dash-range-label').innerText = rangeLabel;
 
-            let displayTrades = (outcomeFilter === 'all') ? baseTrades : baseTrades.filter(t => t.outcome === outcomeFilter);
-
-            const pageSize = 10;
-            const totalPages = Math.max(1, Math.ceil(displayTrades.length / pageSize));
-            if(dashboardTradePage > totalPages) dashboardTradePage = totalPages;
-            if(dashboardTradePage < 1) dashboardTradePage = 1;
-            const startIdx = (dashboardTradePage - 1) * pageSize;
-            const pageTrades = displayTrades.slice(startIdx, startIdx + pageSize);
-
-            const tbody = document.getElementById('recent-trades-body'); 
-            tbody.innerHTML = '';
-
-            if(pageTrades.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-secondary);">No trades match the current filters.</td></tr>`;
-            } else {
-                pageTrades.forEach(t => {
-                    let badge = (t.outcome==='win') ? '<span class="badge badge-win">Win</span>' : ((t.outcome==='loss') ? '<span class="badge badge-loss">Loss</span>' : '<span class="badge badge-breakeven">BE</span>');
-                    const calculatedRrText = (t.rr !== undefined && t.rr !== null) ? `${t.rr}R` : '0.00R';
-                    let accountLabel;
-                    if(t.accountCount > 1) {
-                        const firstAcc = accounts.find(a => a.id === t.records[0].accountId);
-                        accountLabel = `${firstAcc ? firstAcc.name : 'Unknown'} <span style="color:var(--text-secondary); font-size:0.8rem;">+${t.accountCount - 1} more</span>`;
-                    } else {
-                        const acc = accounts.find(a => a.id === t.records[0].accountId);
-                        accountLabel = acc ? acc.name : 'Unknown Account';
-                    }
-                    
-                    tbody.innerHTML += `
-                        <tr style="cursor:pointer;" onclick="showTradeDetails('${t.groupId}')">
-                            <td>${badge}</td>
-                            <td>${t.date}</td>
-                            <td>${accountLabel}</td>
-                            <td style="font-weight:600;">${t.symbol}</td>
-                            <td>${calculatedRrText}</td>
-                            <td class="${t.pnl > 0 ? 'text-success' : (t.pnl < 0 ? 'text-danger' : 'text-warning')}">${fmtMoney(t.pnl)}</td>
-                            <td class="action-btns" onclick="event.stopPropagation()">
-                                <button class="btn btn-outline" style="padding:0.3rem; min-height:32px; min-width:32px;" onclick="openEditModal('${t.groupId}')">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                </button>
-                                <button class="btn btn-danger" style="padding:0.3rem; min-height:32px; min-width:32px; display:inline-flex; align-items:center; justify-content:center;" onclick="deleteTrade('${t.groupId}')">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                </button>
-                            </td>
-                        </tr>`;
-                });
-            }
-
-            renderTradeHistoryPagination(totalPages, displayTrades.length);
             renderChart(baseTradesRaw);
         }
 
-        function renderTradeHistoryPagination(totalPages, totalCount) {
-            const container = document.getElementById('tradeHistoryPagination');
-            if(!container) return;
-            if(totalCount === 0) { container.innerHTML = ''; return; }
-            container.innerHTML = `
-                <span style="color:var(--text-secondary); font-size:0.85rem;">Page ${dashboardTradePage} of ${totalPages} (${totalCount} trades)</span>
-                <div style="display:flex; gap:0.5rem;">
-                    <button class="btn btn-outline" style="padding:0.4rem 0.8rem; min-height:36px; font-size:0.85rem;" onclick="changeTradeHistoryPage(-1)" ${dashboardTradePage <= 1 ? 'disabled' : ''}>&lt; Prev</button>
-                    <button class="btn btn-outline" style="padding:0.4rem 0.8rem; min-height:36px; font-size:0.85rem;" onclick="changeTradeHistoryPage(1)" ${dashboardTradePage >= totalPages ? 'disabled' : ''}>Next &gt;</button>
-                </div>`;
-        }
-
-        function changeTradeHistoryPage(delta) {
-            dashboardTradePage += delta;
-            updateDashboard();
-        }
-
         function onDashboardFilterChange() {
-            dashboardTradePage = 1;
             updateDashboard();
         }
 

@@ -188,6 +188,15 @@
         }
         .select-toggle:hover { border-color: var(--accent); background-color: var(--bg-surface-hover); }
         .select-toggle:focus { outline: none; border-color: var(--accent); }
+        .date-toggle {
+            background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 999px;
+            color: var(--text-primary); font-family: inherit; font-size: 0.78rem; font-weight: 600;
+            padding: 0.5rem 0.9rem; min-height: 36px; width: auto; max-width: 138px; flex-shrink: 0;
+            box-sizing: border-box; color-scheme: dark;
+        }
+        .date-toggle:hover { border-color: var(--accent); }
+        .date-toggle:focus { outline: none; border-color: var(--accent); }
+        .date-sep { color: var(--text-secondary); font-size: 0.78rem; flex-shrink: 0; }
         .table-container { background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
         th, td { padding: 1rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -474,16 +483,10 @@
 
             <div class="filter-container" style="margin-top: 0.75rem;">
                 <div class="filter-group">
-                    <select id="dashDateRangeFilter" class="select-toggle" onchange="onDashboardFilterChange()">
-                        <option value="all">All Time</option>
-                        <option value="thisWeek">This Week</option>
-                        <option value="lastWeek">Last Week</option>
-                        <option value="thisMonth" selected>This Month</option>
-                        <option value="lastMonth">Last Month</option>
-                        <option value="thisQuarter">This Quarter</option>
-                        <option value="lastQuarter">Last Quarter</option>
-                        <option value="thisYear">This Year</option>
-                    </select>
+                    <input type="date" id="dashDateFrom" class="date-toggle" onchange="onDashboardFilterChange()">
+                    <span class="date-sep">–</span>
+                    <input type="date" id="dashDateTo" class="date-toggle" onchange="onDashboardFilterChange()">
+                    <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="dashDateAllTime()">All Time</button>
                     <select id="pairFilter" class="select-toggle" onchange="onDashboardFilterChange()">
                         <option value="all">All Pairs</option>
                     </select>
@@ -737,30 +740,6 @@
                 </div>
             </details>
 
-            <!-- ACCOUNT COMPARISON TABLE -->
-            <details class="toggle-section">
-                <summary>📊 Account Comparison</summary>
-                <div class="toggle-body no-pad">
-                    <div class="table-container" style="border:none; border-radius:0;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Account</th>
-                                    <th>Default Balance</th>
-                                    <th>Current Balance</th>
-                                    <th>Health Score</th>
-                                    <th>Trades</th>
-                                    <th>Win Rate</th>
-                                    <th>Avg Trade Size</th>
-                                    <th>Total P&L</th>
-                                </tr>
-                            </thead>
-                            <tbody id="accountComparisonBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </details>
-
             <!-- REPORTS -->
             <details class="toggle-section">
                 <summary>📄 Reports</summary>
@@ -872,6 +851,10 @@
             <div class="filter-container" style="margin-top:1rem;">
                 <div class="filter-group">
                     <select id="histAccount" class="select-toggle" onchange="histFilterChanged()"></select>
+                    <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.78rem; color:var(--text-secondary); white-space:nowrap; flex-shrink:0;">
+                        <span class="switch switch-sm"><input type="checkbox" id="histHideArchived" onchange="histToggleArchived()"><span class="switch-track"></span></span>
+                        Hide archived
+                    </label>
                     <select id="histOutcome" class="select-toggle" onchange="histFilterChanged()">
                         <option value="all">All Outcomes</option>
                         <option value="win">Wins</option>
@@ -1248,6 +1231,9 @@
             document.getElementById('reportQuarterYear').value = new Date().getFullYear();
             document.getElementById('reportYearInput').value = new Date().getFullYear();
             document.getElementById('reportQuarterSelect').value = String(Math.floor(new Date().getMonth() / 3) + 1);
+            const dashDefaultRange = periodRange('thisMonth');
+            document.getElementById('dashDateFrom').value = dashDefaultRange.from;
+            document.getElementById('dashDateTo').value = dashDefaultRange.to;
             updateUI();
 
             // Daily Profit Target rolls over at 17:00 EST — re-render the accounts view
@@ -1786,7 +1772,13 @@
 
 
         // ---- Trades & History page ----
-        const hist = { mode: 'trades', page: 1, size: 25 };
+        const hist = { mode: 'trades', page: 1, size: 25, hideArchived: localStorage.getItem('tj_hist_hide_archived') === 'true' };
+        function histToggleArchived() {
+            hist.hideArchived = document.getElementById('histHideArchived').checked;
+            localStorage.setItem('tj_hist_hide_archived', hist.hideArchived);
+            hist.page = 1;
+            renderHistory();
+        }
         function histSetMode(m) {
             hist.mode = m; hist.page = 1;
             document.querySelectorAll('#histModeSeg button').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
@@ -1808,7 +1800,9 @@
             const sym = document.getElementById('histSymbol').value.trim().toUpperCase();
             const from = document.getElementById('histFrom').value;
             const to = document.getElementById('histTo').value;
+            const archivedIds = hist.hideArchived ? new Set(accounts.filter(a => a.isClosed).map(a => a.id)) : null;
             return trades.filter(t =>
+                (!archivedIds || !archivedIds.has(t.accountId)) &&
                 (acc === 'all' || t.accountId === acc) &&
                 (out === 'all' || t.outcome === out) &&
                 (type === 'all' || (type === 'me' ? t.isMe : t.isSignal)) &&
@@ -1824,10 +1818,12 @@
             return base + trades.filter(t => ids.has(t.accountId) && t.date <= dateStr).reduce((x, t) => x + t.pnl, 0);
         }
         function renderHistory() {
+            document.getElementById('histHideArchived').checked = hist.hideArchived;
             const accSel = document.getElementById('histAccount');
             const prev = accSel.value || 'all';
-            accSel.innerHTML = '<option value="all">All Accounts</option>' + accounts.map(a => `<option value="${jEsc(a.id)}">${jEsc(a.name)}${a.isClosed ? ' (archived)' : ''}</option>`).join('');
-            accSel.value = accounts.some(a => a.id === prev) ? prev : 'all';
+            const accPool = hist.hideArchived ? accounts.filter(a => !a.isClosed) : accounts;
+            accSel.innerHTML = '<option value="all">All Accounts</option>' + accPool.map(a => `<option value="${jEsc(a.id)}">${jEsc(a.name)}${a.isClosed ? ' (archived)' : ''}</option>`).join('');
+            accSel.value = accPool.some(a => a.id === prev) ? prev : 'all';
 
             const list = histFilteredTrades();
             const s = summarize(list);
@@ -1841,7 +1837,7 @@
             const head = document.getElementById('hist-head'), body = document.getElementById('hist-body');
             let rows = [], rowsHtml;
             if (hist.mode === 'trades') {
-                head.innerHTML = '<tr><th>Status</th><th>Date</th><th>Account</th><th>Symbol</th><th>Session</th><th>R:R</th><th>P&L</th></tr>';
+                head.innerHTML = '<tr><th>Status</th><th>Date</th><th>Account</th><th>Symbol</th><th>Session</th><th>R:R</th><th>P&L</th><th>Actions</th></tr>';
                 rows = [...list].sort((a, b) => (b.date + (b.createdAt || '')).localeCompare(a.date + (a.createdAt || '')));
                 const pages = Math.max(1, Math.ceil(rows.length / hist.size));
                 hist.page = Math.min(hist.page, pages);
@@ -1849,9 +1845,10 @@
                 rowsHtml = slice.map(t => {
                     const acc = accounts.find(a => a.id === t.accountId);
                     const badge = t.outcome === 'win' ? '<span class="badge badge-win">Win</span>' : (t.outcome === 'loss' ? '<span class="badge badge-loss">Loss</span>' : '<span class="badge badge-breakeven">BE</span>');
-                    return `<tr class="clickable" onclick="showTradeDetails('${jEsc(t.groupId || t.id)}')"><td>${badge}</td><td>${t.date}</td><td>${jEsc(acc ? acc.name : '-')}</td><td style="font-weight:600;">${jEsc(t.symbol)}</td><td>${jEsc(t.session || '-')}</td><td>${t.rr ? t.rr + 'R' : '0.00R'}</td><td class="${pnlClass(t.pnl)}">${fmtMoney(t.pnl)}</td></tr>`;
+                    const gid = jEsc(t.groupId || t.id);
+                    return `<tr class="clickable" onclick="showTradeDetails('${gid}')"><td>${badge}</td><td>${t.date}</td><td>${jEsc(acc ? acc.name : '-')}</td><td style="font-weight:600;">${jEsc(t.symbol)}</td><td>${jEsc(t.session || '-')}</td><td>${t.rr ? t.rr + 'R' : '0.00R'}</td><td class="${pnlClass(t.pnl)}">${fmtMoney(t.pnl)}</td><td class="action-btns" onclick="event.stopPropagation()"><button class="btn btn-outline" style="padding:0.3rem; min-height:32px; min-width:32px;" onclick="openEditModal('${gid}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="btn btn-danger" style="padding:0.3rem; min-height:32px; min-width:32px; display:inline-flex; align-items:center; justify-content:center;" onclick="deleteTrade('${gid}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>`;
                 }).join('');
-                body.innerHTML = rowsHtml || '<tr><td colspan="7" style="text-align:center; color:var(--text-secondary);">No trades</td></tr>';
+                body.innerHTML = rowsHtml || '<tr><td colspan="8" style="text-align:center; color:var(--text-secondary);">No trades</td></tr>';
                 histPager(rows.length, pages);
             } else {
                 head.innerHTML = '<tr><th>Date</th><th>Trades</th><th>Win rate</th><th>R</th><th>Net P&L</th><th>Balance</th></tr>';
@@ -3042,52 +3039,6 @@
         }
 
         // ===================== ACCOUNT COMPARISON TABLE =====================
-        function updateAccountComparison() {
-            const tbody = document.getElementById('accountComparisonBody');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-
-            const openAccounts = accounts.filter(a => !a.isClosed);
-
-            if(openAccounts.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-secondary);">${accounts.length > 0 ? 'All accounts are archived.' : 'No accounts created'}</td></tr>`;
-                return;
-            }
-
-            openAccounts.forEach(acc => {
-                const accTrades = trades.filter(t => t.accountId === acc.id);
-                const accPnl = accTrades.reduce((s, t) => s + t.pnl, 0);
-                const currentBalance = getAccountCurrentBalance(acc);
-                
-                const wins = accTrades.filter(t => t.outcome === 'win').length;
-                const be = accTrades.filter(t => t.outcome === 'breakeven').length;
-                const validDenom = accTrades.length - be;
-                const wr = validDenom > 0 ? ((wins / validDenom) * 100).toFixed(1) : 0;
-                
-                const avgTradeSize = accTrades.length > 0 ? (accPnl / accTrades.length).toFixed(2) : 0;
-
-                const limit = acc.maxDD;
-                let health = 100;
-                if(limit) {
-                    const allowedDD = acc.balance - limit;
-                    const currentDD = acc.balance - currentBalance;
-                    health = Math.max(0, 100 - (currentDD / allowedDD) * 100);
-                }
-
-                tbody.innerHTML += `
-                    <tr style="cursor:pointer;" onclick="targetAccountFocus('${acc.id}')">
-                        <td style="font-weight:600;">${acc.name}</td>
-                        <td>${fmtMoney(acc.balance)}</td>
-                        <td class="${currentBalance >= acc.balance ? 'text-success' : 'text-danger'}">${fmtMoney(currentBalance)}</td>
-                        <td><span style="background:${health >= 50 ? 'var(--success-bg)' : (health >= 20 ? 'var(--warning-bg)' : 'var(--danger-bg)')}; color:${health >= 50 ? 'var(--success)' : (health >= 20 ? 'var(--warning)' : 'var(--danger)')}; padding:0.2rem 0.5rem; border-radius:4px; font-weight:600;">${health.toFixed(0)}%</span></td>
-                        <td>${accTrades.length}</td>
-                        <td>${wr}%</td>
-                        <td>${fmtMoney(avgTradeSize)}</td>
-                        <td class="${accPnl >= 0 ? 'text-success' : 'text-danger'}">${fmtMoney(accPnl)}</td>
-                    </tr>`;
-            });
-        }
-
         // ===================== REPORTS =====================
         function updateReportDateInput() {
             const type = document.getElementById('reportPeriodType').value;
@@ -3662,11 +3613,12 @@
 
         // CENTRAL PROCESSING DASHBOARD UPDATES WITH RECTIFIED DATA VISUALS
         function updateDashboard() {
-            const dateRange = document.getElementById('dashDateRangeFilter').value;
+            const dashFrom = document.getElementById('dashDateFrom').value;
+            const dashTo = document.getElementById('dashDateTo').value;
             const pair = document.getElementById('pairFilter').value;
             const tradeTypeFilter = document.getElementById('tradeTypeFilter').value;
 
-            let baseTradesRaw = filterByDateRange(trades, dateRange);
+            let baseTradesRaw = trades.filter(t => (!dashFrom || t.date >= dashFrom) && (!dashTo || t.date <= dashTo));
             if(pair !== 'all') baseTradesRaw = baseTradesRaw.filter(t => t.symbol === pair);
             if(tradeTypeFilter === 'me') baseTradesRaw = baseTradesRaw.filter(t => t.isMe);
             else if(tradeTypeFilter === 'signal') baseTradesRaw = baseTradesRaw.filter(t => t.isSignal);
@@ -3689,8 +3641,12 @@
             document.getElementById('dash-win-rate').innerText = `${winRate}%`;
             document.getElementById('dash-total-rr').innerText = `${totalRRValue.toFixed(2)}R`;
 
-            const rangeLabels = { all: 'All Time', thisWeek: 'This Week', lastWeek: 'Last Week', thisMonth: 'This Month', lastMonth: 'Last Month', thisQuarter: 'This Quarter', lastQuarter: 'Last Quarter', thisYear: 'This Year' };
-            let rangeLabel = rangeLabels[dateRange] || 'All Time';
+            const dashFmtShort = s => { const d = parseYmd(s); return `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; };
+            let rangeLabel;
+            if (!dashFrom && !dashTo) rangeLabel = 'All Time';
+            else if (dashFrom && dashTo) rangeLabel = `${dashFmtShort(dashFrom)} – ${dashFmtShort(dashTo)}`;
+            else if (dashFrom) rangeLabel = `From ${dashFmtShort(dashFrom)}`;
+            else rangeLabel = `Until ${dashFmtShort(dashTo)}`;
             if(pair !== 'all') rangeLabel += ` · ${pair}`;
             document.getElementById('dash-range-label').innerText = rangeLabel;
 
@@ -3698,6 +3654,11 @@
         }
 
         function onDashboardFilterChange() {
+            updateDashboard();
+        }
+        function dashDateAllTime() {
+            document.getElementById('dashDateFrom').value = '';
+            document.getElementById('dashDateTo').value = '';
             updateDashboard();
         }
 
@@ -3792,7 +3753,6 @@
             renderRMultipleChart(scoped);
             renderMonthlyConsistency();
             updatePortfolioOverview();
-            updateAccountComparison();
             updateSymbolPerformance(scoped);
             updateDayPerformance(scoped);
             updateSessionPerformance(scoped);

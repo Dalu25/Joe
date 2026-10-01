@@ -878,8 +878,10 @@
                         <option value="LC">LC</option>
                     </select>
                     <input id="histSymbol" class="form-control" style="width:auto; min-width:120px; padding:0.5rem;" placeholder="Symbol" oninput="histFilterChanged()">
-                    <input id="histFrom" type="date" class="form-control" style="width:auto; padding:0.5rem;" onchange="histFilterChanged()">
-                    <input id="histTo" type="date" class="form-control" style="width:auto; padding:0.5rem;" onchange="histFilterChanged()">
+                    <input id="histFrom" type="date" class="date-toggle" onchange="histFilterChanged()">
+                    <span class="date-sep">–</span>
+                    <input id="histTo" type="date" class="date-toggle" onchange="histFilterChanged()">
+                    <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="histDateAllTime()">All Time</button>
                     <button class="btn btn-outline" type="button" onclick="histClear()">Clear</button>
                 </div>
                 <div class="seg hist-toggle" id="histModeSeg">
@@ -1797,6 +1799,11 @@
             const defaultRange = periodRange('thisMonth');
             document.getElementById('histFrom').value = defaultRange.from;
             document.getElementById('histTo').value = defaultRange.to;
+            histFilterChanged();
+        }
+        function histDateAllTime() {
+            document.getElementById('histFrom').value = '';
+            document.getElementById('histTo').value = '';
             histFilterChanged();
         }
         function histPage(p) { hist.page = p; renderHistory(); }

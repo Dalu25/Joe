@@ -1793,7 +1793,10 @@
         function histClear() {
             ['histOutcome', 'histType', 'histSession'].forEach(id => { document.getElementById(id).value = 'all'; });
             document.getElementById('histAccount').value = 'all';
-            ['histSymbol', 'histFrom', 'histTo'].forEach(id => { document.getElementById(id).value = ''; });
+            document.getElementById('histSymbol').value = '';
+            const defaultRange = periodRange('thisMonth');
+            document.getElementById('histFrom').value = defaultRange.from;
+            document.getElementById('histTo').value = defaultRange.to;
             histFilterChanged();
         }
         function histPage(p) { hist.page = p; renderHistory(); }

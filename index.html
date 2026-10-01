@@ -1237,6 +1237,8 @@
             const dashDefaultRange = periodRange('thisMonth');
             document.getElementById('dashDateFrom').value = dashDefaultRange.from;
             document.getElementById('dashDateTo').value = dashDefaultRange.to;
+            document.getElementById('histFrom').value = dashDefaultRange.from;
+            document.getElementById('histTo').value = dashDefaultRange.to;
             updateUI();
 
             // Daily Profit Target rolls over at 17:00 EST — re-render the accounts view

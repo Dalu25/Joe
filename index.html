@@ -452,7 +452,7 @@
                 <div class="card kpi-card"><span class="card-title">Total Net P&L</span><span class="card-value" id="dash-total-pnl">$0.00</span></div>
                 <div class="card kpi-card"><span class="card-title">Total Trades</span><span class="card-value" id="dash-total-trades">0</span></div>
                 <div class="card kpi-card"><span class="card-title">Win Rate</span><span class="card-value" id="dash-win-rate">0%</span></div>
-                <div class="card kpi-card"><span class="card-title">Total RR</span><span class="card-value text-success" id="dash-total-rr">0.00R</span></div>
+                <div class="card kpi-card"><span class="card-title">Total RR</span><span class="card-value" id="dash-total-rr">0.00R</span></div>
             </div>
 
             <div class="dashboard-grid">
@@ -573,7 +573,7 @@
                     <div class="card" style="background:var(--bg-base);"><span class="card-title">Account Performance</span><span class="card-value" id="f-acc-pnl">$0.00</span></div>
                     <div class="card" style="background:var(--bg-base);"><span class="card-title">Win Rate</span><span class="card-value" id="f-acc-wr">0%</span></div>
                     <div class="card" style="background:var(--bg-base);"><span class="card-title">Trades Vol</span><span class="card-value" id="f-acc-count">0</span></div>
-                    <div class="card" style="background:var(--bg-base);"><span class="card-title">Total Return</span><span class="card-value text-success" id="f-acc-rr">0.00R</span></div>
+                    <div class="card" style="background:var(--bg-base);"><span class="card-title">Total Return</span><span class="card-value" id="f-acc-rr">0.00R</span></div>
                 </div>
                 <h4 style="font-size:0.95rem; color:var(--text-secondary);">Assigned Executions</h4>
                 <div class="table-container">
@@ -2462,6 +2462,7 @@
             document.getElementById('f-acc-wr').innerText = `${wr}%`;
             document.getElementById('f-acc-count').innerText = accTrades.length;
             document.getElementById('f-acc-rr').innerText = `${totalRR.toFixed(2)}R`;
+            document.getElementById('f-acc-rr').className = 'card-value ' + (totalRR > 0 ? 'text-success' : (totalRR < 0 ? 'text-danger' : ''));
 
             // Render trade history for this account
             const tbody = document.getElementById('focused-account-trades');
@@ -3007,7 +3008,17 @@
             sorted.forEach(t => { run += t.pnl; labels.push(t.date); data.push(run); });
             pnlChartInstance = new Chart(ctx, {
                 type: 'line',
-                data: { labels: labels.length ? labels : ['No Matrix Data'], datasets: [{ label: 'Net Accumulation', data: data.length ? data : [0], borderColor: '#00b87c', backgroundColor: 'rgba(0, 184, 124, 0.06)', fill: true, tension: 0.35, borderWidth: 2, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 4, pointBackgroundColor: '#0b0e14', pointHoverBorderColor: '#00b87c' }] },
+                data: { labels: labels.length ? labels : ['No Matrix Data'], datasets: [{
+                    label: 'Net Accumulation', data: data.length ? data : [0],
+                    borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.08)',
+                    segment: {
+                        borderColor: (ctx) => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) < 0 ? '#ef4444' : '#22c55e',
+                        backgroundColor: (ctx) => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) < 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(34, 197, 94, 0.08)'
+                    },
+                    fill: true, tension: 0.35, borderWidth: 2, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 4,
+                    pointBackgroundColor: '#0b0e14',
+                    pointHoverBorderColor: (ctx) => (ctx.parsed && ctx.parsed.y < 0) ? '#ef4444' : '#22c55e'
+                }] },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#2b3342' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } }
             });
         }
@@ -3655,6 +3666,7 @@
             document.getElementById('dash-total-trades').innerText = baseTrades.length;
             document.getElementById('dash-win-rate').innerText = `${winRate}%`;
             document.getElementById('dash-total-rr').innerText = `${totalRRValue.toFixed(2)}R`;
+            document.getElementById('dash-total-rr').className = 'card-value ' + (totalRRValue > 0 ? 'text-success' : (totalRRValue < 0 ? 'text-danger' : ''));
 
             const dashFmtShort = s => { const d = parseYmd(s); return `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; };
             let rangeLabel;

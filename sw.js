@@ -1,7 +1,7 @@
 // TradeTracker service worker — offline app shell only.
 // Never touches cross-origin requests (Google Sheets API/OAuth, Chart.js/jsPDF CDNs)
 // so live sync and library loading always go straight to the network.
-const CACHE_NAME = 'tradetracker-v1';
+const CACHE_NAME = 'tradetracker-v2';
 const APP_SHELL = [
     './',
     './index.html',
@@ -42,7 +42,7 @@ self.addEventListener('fetch', (event) => {
         // Network-first for the app shell itself, so a new push is picked up right away;
         // falls back to the last cached copy when offline.
         event.respondWith(
-            fetch(req)
+            fetch(req, { cache: 'reload' }) // bypass the browser's own HTTP cache, not just ours
                 .then((res) => {
                     const copy = res.clone();
                     caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));

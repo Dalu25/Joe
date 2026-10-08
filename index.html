@@ -328,6 +328,7 @@
         .slide-body { padding: 1.25rem 1.5rem 2rem; display: flex; flex-direction: column; gap: 0.85rem; }
         .stat-row { display: grid; gap: 0.75rem; }
         .stat-row.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .stat-row.streak-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .stat-row.c2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .stat-row.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .stat-tile { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
@@ -336,7 +337,7 @@
         .stat-sub { font-size: 0.75rem; color: var(--text-secondary); }
         .trade-tile { flex-direction: row; justify-content: space-between; align-items: center; gap: 0.75rem; }
         .review-notes textarea { min-height: 120px; }
-        @media (max-width: 640px) { .stat-row.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat-row.c3 { grid-template-columns: 1fr; } .slide-panel { max-width: 100%; } }
+        @media (max-width: 640px) { .stat-row.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat-row.c3 { grid-template-columns: 1fr; } .stat-row.streak-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .slide-panel { max-width: 100%; } }
 
         .ev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem; margin-top: 1rem; }
         .ev-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column; gap: 0.9rem; }
@@ -650,7 +651,7 @@
             </div>
 
             <h3 style="font-size:1.1rem; margin-top:0.5rem;">Streaks &amp; Extremes</h3>
-            <div class="stat-row c3">
+            <div class="stat-row c3 streak-row">
                 <div class="card kpi-card"><span class="card-title">Max Win Streak</span><span class="card-value text-success" id="stat-win-streak">0</span></div>
                 <div class="card kpi-card"><span class="card-title">Max Loss Streak</span><span class="card-value text-danger" id="stat-loss-streak">0</span></div>
                 <div class="card kpi-card"><span class="card-title">Top Win Execution</span><span class="card-value text-success" id="stat-top-win">$0.00</span></div>
@@ -664,9 +665,9 @@
                 <div class="card kpi-card">
                     <span class="card-title">Risk Consistency Score</span>
                     <span class="card-value" id="stat-risk-consistency">--</span>
-                    <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.4rem;">
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; margin-top:0.4rem; min-width:0;">
                         <label style="font-size:0.7rem; color:var(--text-secondary); white-space:nowrap;">Target Range ($)</label>
-                        <input type="text" id="targetRiskInput" class="form-control" style="padding:0.35rem 0.5rem; min-height:32px; font-size:0.8rem;" placeholder="e.g. 100-80" onchange="updateTargetRisk(this.value)">
+                        <input type="text" id="targetRiskInput" class="form-control" style="flex:1 1 120px; min-width:0; width:100%; padding:0.35rem 0.5rem; min-height:32px; font-size:0.8rem;" placeholder="e.g. 100-80" onchange="updateTargetRisk(this.value)">
                     </div>
                     <span style="font-size:0.7rem; color:var(--text-secondary);" id="stat-risk-consistency-note"></span>
                 </div>

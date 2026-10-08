@@ -159,7 +159,10 @@
             .calendar-grid { gap: 4px; }
             .cal-week-header-cell, .cal-week-cell { display: none; }
             .cal-header-cell { font-size: 0.6rem; padding-bottom: 0.25rem; }
-            .cal-day { min-height: 42px; padding: 0.25rem; border-radius: 6px; justify-content: flex-start; }
+            .cal-day { min-height: 42px; padding: 0.3rem 0.35rem; border-radius: 6px; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-items: center; align-content: center; row-gap: 3px; column-gap: 2px; }
+            .cal-day > :empty:not(.cal-dot) { display: none; }
+            .cal-day .cal-date { grid-column: 1; grid-row: 1; line-height: 1; }
+            .cal-day .cal-dot { grid-column: 1; grid-row: 2; align-self: center; justify-self: start; margin: 0; width: 5px; height: 5px; }
             .cal-day-stats { display: none; }
             .cal-date { font-size: 0.78rem; font-weight: 600; color: var(--text-primary); }
             .cal-day:not(.has-trade) .cal-date { color: var(--text-secondary); }
@@ -265,22 +268,23 @@
         
         @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }
         @media (max-width: 768px) {
-            body { flex-direction: column; }
+            body { flex-direction: column; height: 100vh; height: 100dvh; }
             .sidebar {
-                position: fixed; bottom: 0; left: 0; right: 0; width: 100%; height: 75px;
+                position: relative; flex-shrink: 0; width: 100%; height: calc(75px + env(safe-area-inset-bottom)); order: 2;
                 flex-direction: row; justify-content: space-around; border-right: none;
                 border-top: 1px solid var(--border); padding: 0.5rem 0; z-index: 1000; background-color: var(--bg-surface);
                 padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
             }
             .sidebar.collapsed { width: 100%; }
             .logo, .menu-toggle, .nav-section-label { display: none; }
-            .nav-item { padding: 0.5rem; flex-direction: column; gap: 0.2rem; font-size: 0.75rem; flex: 1; text-align: center; justify-content: center; min-height: auto; margin: 0; width: auto; border-radius: 0; }
+            .nav-item { padding: 0.5rem 0.2rem; flex-direction: column; gap: 0.25rem; font-size: 0.66rem; line-height: 1.15; flex: 1 1 0; min-width: 0; white-space: normal; text-align: center; justify-content: center; min-height: auto; margin: 0; width: auto; border-radius: 0; }
+            .nav-item svg { width: 20px; height: 20px; }
             .sidebar.collapsed .nav-text { display: block; }
             .nav-item:hover { background: none; color: var(--text-primary); }
             .nav-item.active { border-bottom: 3px solid var(--accent); background: none; color: var(--accent); box-shadow: none; }
             
             /* Viewport optimization: ensures the last line of tables or view blocks is completely scrollable on small mobile wrappers */
-            .main-content { padding: 1rem 1rem 110px 1rem; overflow-y: auto; height: auto; max-height: calc(100vh - 75px); }
+            .main-content { order: 1; padding: 1rem; flex: 1 1 0; min-height: 0; overflow-y: auto; height: auto; max-height: none; gap: 1rem; }
         }
 
         /* ===== Journal cards, reviews, evaluations, history, comparison ===== */
@@ -292,7 +296,7 @@
         .cal-week-review-btn:hover { background: rgba(139,92,246,0.28); }
         .cal-week-review-btn svg { width: 12px; height: 12px; }
         @media (max-width: 640px) {
-            .cal-card-btn { top: 5px; right: 5px; padding: 1px 3px; font-size: 0.55rem; }
+            .cal-card-btn { position: static; top: auto; right: auto; grid-column: 2; grid-row: 1; justify-self: end; align-self: center; min-height: 0; height: 20px; padding: 0 6px; font-size: 0.66rem; min-width: 22px; justify-content: center; box-sizing: border-box; }
             .cal-card-btn svg { display: none; }
         }
 
@@ -3604,7 +3608,7 @@
             }
 
             const monthChip = document.getElementById('cal-month-chip');
-            monthChip.innerText = `${monthlyAggregatePnl >= 0 ? '++' : ''}${fmtMoney(monthlyAggregatePnl)}`;
+            monthChip.innerText = fmtMoney(monthlyAggregatePnl);
             monthChip.className = 'cal-chip ' + (monthlyAggregatePnl > 0 ? 'positive' : (monthlyAggregatePnl < 0 ? 'negative' : 'neutral'));
             document.getElementById('cal-days-chip').innerText = `${monthlyTradingDays} day${monthlyTradingDays !== 1 ? 's' : ''}`;
         }

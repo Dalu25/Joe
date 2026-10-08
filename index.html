@@ -141,6 +141,8 @@
         .cal-week-header-cell { color: var(--accent); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; padding-bottom: 0.4rem; text-transform: uppercase; text-align: left; }
         .cal-day { background-color: var(--bg-base); border: 1px solid transparent; border-radius: 8px; padding: 0.4rem; min-height: 76px; display: flex; flex-direction: column; justify-content: space-between; font-size: 0.8rem; align-items: flex-start; text-align: left; }
         .cal-date { color: var(--text-secondary); text-align: left; font-size: 0.72rem; }
+        .cal-day.is-today { outline: 2px solid var(--accent); outline-offset: -2px; box-shadow: 0 0 0 3px rgba(139,92,246,0.18); }
+        .cal-day.is-today .cal-date { color: var(--accent); font-weight: 800; }
         .cal-day.has-trade { border-color: var(--border); }
         .cal-day.win { background-color: var(--success-bg); border-color: rgba(34, 197, 94, 0.3); }
         .cal-day.loss { background-color: var(--danger-bg); border-color: rgba(239, 68, 68, 0.3); }
@@ -292,7 +294,7 @@
         .cal-card-btn { position: absolute; top: 7px; right: 7px; display: inline-flex; align-items: center; gap: 3px; background: rgba(139,92,246,0.14); border: 1px solid rgba(139,92,246,0.35); color: var(--accent); border-radius: 6px; padding: 2px 5px; cursor: pointer; font-size: 0.62rem; font-weight: 800; line-height: 1; font-family: inherit; }
         .cal-card-btn:hover { background: rgba(139,92,246,0.28); }
         .cal-card-btn svg { width: 11px; height: 11px; }
-        .cal-week-review-btn { position: absolute; top: 7px; right: 7px; display: inline-flex; align-items: center; justify-content: center; background: rgba(139,92,246,0.14); border: 1px solid rgba(139,92,246,0.35); color: var(--accent); border-radius: 6px; width: 22px; height: 22px; cursor: pointer; padding: 0; }
+        .cal-week-review-btn { position: absolute; bottom: 7px; right: 7px; display: inline-flex; align-items: center; justify-content: center; background: rgba(139,92,246,0.14); border: 1px solid rgba(139,92,246,0.35); color: var(--accent); border-radius: 6px; width: 22px; height: 22px; cursor: pointer; padding: 0; }
         .cal-week-review-btn:hover { background: rgba(139,92,246,0.28); }
         .cal-week-review-btn svg { width: 12px; height: 12px; }
         @media (max-width: 640px) {
@@ -1017,7 +1019,7 @@
     </div>
 
     <!-- TRADE DETAILS VIEW MODAL -->
-    <div class="modal-overlay" id="detailsModal">
+    <div class="modal-overlay" id="detailsModal" onclick="if(event.target===this) closeModal('detailsModal')">
         <div class="modal">
             <div class="modal-header">
                 <h2>Execution Matrix Log</h2>
@@ -1356,7 +1358,10 @@
             });
             const perf = base > 0 ? (s.pnl / base) * 100 : null;
             const sessions = [...new Set(list.map(t => t.session).filter(Boolean))];
-            return { list, s, perf, session: sessions.length ? sessions.join(' / ') : '-' };
+            const pairMap = {};
+            list.forEach(t => { const k = t.symbol || '-'; pairMap[k] = (pairMap[k] || 0) + t.pnl; });
+            const pairs = Object.keys(pairMap).map(sym => ({ symbol: sym, pnl: pairMap[sym] }));
+            return { list, s, perf, pairs, session: sessions.length ? sessions.join(' / ') : '-' };
         }
 
         function weekSummary(startStr) {
@@ -1469,7 +1474,28 @@
             c.fillStyle = tx; c.font = '700 60px ' + font;
             const titleEnd = cWrap(c, o.title, pad, 205, W - pad * 2, 70, 2);
 
-            const pnlY = titleEnd + 165;
+            let pairsY = titleEnd + 62;
+            if (o.pairs && o.pairs.length) {
+                const shown = o.pairs.slice(0, 3);
+                let px = pad;
+                c.font = '700 38px ' + font;
+                shown.forEach((pr, i) => {
+                    c.fillStyle = tx; c.font = '700 38px ' + font;
+                    const name = pr.symbol;
+                    c.fillText(name, px, pairsY);
+                    px += c.measureText(name).width + 16;
+                    const amt = fmtSigned(pr.pnl);
+                    c.fillStyle = pr.pnl > 0 ? green : (pr.pnl < 0 ? red : tx);
+                    c.font = '600 38px ' + font;
+                    c.fillText(amt, px, pairsY);
+                    px += c.measureText(amt).width + 44;
+                });
+                if (o.pairs.length > 3) {
+                    c.fillStyle = sub; c.font = '600 34px ' + font;
+                    c.fillText('+' + (o.pairs.length - 3) + ' more', px, pairsY);
+                }
+            }
+            const pnlY = titleEnd + (o.pairs && o.pairs.length ? 225 : 165);
             c.fillStyle = o.pnlValue > 0 ? green : (o.pnlValue < 0 ? red : tx);
             c.font = '800 168px ' + font;
             c.fillText(o.pnlText, pad, pnlY);
@@ -1548,6 +1574,7 @@
                 const j = journal.days[cardCtx.key] || {};
                 drawScoreCard(canvas, {
                     theme, kicker: 'Trading journal', title: dayLongLabel(cardCtx.key),
+                    pairs: d.pairs,
                     pnlValue: d.s.pnl, pnlText: fmtSigned(d.s.pnl), pnlLabel: 'Net day PnL',
                     tiles: [
                         { label: 'Performance', value: d.perf === null ? '-' : `${d.perf > 0 ? '+' : ''}${d.perf.toFixed(1)}%` },
@@ -1870,7 +1897,7 @@
                 body.innerHTML = rowsHtml || '<tr><td colspan="8" style="text-align:center; color:var(--text-secondary);">No trades</td></tr>';
                 histPager(rows.length, pages);
             } else {
-                head.innerHTML = '<tr><th>Date</th><th>Trades</th><th>Win rate</th><th>R</th><th>Net P&L</th><th>Balance</th></tr>';
+                head.innerHTML = '<tr><th>Date</th><th>Trades</th><th>Win rate</th><th>R</th><th>Net P&L</th></tr>';
                 const byDate = {};
                 list.forEach(t => { (byDate[t.date] = byDate[t.date] || []).push(t); });
                 rows = Object.keys(byDate).sort().reverse();
@@ -1880,9 +1907,9 @@
                 const accId = accSel.value;
                 rowsHtml = slice.map(d => {
                     const ds = summarize(byDate[d]);
-                    return `<tr class="clickable" onclick="openDayCard('${d}')"><td>${dayShortLabel(d)}, ${d.slice(0, 4)}</td><td>${ds.n}</td><td>${ds.wr.toFixed(0)}%</td><td class="${pnlClass(ds.r)}">${fmtR(ds.r)}</td><td class="${pnlClass(ds.pnl)}">${fmtMoney(ds.pnl)}</td><td>${fmtMoney(histBalanceAfter(d, accId))}</td></tr>`;
+                    return `<tr class="clickable" onclick="openDayCard('${d}')"><td>${dayShortLabel(d)}, ${d.slice(0, 4)}</td><td>${ds.n}</td><td>${ds.wr.toFixed(0)}%</td><td class="${pnlClass(ds.r)}">${fmtR(ds.r)}</td><td class="${pnlClass(ds.pnl)}">${fmtMoney(ds.pnl)}</td></tr>`;
                 }).join('');
-                body.innerHTML = rowsHtml || '<tr><td colspan="6" style="text-align:center; color:var(--text-secondary);">No trading days</td></tr>';
+                body.innerHTML = rowsHtml || '<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No trading days</td></tr>';
                 histPager(rows.length, pages);
             }
         }
@@ -3547,6 +3574,7 @@
             grid.style.gridTemplateColumns = isMobileCal ? `repeat(${dayColCount}, 1fr)` : `repeat(${dayColCount}, 1fr) 92px`;
 
             let monthlyAggregatePnl = 0;
+            const calTodayStr = getCurrentTradingDayEST();
             let monthlyTradingDays = 0;
 
             const dayLabels = hideWeekends ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -3574,7 +3602,7 @@
                     const dailySumPnl = dailyMatches.reduce((s, t) => s + t.pnl, 0);
                     monthlyAggregatePnl += dailySumPnl;
 
-                    let dayCssClass = 'cal-day', innerHtml = `<span class="cal-date">${dayNum}</span>`;
+                    let dayCssClass = 'cal-day' + (dayString === calTodayStr ? ' is-today' : ''), innerHtml = `<span class="cal-date">${dayNum}</span>`;
                     let clickHandler = '';
                     if (dailyMatches.length) {
                         const wins = dailyMatches.filter(t => t.outcome === 'win').length;

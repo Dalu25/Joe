@@ -1046,7 +1046,7 @@
                     <div class="grade-row" id="cardGradeRow"></div>
                     <textarea id="cardNote" class="form-control" maxlength="260" placeholder="Add a clean note for this card..." oninput="onCardNoteInput()"></textarea>
                     <div class="card-count"><span id="cardNoteCount">0/260</span></div>
-                    <div><button class="btn" type="button" onclick="saveCardImage()">Save image</button></div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;"><button class="btn" type="button" onclick="shareCardImage()">Share card</button><button class="btn btn-outline" type="button" onclick="saveCardImage()">Save image</button></div>
                 </div>
             </div>
         </div>
@@ -1606,6 +1606,35 @@
                 a.download = `tradetracker_${cardCtx.kind}_${cardCtx.key}.png`;
                 a.click();
                 setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+            }, 'image/png');
+        }
+
+        // Share the rendered card as a PNG: native share sheet when available (phone/desktop),
+        // otherwise copy the image to the clipboard, otherwise fall back to a download.
+        function shareCardImage() {
+            const canvas = document.getElementById('cardCanvas');
+            if (!cardCtx) return;
+            canvas.toBlob(async blob => {
+                if (!blob) return;
+                const name = `tradetracker_${cardCtx.kind}_${cardCtx.key}.png`;
+                const file = new File([blob], name, { type: 'image/png' });
+                try {
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({ files: [file], title: 'Trading P&L card' });
+                        return;
+                    }
+                } catch (e) {
+                    if (e && e.name === 'AbortError') return;
+                }
+                try {
+                    if (navigator.clipboard && window.ClipboardItem) {
+                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                        alert('Card image copied to clipboard. Paste it into your chat.');
+                        return;
+                    }
+                } catch (e) { /* fall through to download */ }
+                saveCardImage();
+                alert('Sharing is not supported in this browser, so the image was downloaded instead.');
             }, 'image/png');
         }
 

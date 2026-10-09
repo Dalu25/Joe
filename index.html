@@ -618,16 +618,10 @@
 
             <div class="filter-container" style="justify-content: flex-start;">
                 <div class="filter-group">
-                <select id="statsDateRangeFilter" class="select-toggle" onchange="updateStatsView()">
-                    <option value="all">All Time</option>
-                    <option value="thisWeek">This Week</option>
-                    <option value="lastWeek">Last Week</option>
-                    <option value="thisMonth" selected>This Month</option>
-                    <option value="lastMonth">Last Month</option>
-                    <option value="thisQuarter">This Quarter</option>
-                    <option value="lastQuarter">Last Quarter</option>
-                    <option value="thisYear">This Year</option>
-                </select>
+                <input type="date" id="statsDateFrom" class="date-toggle" onchange="statsRangeChanged()">
+                <span class="date-sep">–</span>
+                <input type="date" id="statsDateTo" class="date-toggle" onchange="statsRangeChanged()">
+                <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="statsDateAllTime()">All Time</button>
                 <select id="statsSignalFilter" class="select-toggle" onchange="updateStatsView()">
                     <option value="exclude" selected>Exclude Signal Trades</option>
                     <option value="include">Include Signal Trades</option>
@@ -1244,6 +1238,8 @@
             document.getElementById('dashDateTo').value = dashDefaultRange.to;
             document.getElementById('histFrom').value = dashDefaultRange.from;
             document.getElementById('histTo').value = dashDefaultRange.to;
+            document.getElementById('statsDateFrom').value = dashDefaultRange.from;
+            document.getElementById('statsDateTo').value = dashDefaultRange.to;
             updateUI();
 
             // Daily Profit Target rolls over at 17:00 EST — re-render the accounts view
@@ -2130,6 +2126,11 @@
                 return d.getFullYear() === now.getFullYear();
             }
             return true;
+        }
+
+        // Same from/to semantics as the dashboard range: blank bound = open-ended.
+        function filterByDateInputs(arr, from, to) {
+            return arr.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
         }
 
         function filterByDateRange(arr, range) {
@@ -3088,8 +3089,7 @@
 
         // ===================== PORTFOLIO OVERVIEW =====================
         function updatePortfolioOverview() {
-            const dateRange = document.getElementById('statsDateRangeFilter').value;
-            const scopedTrades = filterByDateRange(trades, dateRange);
+            const scopedTrades = filterByDateInputs(trades, document.getElementById('statsDateFrom').value, document.getElementById('statsDateTo').value);
 
             const openAccounts = accounts.filter(a => !a.isClosed);
             const openAccountIds = new Set(openAccounts.map(a => a.id));
@@ -3757,6 +3757,16 @@
         function onDashboardFilterChange() {
             updateDashboard();
         }
+        function statsRangeChanged() {
+            updateStatsView();
+            updatePortfolioOverview();
+        }
+        function statsDateAllTime() {
+            document.getElementById('statsDateFrom').value = '';
+            document.getElementById('statsDateTo').value = '';
+            updateStatsView();
+            updatePortfolioOverview();
+        }
         function dashDateAllTime() {
             document.getElementById('dashDateFrom').value = '';
             document.getElementById('dashDateTo').value = '';
@@ -3765,9 +3775,8 @@
 
         // ADVANCED MATH STATISTICS (STREAKS, RISK CONSISTENCY & R-MULTIPLE DISTRIBUTION)
         function updateStatsView() {
-            const range = document.getElementById('statsDateRangeFilter').value;
             const signalFilter = document.getElementById('statsSignalFilter').value;
-            const scopedRaw = filterByDateRange(trades, range);
+            const scopedRaw = filterByDateInputs(trades, document.getElementById('statsDateFrom').value, document.getElementById('statsDateTo').value);
             let scoped = getLogicalTrades(scopedRaw); // 1 entry per logical trade, not per account leg
 
             // Signal trades are excluded from performance stats by default — they measure

@@ -623,6 +623,7 @@
                 <span class="date-sep">–</span>
                 <input type="date" id="statsDateTo" class="date-toggle" onchange="statsRangeChanged()">
                 <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="statsDateAllTime()">All Time</button>
+                <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="statsDateThisMonth()">This Month</button>
                 <select id="statsSignalFilter" class="select-toggle" onchange="updateStatsView()">
                     <option value="exclude" selected>Exclude Signal Trades</option>
                     <option value="include">Include Signal Trades</option>
@@ -3761,6 +3762,12 @@
         function statsRangeChanged() {
             updateStatsView();
             updatePortfolioOverview();
+        }
+        function statsDateThisMonth() {
+            const r = periodRange('thisMonth');
+            document.getElementById('statsDateFrom').value = r.from;
+            document.getElementById('statsDateTo').value = r.to;
+            statsRangeChanged();
         }
         function statsDateAllTime() {
             document.getElementById('statsDateFrom').value = '';

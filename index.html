@@ -3571,7 +3571,10 @@
             grid.style.gridTemplateColumns = isMobileCal ? `repeat(${dayColCount}, 1fr)` : `repeat(${dayColCount}, 1fr) 92px`;
 
             let monthlyAggregatePnl = 0;
-            const calTodayStr = getCurrentTradingDayEST();
+            // Calendar highlight uses the actual calendar date. getCurrentTradingDayEST() rolls over
+            // at 5pm New York time (for the Daily Profit Target), which made the highlight jump a day early.
+            const _now = new Date();
+            const calTodayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`;
             let monthlyTradingDays = 0;
 
             const dayLabels = hideWeekends ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

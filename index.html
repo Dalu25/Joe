@@ -459,7 +459,7 @@
                 <div class="card kpi-card"><span class="card-title">Total Net P&L</span><span class="card-value" id="dash-total-pnl">$0.00</span></div>
                 <div class="card kpi-card"><span class="card-title">Total Trades</span><span class="card-value" id="dash-total-trades">0</span></div>
                 <div class="card kpi-card"><span class="card-title">Win Rate</span><span class="card-value" id="dash-win-rate">0%</span></div>
-                <div class="card kpi-card"><span class="card-title">Total RR</span><span class="card-value" id="dash-total-rr">0.00R</span></div>
+                <div class="card kpi-card"><span class="card-title">Breakevens</span><span class="card-value text-warning" id="dash-be">0</span></div>
             </div>
 
             <div class="dashboard-grid">
@@ -635,7 +635,7 @@
             <div class="stat-row c4">
                 <div class="card kpi-card"><span class="card-title">Net P&amp;L</span><span class="card-value" id="stat-net-pnl">$0.00</span></div>
                 <div class="card kpi-card"><span class="card-title">Win Rate</span><span class="card-value" id="stat-win-rate">0%</span></div>
-                <div class="card kpi-card"><span class="card-title">Breakevens</span><span class="card-value text-warning" id="stat-be">0</span></div>
+                <div class="card kpi-card"><span class="card-title">Total RR</span><span class="card-value" id="stat-rr-card">0.00R</span></div>
                 <div class="card kpi-card"><span class="card-title">Profit Factor</span><span class="card-value" id="stat-profit-factor">0.00</span></div>
             </div>
             <div class="dash-range-note" style="margin-top:-0.25rem;">Total R:R <strong id="stat-total-rr" style="color:var(--text-primary);">0.00R</strong> · Avg R:R <strong id="stat-avg-rr" style="color:var(--text-primary);">0.00R</strong> · <strong id="stat-wins" class="text-success">0</strong> wins · <strong id="stat-losses" class="text-danger">0</strong> losses</div>
@@ -3741,8 +3741,7 @@
             document.getElementById('dash-total-pnl').className = 'card-value ' + (totalPnl > 0 ? 'text-success' : (totalPnl < 0 ? 'text-danger' : ''));
             document.getElementById('dash-total-trades').innerText = baseTrades.length;
             document.getElementById('dash-win-rate').innerText = `${winRate}%`;
-            document.getElementById('dash-total-rr').innerText = `${totalRRValue.toFixed(2)}R`;
-            document.getElementById('dash-total-rr').className = 'card-value ' + (totalRRValue > 0 ? 'text-success' : (totalRRValue < 0 ? 'text-danger' : ''));
+            document.getElementById('dash-be').innerText = be;
 
             const dashFmtShort = s => { const d = parseYmd(s); return `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; };
             let rangeLabel;
@@ -3850,7 +3849,9 @@
 
             document.getElementById('stat-wins').innerText = wT.length;
             document.getElementById('stat-losses').innerText = lT.length;
-            document.getElementById('stat-be').innerText = bT.length;
+            const rrCardEl = document.getElementById('stat-rr-card');
+            rrCardEl.innerText = totalRR.toFixed(2) + 'R';
+            rrCardEl.className = 'card-value ' + (totalRR > 0 ? 'text-success' : (totalRR < 0 ? 'text-danger' : ''));
             document.getElementById('stat-win-rate').innerText = `${winRate}%`;
             document.getElementById('stat-avg-win').innerText = fmtMoney(wT.length ? (tWin / wT.length) : 0);
             document.getElementById('stat-avg-loss').innerText = fmtMoney(-(lT.length ? (tLoss / lT.length) : 0));

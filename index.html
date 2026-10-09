@@ -497,6 +497,7 @@
                     <span class="date-sep">–</span>
                     <input type="date" id="dashDateTo" class="date-toggle" onchange="onDashboardFilterChange()">
                     <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="dashDateAllTime()">All Time</button>
+                    <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="dashDateThisMonth()">This Month</button>
                     <select id="pairFilter" class="select-toggle" onchange="onDashboardFilterChange()">
                         <option value="all">All Pairs</option>
                     </select>
@@ -3766,6 +3767,12 @@
             document.getElementById('statsDateTo').value = '';
             updateStatsView();
             updatePortfolioOverview();
+        }
+        function dashDateThisMonth() {
+            const r = periodRange('thisMonth');
+            document.getElementById('dashDateFrom').value = r.from;
+            document.getElementById('dashDateTo').value = r.to;
+            updateDashboard();
         }
         function dashDateAllTime() {
             document.getElementById('dashDateFrom').value = '';

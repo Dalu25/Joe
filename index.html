@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="icon-16.png">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     
@@ -1190,8 +1190,18 @@
             return acc.balance + (acc.balanceAdjustment || 0) + getAccountNetPnl(acc.id);
         }
 
-        let accounts = normalizeAccounts(JSON.parse(localStorage.getItem('tj_accounts')) || []);
-        let trades = parseStoredTrades(JSON.parse(localStorage.getItem('tj_trades')) || []);
+        // Corrupt or missing saved data falls back to empty instead of stopping the whole app from starting.
+        function readStoredJson(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw === null ? fallback : (JSON.parse(raw) ?? fallback);
+            } catch (e) {
+                console.error('Could not read saved data for ' + key, e);
+                return fallback;
+            }
+        }
+        let accounts = normalizeAccounts(readStoredJson('tj_accounts', []));
+        let trades = parseStoredTrades(readStoredJson('tj_trades', []));
         let editingGroupId = null;
         let selectedFocusAccountId = null;
         
@@ -1326,6 +1336,11 @@
         function journalWeek(startStr) { if (!journal.weeks[startStr]) journal.weeks[startStr] = { takeaway: '', worked: '', needs: '', focus: '' }; return journal.weeks[startStr]; }
 
         // ---- Stats helpers ----
+        // A trade logged without a risk amount has no real R-multiple (it's stored as 0),
+        // so it's left out of averages instead of dragging them toward 0R.
+        function hasRValue(t) {
+            return t.riskAmount !== null && t.riskAmount !== undefined && Number(t.riskAmount) > 0;
+        }
         function summarize(list) {
             const n = list.length;
             const pnl = list.reduce((s, t) => s + t.pnl, 0);
@@ -1823,6 +1838,7 @@
             let run = acc.balance + (acc.balanceAdjustment || 0);
             const labels = ['Start'], data = [run];
             logical.forEach(t => { run += t.pnl; labels.push(t.date); data.push(run); });
+            if (typeof Chart === 'undefined') return; // chart library didn't load — skip the graph, keep the app working
             const ctx = document.getElementById('perfEquityChart').getContext('2d');
             if (perfChartInstance) perfChartInstance.destroy();
             perfChartInstance = new Chart(ctx, {
@@ -2155,7 +2171,7 @@
             return Array.from(map.values()).map(recs => {
                 const first = recs[0];
                 const totalPnl = recs.reduce((s, r) => s + r.pnl, 0);
-                const rrValues = recs.map(r => parseFloat(r.rr)).filter(v => !isNaN(v));
+                const rrValues = recs.filter(hasRValue).map(r => parseFloat(r.rr)).filter(v => !isNaN(v));
                 const avgRr = rrValues.length ? (rrValues.reduce((a, b) => a + b, 0) / rrValues.length) : 0;
                 const riskValues = recs.map(r => parseFloat(r.riskAmount)).filter(v => !isNaN(v) && v > 0);
                 const totalRisk = riskValues.length ? riskValues.reduce((a, b) => a + b, 0) : null;
@@ -2673,8 +2689,14 @@
             try {
                 localStorage.setItem('tj_accounts', JSON.stringify(accounts));
                 localStorage.setItem('tj_trades', JSON.stringify(compactTrades(trades)));
-                if (typeof gsSchedulePush === 'function') gsSchedulePush();
-            } catch (e) { alert('LocalStorage capacity optimization limits triggered. Please reduce base image size inputs.'); }
+            } catch (e) {
+                alert('LocalStorage capacity optimization limits triggered. Please reduce base image size inputs.');
+                return;
+            }
+            // Sheets sync failures are reported by the sync status, not as a storage-full alert.
+            if (typeof gsSchedulePush === 'function') {
+                try { gsSchedulePush(); } catch (e) { console.error('Sheets sync could not be scheduled', e); }
+            }
         }
 
         // ===================== MULTI-ACCOUNT SELECTION INTERFACE =====================
@@ -3052,6 +3074,7 @@
 
         // GRAPH PERFORMANCE INFRASTRUCTURE
         function renderChart(sourceTrades) {
+            if (typeof Chart === 'undefined') return; // chart library didn't load — skip the graph, keep the app working
             const ctx = document.getElementById('pnlChart').getContext('2d');
             if(pnlChartInstance) pnlChartInstance.destroy();
             Chart.defaults.color = '#94a3b8'; Chart.defaults.font.family = "'Inter', sans-serif";
@@ -3150,7 +3173,7 @@
             const netPnl = tWin - tLoss;
 
             let totalRR = 0, rrCount = 0;
-            scoped.forEach(t => { if(t.rr !== undefined && !isNaN(t.rr)) { totalRR += parseFloat(t.rr); rrCount++; } });
+            scoped.forEach(t => { if(t.rr !== undefined && !isNaN(t.rr) && hasRValue(t)) { totalRR += parseFloat(t.rr); rrCount++; } });
             const avgRR = rrCount ? (totalRR / rrCount) : 0;
             const validDenom = scoped.length - bT.length;
             const winRate = validDenom > 0 ? ((wT.length / validDenom) * 100) : 0;
@@ -3808,7 +3831,7 @@
             
             let totalRR = 0, rrCount = 0;
             scoped.forEach(t => {
-                if(t.rr !== undefined && !isNaN(t.rr)) {
+                if(t.rr !== undefined && !isNaN(t.rr) && hasRValue(t)) {
                     totalRR += parseFloat(t.rr);
                     rrCount++;
                 }
@@ -4091,6 +4114,7 @@
 
             const canvas = document.getElementById('rMultipleChart');
             if(!canvas) return;
+            if (typeof Chart === 'undefined') return; // chart library didn't load — skip the graph, keep the app working
             const ctx = canvas.getContext('2d');
             if(rMultipleChartInstance) rMultipleChartInstance.destroy();
             Chart.defaults.color = '#94a3b8'; Chart.defaults.font.family = "'Inter', sans-serif";
@@ -4211,7 +4235,7 @@
                         const hasRemoteData = rows.length > 1 && (parseInt(rows[1][0], 10) > 0 || parseInt(rows[1][1], 10) > 0);
                         if (hasRemoteData) {
                             if (confirm('This Google Sheet already has journal data.\n\nOK = Pull it down (overwrites what\'s on this device)\nCancel = Push this device\'s data up (overwrites the Sheet)')) {
-                                await gsPull();
+                                await gsPull({ force: true });
                             } else {
                                 await gsPush();
                             }
@@ -4312,12 +4336,29 @@
         const GS_CHUNK_SIZE = 40000;
         function gsChunkString(str) {
             const chunks = [];
-            for (let i = 0; i < str.length; i += GS_CHUNK_SIZE) chunks.push(str.slice(i, i + GS_CHUNK_SIZE));
+            let i = 0;
+            while (i < str.length) {
+                let end = Math.min(i + GS_CHUNK_SIZE, str.length);
+                // Never cut between the two halves of an emoji (UTF-16 surrogate pair),
+                // or the Sheet stores a broken character.
+                const last = str.charCodeAt(end - 1);
+                if (end < str.length && last >= 0xD800 && last <= 0xDBFF) end--;
+                chunks.push(str.slice(i, end));
+                i = end;
+            }
             if (chunks.length === 0) chunks.push('');
             return chunks;
         }
-        async function gsPush() {
+        // Pushes run one at a time, so overlapping saves can't interleave their writes.
+        let gsPushChain = Promise.resolve();
+        function gsPush() {
+            const run = gsPushChain.then(() => gsPushOnce());
+            gsPushChain = run.catch(() => {});
+            return run;
+        }
+        async function gsPushOnce() {
             if (!gsTokenValid()) { alert('Please connect to Google Sheets first.'); return; }
+            const version = gsLocalVersion; // any edit after this point keeps the device dirty
             gsSetStatus('Pushing…', null);
             try {
                 await gsEnsureStructure();
@@ -4333,13 +4374,22 @@
                 // Clear a generous range first so a shorter push never leaves stale chunk rows behind.
                 await gsClearValues('JournalData!A1:C5000');
                 await gsUpdateValues('JournalData!A1:C' + grid.length, grid);
+                gsClearDirty(version);
                 gsSetStatus('Synced just now', true);
             } catch (err) {
                 gsSetStatus('Push failed: ' + err.message, false);
             }
         }
-        async function gsPull() {
+        async function gsPull(opts) {
             if (!gsTokenValid()) { alert('Please connect to Google Sheets first.'); return; }
+            // Pulling replaces local data, so never do it silently over edits that
+            // haven't reached the Sheet yet. The user decides which side wins.
+            if (gsHasUnsyncedChanges() && !(opts && opts.force)) {
+                if (!confirm('This device has changes that are not in the Sheet yet.\n\nOK = Load the Sheet (discards those changes)\nCancel = Keep this device\'s data and push it up')) {
+                    gsPush();
+                    return;
+                }
+            }
             gsSetStatus('Pulling…', null);
             try {
                 await gsEnsureStructure();
@@ -4352,12 +4402,15 @@
                 const acctJson = dataRows.slice(0, acctCount).map(r => r[1] || '').join('');
                 const journalCount = parseInt(rows[1][2], 10) || 0;
                 const journalJson = dataRows.slice(0, journalCount).map(r => r[2] || '').join('');
-                if (tradesJson) trades = parseStoredTrades(JSON.parse(tradesJson));
-                if (acctJson) accounts = normalizeAccounts(JSON.parse(acctJson));
-                if (journalJson) journal = normalizeJournal(JSON.parse(journalJson));
+                // Parse everything first, so a bad blob can't leave memory half-replaced.
+                const nextTrades = tradesJson ? parseStoredTrades(JSON.parse(tradesJson)) : trades;
+                const nextAccounts = acctJson ? normalizeAccounts(JSON.parse(acctJson)) : accounts;
+                const nextJournal = journalJson ? normalizeJournal(JSON.parse(journalJson)) : journal;
+                trades = nextTrades; accounts = nextAccounts; journal = nextJournal;
                 localStorage.setItem('tj_journal', JSON.stringify(journal));
                 localStorage.setItem('tj_accounts', JSON.stringify(accounts));
                 localStorage.setItem('tj_trades', JSON.stringify(compactTrades(trades)));
+                try { localStorage.removeItem('tj_gs_dirty'); } catch (e) { /* ignore */ }
                 closeAccountFocus();
                 resetAccountForm();
                 updateUI();
@@ -4366,11 +4419,37 @@
                 gsSetStatus('Pull failed: ' + err.message, false);
             }
         }
+        // Unsynced-changes tracking. Every local save marks the device dirty; a push
+        // clears the mark only if no newer change was made while it was running.
+        // The flag lives in localStorage so it survives closing the app.
+        let gsLocalVersion = 0;
+        function gsHasUnsyncedChanges() {
+            try { return localStorage.getItem('tj_gs_dirty') === '1'; } catch (e) { return false; }
+        }
+        function gsMarkDirty() {
+            if (localStorage.getItem('tj_gs_granted') !== 'true') return; // never connected — nothing to sync to
+            gsLocalVersion++;
+            try { localStorage.setItem('tj_gs_dirty', '1'); } catch (e) { /* storage full — flag not persisted */ }
+        }
+        function gsClearDirty(version) {
+            if (version !== gsLocalVersion) return; // edited again mid-push — stay dirty
+            try { localStorage.removeItem('tj_gs_dirty'); } catch (e) { /* ignore */ }
+        }
         function gsSchedulePush() {
+            gsMarkDirty();
             if (!gsTokenValid() || !gsAutoSyncEnabled()) return;
             clearTimeout(gsState.pushTimer);
             gsState.pushTimer = setTimeout(() => { gsPush(); }, 1500);
         }
+        // Closing the page inside the 1.5 s debounce window would otherwise drop the
+        // push. Start it now; if it doesn't finish, the dirty flag still protects the data.
+        window.addEventListener('pagehide', () => {
+            if (gsState.pushTimer && gsTokenValid()) {
+                clearTimeout(gsState.pushTimer);
+                gsState.pushTimer = null;
+                gsPush();
+            }
+        });
         // Manual "Save Now" button on the homepage — pushes immediately instead
         // of waiting on the debounce, for right before closing the app. Auto-pull
         // on connect/reconnect is untouched by this; this only ever pushes.

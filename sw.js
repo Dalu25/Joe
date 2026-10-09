@@ -1,7 +1,7 @@
 // TradeTracker service worker — offline app shell only.
 // Never touches cross-origin requests (Google Sheets API/OAuth, Chart.js/jsPDF CDNs)
 // so live sync and library loading always go straight to the network.
-const CACHE_NAME = 'tradetracker-v2';
+const CACHE_NAME = 'tradetracker-v3'; // bumped so v2 entries cached from error responses are dropped
 const APP_SHELL = [
     './',
     './index.html',
@@ -44,8 +44,11 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(req, { cache: 'reload' }) // bypass the browser's own HTTP cache, not just ours
                 .then((res) => {
-                    const copy = res.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
+                    // Only good responses go into the cache; an error page must never replace the app shell.
+                    if (res.ok) {
+                        const copy = res.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
+                    }
                     return res;
                 })
                 .catch(() => caches.match('./index.html'))
@@ -56,8 +59,10 @@ self.addEventListener('fetch', (event) => {
     // Cache-first for same-origin static assets (icons, manifest).
     event.respondWith(
         caches.match(req).then((cached) => cached || fetch(req).then((res) => {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+            if (res.ok) {
+                const copy = res.clone();
+                caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+            }
             return res;
         }))
     );

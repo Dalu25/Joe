@@ -3698,10 +3698,23 @@
             openModal('detailsModal');
         }
 
+        // Keep the calendar on the month the dashboard range covers. Only applies when the range
+        // sits inside a single calendar month; wider ranges leave the calendar where it is.
+        function syncCalendarToDashRange(from, to) {
+            if (!from || !to) return;
+            const a = parseYmd(from), b = parseYmd(to);
+            if (a.getFullYear() !== b.getFullYear() || a.getMonth() !== b.getMonth()) return;
+            if (calYear === a.getFullYear() && calMonth === a.getMonth()) return;
+            calYear = a.getFullYear();
+            calMonth = a.getMonth();
+            renderCalendar();
+        }
+
         // CENTRAL PROCESSING DASHBOARD UPDATES WITH RECTIFIED DATA VISUALS
         function updateDashboard() {
             const dashFrom = document.getElementById('dashDateFrom').value;
             const dashTo = document.getElementById('dashDateTo').value;
+            syncCalendarToDashRange(dashFrom, dashTo);
             const pair = document.getElementById('pairFilter').value;
             const tradeTypeFilter = document.getElementById('tradeTypeFilter').value;
 

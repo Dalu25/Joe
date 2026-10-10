@@ -488,6 +488,7 @@
 
         <!-- DASHBOARD VIEW -->
         <section id="dashboard" class="view-section active">
+            <div id="tiltBanner" style="display:none; margin-bottom:0.75rem; padding:0.9rem 1rem; border:1px solid var(--danger); border-radius:12px; background:rgba(239,68,68,0.12); font-size:0.9rem;"></div>
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
                 <div class="dash-range-note" style="margin-bottom:0;">Stats for: <strong id="dash-range-label" style="color:var(--text-primary);">All Time</strong></div>
                 <div style="display:flex; align-items:center; gap:0.6rem;">
@@ -579,6 +580,10 @@
                             <input type="number" id="accDailyProfitTarget" class="form-control" placeholder="e.g. 100" step="0.01" min="0">
                         </div>
                         <div class="form-group">
+                            <label>Daily Loss Limit ($)</label>
+                            <input type="number" id="accDailyLossLimit" class="form-control" placeholder="e.g. 300" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
                             <label>Consistency Rule</label>
                             <select id="accConsistencyBasis" class="form-control" style="margin-bottom:0.5rem;">
                                 <option value="">No consistency rule</option>
@@ -638,6 +643,11 @@
                 <div class="card kpi-card"><span class="card-title">Avg Loss Value</span><span class="card-value text-danger" id="stat-avg-loss">$0.00</span></div>
                 <div class="card kpi-card"><span class="card-title">Total Wins ($)</span><span class="card-value text-success" id="stat-total-wins-amt">$0.00</span></div>
                 <div class="card kpi-card"><span class="card-title">Total Losses ($)</span><span class="card-value text-danger" id="stat-total-losses-amt">$0.00</span></div>
+            </div>
+
+            <div class="stat-row c2">
+                <div class="card kpi-card"><span class="card-title">Expectancy · last 20</span><span class="card-value" id="stat-exp-20">$0.00</span><span class="stat-sub" id="stat-exp-20-sub">-</span></div>
+                <div class="card kpi-card"><span class="card-title">Expectancy · last 50</span><span class="card-value" id="stat-exp-50">$0.00</span><span class="stat-sub" id="stat-exp-50-sub">-</span></div>
             </div>
 
             <h3 style="font-size:1.1rem; margin-top:0.5rem;">Streaks &amp; Extremes</h3>
@@ -1184,6 +1194,7 @@
                 if(a.maxDD === undefined) a.maxDD = null;
                 if(a.profitTarget === undefined) a.profitTarget = null;
                 if(a.dailyProfitTarget === undefined) a.dailyProfitTarget = null;
+                if(a.dailyLossLimit === undefined) a.dailyLossLimit = null;
                 if(a.isClosed === undefined) a.isClosed = false;
                 if(a.consistencyBasis === undefined) a.consistencyBasis = '';
                 if(a.consistencyPct === undefined) a.consistencyPct = null;
@@ -2360,6 +2371,8 @@
             const profitTarget = profitTargetVal === '' ? null : Math.abs(parseFloat(profitTargetVal));
             const dailyProfitTargetVal = document.getElementById('accDailyProfitTarget').value;
             const dailyProfitTarget = dailyProfitTargetVal === '' ? null : Math.abs(parseFloat(dailyProfitTargetVal));
+            const dailyLossLimitVal = document.getElementById('accDailyLossLimit').value;
+            const dailyLossLimit = dailyLossLimitVal === '' ? null : Math.abs(parseFloat(dailyLossLimitVal));
             const consistencyBasis = document.getElementById('accConsistencyBasis').value;
             const consistencyPctVal = document.getElementById('accConsistencyPct').value;
             const consistencyPct = consistencyPctVal === '' ? null : Math.abs(parseFloat(consistencyPctVal));
@@ -2373,6 +2386,7 @@
                     accounts[idx].maxDD = maxDD;
                     accounts[idx].profitTarget = profitTarget;
                     accounts[idx].dailyProfitTarget = dailyProfitTarget;
+                    accounts[idx].dailyLossLimit = dailyLossLimit;
                     accounts[idx].consistencyBasis = consistencyBasis;
                     accounts[idx].consistencyPct = consistencyPct;
                     accounts[idx].accountType = accountType;
@@ -2389,7 +2403,7 @@
             } else {
                 const newId = Date.now().toString();
                 const balanceAdjustment = currentBalanceVal === '' ? 0 : (parseFloat(currentBalanceVal) - balance);
-                accounts.push({ id: newId, name, balance, balanceAdjustment, maxDD, profitTarget, dailyProfitTarget, consistencyBasis, consistencyPct, accountType });
+                accounts.push({ id: newId, name, balance, balanceAdjustment, maxDD, profitTarget, dailyProfitTarget, dailyLossLimit, consistencyBasis, consistencyPct, accountType });
             }
             saveData();
             resetAccountForm();
@@ -2407,6 +2421,7 @@
             document.getElementById('accMaxDD').value = (acc.maxDD !== null && acc.maxDD !== undefined) ? acc.maxDD : '';
             document.getElementById('accProfitTarget').value = (acc.profitTarget !== null && acc.profitTarget !== undefined) ? acc.profitTarget : '';
             document.getElementById('accDailyProfitTarget').value = (acc.dailyProfitTarget !== null && acc.dailyProfitTarget !== undefined) ? acc.dailyProfitTarget : '';
+            document.getElementById('accDailyLossLimit').value = (acc.dailyLossLimit !== null && acc.dailyLossLimit !== undefined) ? acc.dailyLossLimit : '';
             document.getElementById('accConsistencyBasis').value = acc.consistencyBasis || '';
             document.getElementById('accConsistencyPct').value = (acc.consistencyPct !== null && acc.consistencyPct !== undefined) ? acc.consistencyPct : '';
             document.getElementById('accType').value = acc.accountType || 'evaluation';
@@ -2782,6 +2797,35 @@
             renderRecentSymbols();
             tradeFormSnapshot = tradeFormState();
             document.getElementById('tradeSymbol').focus();
+        }
+
+        // ===================== ROLLING EXPECTANCY =====================
+        // Average result per trade over the last N logical trades in the current filter.
+        // Shows $ per trade and R per trade (R only for trades that have a risk amount).
+        function renderExpectancy(scoped) {
+            const sorted = [...scoped].sort((a, b) => {
+                if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+                return (a.createdAt || 0) - (b.createdAt || 0);
+            });
+            [20, 50].forEach(n => {
+                const win = sorted.slice(-n);
+                const valEl = document.getElementById(`stat-exp-${n}`);
+                const subEl = document.getElementById(`stat-exp-${n}-sub`);
+                if (!valEl) return;
+                if (win.length === 0) {
+                    valEl.innerText = '$0.00';
+                    subEl.innerText = 'No trades in range';
+                    return;
+                }
+                const s = summarize(win);
+                const rTrades = win.filter(hasRValue);
+                const avgR = rTrades.length ? rTrades.reduce((x, t) => x + (parseFloat(t.rr) || 0), 0) / rTrades.length : null;
+                const exp = s.pnl / win.length;
+                valEl.innerText = fmtSigned(exp) + ' / trade';
+                valEl.className = 'card-value ' + pnlClass(exp);
+                const note = win.length < n ? `Only ${win.length} trade${win.length === 1 ? '' : 's'} so far` : `${n} trades`;
+                subEl.innerText = `${avgR === null ? 'No R data' : (avgR >= 0 ? '+' : '') + avgR.toFixed(2) + 'R / trade'} · ${s.wr.toFixed(1)}% win rate · ${note}`;
+            });
         }
 
         // ===================== PERFORMANCE BY (session / model / symbol) =====================
@@ -3315,6 +3359,7 @@
                             <div style="display:flex; flex-direction:column; gap:0.1rem; font-size:0.8rem; color:var(--text-secondary);">
                                 <span>Default Capital: <strong>${fmtMoney(acc.balance)}</strong></span>
                                 <span>Total Period P&L: <strong class="${netAccountPnl >= 0 ? 'text-success' : 'text-danger'}">${netAccountPnl >= 0 ? '+' : ''}${fmtMoney(netAccountPnl)}</strong></span>
+                                ${acc.dailyLossLimit ? `<span>Daily loss limit: <strong>${fmtMoney(acc.dailyLossLimit)}</strong> · today <strong class="${accountTodayPnl(acc) <= -acc.dailyLossLimit ? 'text-danger' : ''}">${fmtMoney(accountTodayPnl(acc))}</strong></span>` : ''}
                             </div>
                             <div class="meter-row">
                                 <div class="meter-labels">
@@ -4006,6 +4051,35 @@
             renderCalendar();
         }
 
+        // ===================== TILT & DAILY LOSS =====================
+        // Tilt: after TILT_LOSS_LIMIT losing trades in one trading day, show a cooldown banner.
+        // Per-account daily loss limits are checked the same way. Both reset at the 5 PM EST rollover.
+        const TILT_LOSS_LIMIT = 3;
+        function accountTodayPnl(acc) {
+            const today = getCurrentTradingDayEST();
+            return trades.filter(t => t.accountId === acc.id && t.date === today).reduce((s, t) => s + t.pnl, 0);
+        }
+        function getTiltStatus() {
+            const today = getCurrentTradingDayEST();
+            const losses = getLogicalTrades(trades.filter(t => t.date === today)).filter(t => t.outcome === 'loss').length;
+            const breached = accounts
+                .filter(a => !a.isClosed && a.dailyLossLimit)
+                .map(a => ({ acc: a, pnl: accountTodayPnl(a) }))
+                .filter(x => x.pnl <= -x.acc.dailyLossLimit);
+            return { losses, breached };
+        }
+        function renderTiltBanner() {
+            const el = document.getElementById('tiltBanner');
+            if (!el) return;
+            const { losses, breached } = getTiltStatus();
+            const lines = [];
+            if (losses >= TILT_LOSS_LIMIT) lines.push(`<strong>Cooldown:</strong> ${losses} losing trades today. Step away before the next entry.`);
+            breached.forEach(x => lines.push(`<strong>${jEsc(x.acc.name)}</strong> hit its daily loss limit (${fmtMoney(x.pnl)} against -${fmtMoney(x.acc.dailyLossLimit)}).`));
+            if (lines.length === 0) { el.style.display = 'none'; el.innerHTML = ''; return; }
+            el.style.display = '';
+            el.innerHTML = lines.map(l => `<div>${l}</div>`).join('') + `<div style="margin-top:0.35rem; font-size:0.8rem; color:var(--text-secondary);">Resets at 5 PM EST.</div>`;
+        }
+
         // CENTRAL PROCESSING DASHBOARD UPDATES WITH RECTIFIED DATA VISUALS
         function updateDashboard() {
             const { from: dashFrom, to: dashTo, pair } = getSharedFilter();
@@ -4042,6 +4116,7 @@
             document.getElementById('dash-range-label').innerText = rangeLabel;
 
             populateChartAccountSelect();
+            renderTiltBanner();
             const chartAcc = document.getElementById('pnlChartAccount').value;
             const activeIds = new Set(accounts.filter(a => !a.isClosed).map(a => a.id));
             renderChart(chartAcc === 'all' ? baseTradesRaw.filter(t => activeIds.has(t.accountId)) : baseTradesRaw.filter(t => t.accountId === chartAcc));
@@ -4169,6 +4244,7 @@
             renderRMultipleChart(scoped);
             renderMonthlyConsistency();
             updatePortfolioOverview();
+            renderExpectancy(scoped);
             updatePerformanceBy(scoped);
         }
 

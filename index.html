@@ -3352,7 +3352,7 @@
             if (!sel) return;
             const current = sel.value || 'all';
             const active = accounts.filter(a => !a.isClosed);
-            sel.innerHTML = '<option value="all">All accounts</option>' + active.map(a => `<option value="${jEsc(a.id)}">${jEsc(a.name)}</option>`).join('');
+            sel.innerHTML = '<option value="all">All active accounts</option>' + active.map(a => `<option value="${jEsc(a.id)}">${jEsc(a.name)}</option>`).join('');
             sel.value = (current === 'all' || active.some(a => a.id === current)) ? current : 'all';
         }
 
@@ -4043,7 +4043,8 @@
 
             populateChartAccountSelect();
             const chartAcc = document.getElementById('pnlChartAccount').value;
-            renderChart(chartAcc === 'all' ? baseTradesRaw : baseTradesRaw.filter(t => t.accountId === chartAcc));
+            const activeIds = new Set(accounts.filter(a => !a.isClosed).map(a => a.id));
+            renderChart(chartAcc === 'all' ? baseTradesRaw.filter(t => activeIds.has(t.accountId)) : baseTradesRaw.filter(t => t.accountId === chartAcc));
         }
 
         // ===================== SHARED FILTERS (Dashboard + Advanced Statistics) =====================

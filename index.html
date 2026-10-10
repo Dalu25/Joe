@@ -296,7 +296,8 @@
         .switch.switch-sm input:checked + .switch-track::before { transform: translateX(14px); }
 
         .view-section { display: none; }
-        .view-section.active { display: flex; flex-direction: column; gap: 1.5rem; }
+        .view-section.active { display: flex; flex-direction: column; gap: 0.75rem; }
+        .view-section > .toggle-section { margin-top: 0; }
         .action-btns { display: flex; gap: 0.5rem; }
         
         @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }

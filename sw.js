@@ -1,7 +1,7 @@
 // TradeTracker service worker — offline app shell only.
 // Never touches cross-origin requests (Google Sheets API/OAuth, Chart.js/jsPDF CDNs)
 // so live sync and library loading always go straight to the network.
-const CACHE_NAME = 'tradetracker-v3'; // bumped so v2 entries cached from error responses are dropped
+const CACHE_NAME = 'tradetracker-v4'; // bumped so v2 entries cached from error responses are dropped
 const APP_SHELL = [
     './',
     './index.html',

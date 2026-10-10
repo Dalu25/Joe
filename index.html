@@ -1033,6 +1033,15 @@
                 </div>
                 
                 <div class="form-group">
+                    <label>Outcome</label>
+                    <select id="tradeOutcome" class="form-control" required onchange="handleOutcomeChange()">
+                        <option value="win">Win</option>
+                        <option value="loss">Loss</option>
+                        <option value="breakeven">Breakeven</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>Setup</label>
                     <div id="tradeTagChips" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
                 </div>
@@ -2344,6 +2353,7 @@
             document.getElementById('tradeSignal').checked = false;
             document.getElementById('tradeMe').checked = false;
             
+            document.getElementById('tradeOutcome').value = 'win';
             selectedTradeAccounts = [];
             tradeAccountData = {};
             renderAvailableAccounts();
@@ -2372,7 +2382,7 @@
                 if(acc) {
                     selectedTradeAccounts.push(acc);
                     tradeAccountData[acc.id] = {
-                        pnl: gt.pnl,
+                        pnl: Math.abs(gt.pnl),
                         risk: (gt.riskAmount !== null && gt.riskAmount !== undefined && gt.riskAmount !== '') ? gt.riskAmount : ''
                     };
                 }
@@ -2382,6 +2392,7 @@
             
             document.getElementById('tradeSymbol').value = trade.symbol || '';
             document.getElementById('tradeDate').value = trade.date;
+            document.getElementById('tradeOutcome').value = trade.outcome || 'win';
             document.getElementById('tradeSession').value = trade.session || '';
             document.getElementById('tradeSignal').checked = trade.isSignal || false;
             document.getElementById('tradeMe').checked = trade.isMe || false;
@@ -2405,7 +2416,11 @@
             document.getElementById(id).classList.remove('active');
         }
 
-        // Outcome comes from the P&L sign, so a loss can never be logged as a win
+        function handleOutcomeChange() {
+            refreshAllAccountRr();
+        }
+
+        // Outcome from a signed P&L value (used by CSV import)
         function outcomeFromPnl(p) {
             if (p === '' || p === null || p === undefined || isNaN(parseFloat(p))) return '';
             const v = parseFloat(p);
@@ -2424,10 +2439,11 @@
 
         // Per-account live R:R helpers (each selected account has its own P/L and risk)
         function getAccountRr(accountId) {
+            const outcome = document.getElementById('tradeOutcome').value;
             const d = tradeAccountData[accountId] || { pnl: '', risk: '' };
             const pnlAbs = Math.abs(parseFloat(d.pnl) || 0);
             const riskAbs = Math.abs(parseFloat(d.risk) || 0);
-            return computeRr(outcomeFromPnl(d.pnl), pnlAbs, riskAbs);
+            return computeRr(outcome, pnlAbs, riskAbs);
         }
 
         function updateAccountTradeValue(accountId, field, value) {
@@ -2731,6 +2747,7 @@
             });
             if(noRisk.length && !confirm(`No risk entered for ${noRisk.map(a => a.name).join(', ')}. Those trades will be left out of R averages. Save anyway?`)) return;
 
+            const outcome = document.getElementById('tradeOutcome').value;
             const symbol = normalizeSymbol(document.getElementById('tradeSymbol').value);
             const date = document.getElementById('tradeDate').value;
             const session = document.getElementById('tradeSession').value;
@@ -2744,10 +2761,10 @@
 
             const newGroupRecords = selectedTradeAccounts.map(acc => {
                 const d = tradeAccountData[acc.id];
-                const pnl = parseFloat(d.pnl);
-                const outcome = outcomeFromPnl(pnl);
+                const pnlAbs = Math.abs(parseFloat(d.pnl) || 0);
+                const pnl = (outcome === 'loss') ? -pnlAbs : ((outcome === 'breakeven') ? 0 : pnlAbs);
                 const riskAmount = (d.risk === '' || d.risk === undefined || d.risk === null) ? null : Math.abs(parseFloat(d.risk) || 0);
-                const rr = computeRr(outcome, Math.abs(pnl), riskAmount || 0);
+                const rr = computeRr(outcome, pnlAbs, riskAmount || 0);
                 const existingRec = existingGroupTrades.find(t => t.accountId === acc.id);
                 const images = existingRec ? (existingRec.images || []) : [];
                 const id = existingRec ? existingRec.id : (Date.now().toString() + '_' + acc.id);
@@ -2917,14 +2934,14 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                         <div>
                             <strong style="display:block;">${acc.name}</strong>
-                            <small style="color:var(--text-secondary);">${fmtMoney(getAccountCurrentBalance(acc))}${outcomeWord(d.pnl) ? ' · ' + outcomeWord(d.pnl) : ''}</small>
+                            <small style="color:var(--text-secondary);">${fmtMoney(getAccountCurrentBalance(acc))}</small>
                         </div>
                         <button type="button" class="btn btn-outline" style="padding:0.2rem 0.5rem; min-height:28px; font-size:0.8rem;" onclick="removeTradeAccount('${acc.id}')">×</button>
                     </div>
                     <div style="display:flex; gap:0.5rem;">
                         <div style="flex:1;">
-                            <label style="font-size:0.7rem; color:var(--text-secondary);">P&amp;L ($) · minus for loss</label>
-                            <input type="number" class="form-control" style="padding:0.4rem; font-size:0.85rem;" step="0.01" placeholder="e.g. 500 or -150" value="${d.pnl}" oninput="updateAccountTradeValue('${acc.id}','pnl',this.value)">
+                            <label style="font-size:0.7rem; color:var(--text-secondary);">P/L ($)</label>
+                            <input type="number" class="form-control" style="padding:0.4rem; font-size:0.85rem;" step="0.01" min="0" placeholder="e.g. 500" value="${d.pnl}" oninput="updateAccountTradeValue('${acc.id}','pnl',this.value)">
                         </div>
                         <div style="flex:1;">
                             <label style="font-size:0.7rem; color:var(--text-secondary);">Risk ($)</label>
@@ -2950,10 +2967,6 @@
 
         function escHtml(v) {
             return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-        }
-        function outcomeWord(p) {
-            const o = outcomeFromPnl(p);
-            return o === 'win' ? 'Win' : (o === 'loss' ? 'Loss' : (o === 'breakeven' ? 'Breakeven' : ''));
         }
         function normalizeSymbol(s) {
             return String(s || '').toUpperCase().replace(/[\s\/\-_]/g, '');
@@ -3007,6 +3020,7 @@
             return JSON.stringify([
                 document.getElementById('tradeSymbol').value,
                 document.getElementById('tradeDate').value,
+                document.getElementById('tradeOutcome').value,
                 document.getElementById('tradeSession').value,
                 document.getElementById('tradeSignal').checked,
                 document.getElementById('tradeMe').checked,

@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Trading Journal</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0b0e14">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a78bfa'/%3E%3Cstop offset='1' stop-color='%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M16 40l10-10 8 8 14-16' stroke='white' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M40 21h8v8' stroke='white' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <meta name="theme-color" content="#000000">
+    <script>try{document.documentElement.dataset.theme=localStorage.getItem('tj_app_theme')==='light'?'light':'dark';}catch(e){}</script>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23000000'/%3E%3Cstop offset='1' stop-color='%23333333'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M16 40l10-10 8 8 14-16' stroke='white' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M40 21h8v8' stroke='white' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Trading Journal">
@@ -19,14 +20,20 @@
     
     <style>
         :root {
-            --bg-base: #0a0a0f;
-            --bg-surface: #13131a;
-            --bg-surface-hover: #1c1c26;
-            --border: #26262f;
-            --text-primary: #f8fafc;
-            --text-secondary: #8b8b9a;
-            --accent: #8b5cf6;
-            --accent-hover: #7c3aed;
+            color-scheme: dark;
+            --bg-base: #000000;
+            --bg-surface: #0d0d0d;
+            --bg-surface-hover: #1a1a1a;
+            --border: #262626;
+            --text-primary: #ffffff;
+            --text-secondary: #9a9a9a;
+            --accent: #ffffff;
+            --accent-hover: #d4d4d4;
+            --on-accent: #000000;
+            --accent-soft: rgba(255, 255, 255, 0.10);
+            --accent-glow: rgba(255, 255, 255, 0.25);
+            --grid: #262626;
+            --chart-line: #ffffff;
             --danger: #ef4444;
             --danger-bg: rgba(239, 68, 68, 0.12);
             --success: #22c55e;
@@ -37,6 +44,23 @@
             --sidebar-width: 250px;
             --sidebar-collapsed-width: 80px;
         }
+        :root[data-theme="light"] {
+            color-scheme: light;
+            --bg-base: #ffffff;
+            --bg-surface: #f6f6f6;
+            --bg-surface-hover: #ececec;
+            --border: #e0e0e0;
+            --text-primary: #0a0a0a;
+            --text-secondary: #6b6b6b;
+            --accent: #0a0a0a;
+            --accent-hover: #262626;
+            --on-accent: #ffffff;
+            --accent-soft: rgba(0, 0, 0, 0.06);
+            --accent-glow: rgba(0, 0, 0, 0.18);
+            --grid: #e5e5e5;
+            --chart-line: #0a0a0a;
+        }
+
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html { touch-action: manipulation; }
@@ -81,7 +105,7 @@
         .nav-item svg { min-width: 20px; }
         .sidebar.collapsed .nav-text { display: none; }
         .nav-item:hover { color: var(--text-primary); background-color: var(--bg-surface-hover); }
-        .nav-item.active { color: white; background: var(--accent); box-shadow: 0 2px 12px rgba(139, 92, 246, 0.35); }
+        .nav-item.active { color: var(--on-accent); background: var(--accent); box-shadow: 0 2px 12px var(--accent-soft); }
 
         .main-content { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; -webkit-overflow-scrolling: touch; }
 
@@ -93,7 +117,7 @@
         .menu-toggle:hover { color: var(--text-primary); }
 
         button { min-height: 44px; font-family: inherit; }
-        .btn { background-color: var(--accent); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9rem; }
+        .btn { background-color: var(--accent); color: var(--on-accent); border: none; padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9rem; }
         .btn:hover { background-color: var(--accent-hover); }
         .btn-outline { background-color: transparent; border: 1px solid var(--border); color: var(--text-primary); }
         .btn-outline:hover { background-color: var(--bg-surface-hover); }
@@ -105,7 +129,7 @@
         .card { background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; transition: border-color 0.2s; }
         .card.clickable { cursor: pointer; }
         .card.clickable:hover { border-color: var(--accent); }
-        .card.active-account { border-color: var(--accent); background: linear-gradient(145deg, var(--bg-surface), #1a222f); }
+        .card.active-account { border-color: var(--accent); background: linear-gradient(145deg, var(--bg-surface), var(--bg-surface-hover)); }
         .card-title { color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
         .card-value { font-size: 1.6rem; font-weight: 700; word-break: break-all; }
         .kpi-card .card-value { font-size: 1.75rem; letter-spacing: -0.01em; }
@@ -135,13 +159,13 @@
         .cal-chip { padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
         .cal-chip.positive { background: var(--success-bg); color: var(--success); }
         .cal-chip.negative { background: var(--danger-bg); color: var(--danger); }
-        .cal-chip.neutral { background: rgba(139, 92, 246, 0.15); color: var(--accent); }
+        .cal-chip.neutral { background: var(--accent-soft); color: var(--accent); }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr) 92px; gap: 6px; text-align: center; }
         .cal-header-cell { color: var(--text-secondary); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; padding-bottom: 0.4rem; text-transform: uppercase; }
         .cal-week-header-cell { color: var(--accent); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; padding-bottom: 0.4rem; text-transform: uppercase; text-align: left; }
         .cal-day { background-color: var(--bg-base); border: 1px solid transparent; border-radius: 8px; padding: 0.4rem; min-height: 76px; display: flex; flex-direction: column; justify-content: space-between; font-size: 0.8rem; align-items: flex-start; text-align: left; }
         .cal-date { color: var(--text-secondary); text-align: left; font-size: 0.72rem; }
-        .cal-day.is-today { outline: 2px solid var(--accent); outline-offset: -2px; box-shadow: 0 0 0 3px rgba(139,92,246,0.18); }
+        .cal-day.is-today { outline: 2px solid var(--accent); outline-offset: -2px; box-shadow: 0 0 0 3px var(--accent-soft); }
         .cal-day.is-today .cal-date { color: var(--accent); font-weight: 800; }
         .cal-day.has-trade { border-color: var(--border); }
         .cal-day.win { background-color: var(--success-bg); border-color: rgba(34, 197, 94, 0.3); }
@@ -215,8 +239,8 @@
         .badge-win { background-color: var(--success-bg); color: var(--success); }
         .badge-loss { background-color: var(--danger-bg); color: var(--danger); }
         .badge-breakeven { background-color: var(--warning-bg); color: var(--warning); }
-        .badge-signal { background-color: rgba(99, 102, 241, 0.15); color: #6366f1; }
-        .badge-me { background-color: rgba(168, 85, 247, 0.15); color: #a855f7; }
+        .badge-signal { background-color: var(--accent-soft); color: var(--text-primary); }
+        .badge-me { background-color: var(--accent-soft); color: var(--text-secondary); }
 
         /* Small visual meters (streak dots, drawdown bars) */
         .meter-row { margin-top: 0.6rem; }
@@ -257,8 +281,9 @@
         .switch { position: relative; display: inline-block; width: 56px; height: 32px; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .switch-track { position: absolute; cursor: pointer; inset: 0; background-color: var(--border); border-radius: 999px; transition: 0.2s; }
-        .switch-track::before { content: ""; position: absolute; height: 24px; width: 24px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+        .switch-track::before { content: ""; position: absolute; height: 24px; width: 24px; left: 4px; bottom: 4px; background-color: var(--text-primary); border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
         .switch input:checked + .switch-track { background-color: var(--accent); }
+        .switch input:checked + .switch-track::before { background-color: var(--on-accent); }
         .switch input:checked + .switch-track::before { transform: translateX(24px); }
         .switch.switch-sm { width: 34px; height: 20px; }
         .switch.switch-sm .switch-track::before { height: 14px; width: 14px; left: 3px; bottom: 3px; }
@@ -291,11 +316,11 @@
 
         /* ===== Journal cards, reviews, evaluations, history, comparison ===== */
         .cal-day, .cal-week-cell { position: relative; }
-        .cal-card-btn { position: absolute; top: 7px; right: 7px; display: inline-flex; align-items: center; gap: 3px; background: rgba(139,92,246,0.14); border: 1px solid rgba(139,92,246,0.35); color: var(--accent); border-radius: 6px; padding: 2px 5px; cursor: pointer; font-size: 0.62rem; font-weight: 800; line-height: 1; font-family: inherit; }
-        .cal-card-btn:hover { background: rgba(139,92,246,0.28); }
+        .cal-card-btn { position: absolute; top: 7px; right: 7px; display: inline-flex; align-items: center; gap: 3px; background: var(--accent-soft); border: 1px solid var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 2px 5px; cursor: pointer; font-size: 0.62rem; font-weight: 800; line-height: 1; font-family: inherit; }
+        .cal-card-btn:hover { background: var(--accent-soft); }
         .cal-card-btn svg { width: 11px; height: 11px; }
-        .cal-week-review-btn { position: absolute; bottom: 7px; right: 7px; display: inline-flex; align-items: center; justify-content: center; background: rgba(139,92,246,0.14); border: 1px solid rgba(139,92,246,0.35); color: var(--accent); border-radius: 6px; width: 22px; height: 22px; cursor: pointer; padding: 0; }
-        .cal-week-review-btn:hover { background: rgba(139,92,246,0.28); }
+        .cal-week-review-btn { position: absolute; bottom: 7px; right: 7px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent-soft); border: 1px solid var(--accent-soft); color: var(--accent); border-radius: 6px; width: 22px; height: 22px; cursor: pointer; padding: 0; }
+        .cal-week-review-btn:hover { background: var(--accent-soft); }
         .cal-week-review-btn svg { width: 12px; height: 12px; }
         @media (max-width: 640px) {
             .cal-card-btn { position: static; top: auto; right: auto; grid-column: 2; grid-row: 1; justify-self: end; align-self: center; min-height: 0; height: 20px; padding: 0 6px; font-size: 0.66rem; min-width: 22px; justify-content: center; box-sizing: border-box; }
@@ -315,7 +340,7 @@
         .seg button.active { background: var(--bg-surface-hover); color: var(--text-primary); }
         .grade-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
         .grade-chip { border: 1px solid var(--border); background: transparent; color: var(--text-secondary); border-radius: 8px; padding: 0.35rem 0.75rem; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 0.8rem; }
-        .grade-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(139,92,246,0.12); }
+        .grade-chip.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
         @media (max-width: 760px) { .card-modal-body { grid-template-columns: 1fr; } }
 
         .slide-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: flex; justify-content: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
@@ -346,7 +371,7 @@
         .ev-bal { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.1rem; }
         .ev-pill { padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
         .ev-pill.passed { background: var(--success-bg); color: var(--success); }
-        .ev-pill.track { background: rgba(139,92,246,0.15); color: var(--accent); }
+        .ev-pill.track { background: var(--accent-soft); color: var(--accent); }
         .ev-pill.risk { background: var(--warning-bg); color: var(--warning); }
         .ev-pill.breached { background: var(--danger-bg); color: var(--danger); }
         .ev-pill.idle { background: var(--bg-surface-hover); color: var(--text-secondary); }
@@ -380,10 +405,10 @@
         <div class="logo">
             <div class="logo-mark">
                 <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <defs><linearGradient id="tjLogoGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs>
+                    <defs><linearGradient id="tjLogoGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--text-primary)"/><stop offset="1" style="stop-color:var(--text-secondary)"/></linearGradient></defs>
                     <rect width="64" height="64" rx="16" fill="url(#tjLogoGrad)"/>
-                    <path d="M16 40l10-10 8 8 14-16" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M40 21h8v8" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M16 40l10-10 8 8 14-16" stroke="currentColor" style="color:var(--on-accent)" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M40 21h8v8" stroke="currentColor" style="color:var(--on-accent)" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </div>
             <div class="logo-copy">
@@ -777,6 +802,16 @@
         
         <!-- MANAGE DATA VIEW -->
         <section id="manage" class="view-section">
+            <details class="toggle-section" style="max-width:500px;" open>
+                <summary>Appearance</summary>
+                <div class="toggle-body">
+                    <div class="seg" id="appThemeSeg">
+                        <button type="button" data-app-theme="light" onclick="setAppTheme('light')">Light</button>
+                        <button type="button" data-app-theme="dark" onclick="setAppTheme('dark')">Dark</button>
+                    </div>
+                </div>
+            </details>
+
             <details class="toggle-section" style="max-width:500px;">
                 <summary>Cloud Sync (Google Sheets)</summary>
                 <div class="toggle-body">
@@ -1418,6 +1453,21 @@
 
         // ---- Score card rendering (canvas) ----
         let cardCtx = null; // { kind: 'day'|'week', key }
+        function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+        function getAppTheme() { try { return localStorage.getItem('tj_app_theme') === 'light' ? 'light' : 'dark'; } catch (e) { return 'dark'; } }
+        function applyAppTheme(t) {
+            document.documentElement.dataset.theme = t;
+            const meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.content = t === 'light' ? '#ffffff' : '#000000';
+            document.querySelectorAll('#appThemeSeg button').forEach(b => b.classList.toggle('active', b.dataset.appTheme === t));
+        }
+        function setAppTheme(t) {
+            try { localStorage.setItem('tj_app_theme', t); } catch (e) { /* not persisted — still applies for this session */ }
+            applyAppTheme(t);
+            if (typeof updateUI === 'function') updateUI();
+        }
+        applyAppTheme(getAppTheme());
+
         function getCardTheme() { return localStorage.getItem('tj_card_theme') === 'light' ? 'light' : 'dark'; }
         function setCardTheme(t) { localStorage.setItem('tj_card_theme', t); renderCard(); }
 
@@ -1474,7 +1524,7 @@
             g.addColorStop(0, dark ? '#0b0f1a' : '#f6f8fc'); g.addColorStop(1, dark ? '#151c30' : '#e7ebf5');
             c.fillStyle = g; c.fillRect(0, 0, W, H);
             const rg = c.createRadialGradient(W * 0.85, H * 0.04, 0, W * 0.85, H * 0.04, W * 0.75);
-            rg.addColorStop(0, dark ? 'rgba(139,92,246,0.30)' : 'rgba(139,92,246,0.16)'); rg.addColorStop(1, 'rgba(139,92,246,0)');
+            rg.addColorStop(0, dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'); rg.addColorStop(1, dark ? 'rgba(255,255,255,0)' : 'rgba(0,0,0,0)');
             c.fillStyle = rg; c.fillRect(0, 0, W, H);
 
             c.textBaseline = 'alphabetic'; c.textAlign = 'left';
@@ -1843,8 +1893,8 @@
             if (perfChartInstance) perfChartInstance.destroy();
             perfChartInstance = new Chart(ctx, {
                 type: 'line',
-                data: { labels, datasets: [{ label: 'Balance', data, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.08)', fill: true, tension: 0.35, borderWidth: 2, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 4, pointBackgroundColor: '#0b0e14', pointHoverBorderColor: '#8b5cf6' }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#2b3342' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } }
+                data: { labels, datasets: [{ label: 'Balance', data, borderColor: cssVar('--chart-line'), backgroundColor: cssVar('--accent-soft'), fill: true, tension: 0.35, borderWidth: 2, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 4, pointBackgroundColor: cssVar('--bg-base'), pointHoverBorderColor: cssVar('--chart-line') }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: cssVar('--grid') } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } }
             });
         }
 
@@ -3077,7 +3127,7 @@
             if (typeof Chart === 'undefined') return; // chart library didn't load — skip the graph, keep the app working
             const ctx = document.getElementById('pnlChart').getContext('2d');
             if(pnlChartInstance) pnlChartInstance.destroy();
-            Chart.defaults.color = '#94a3b8'; Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = cssVar('--text-secondary'); Chart.defaults.font.family = "'Inter', sans-serif";
             // Collapse multi-account legs into single logical trades so a trade fired on 3
             // accounts doesn't triple-count on the curve, and sort by date then creation
             // order so same-day trades don't jump around unpredictably.
@@ -3099,10 +3149,10 @@
                         backgroundColor: (ctx) => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) < 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(34, 197, 94, 0.08)'
                     },
                     fill: true, tension: 0.35, borderWidth: 2, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 4,
-                    pointBackgroundColor: '#0b0e14',
+                    pointBackgroundColor: cssVar('--bg-base'),
                     pointHoverBorderColor: (ctx) => (ctx.parsed && ctx.parsed.y < 0) ? '#ef4444' : '#22c55e'
                 }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#2b3342' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } }
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: cssVar('--grid') } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } }
             });
         }
 
@@ -4117,7 +4167,7 @@
             if (typeof Chart === 'undefined') return; // chart library didn't load — skip the graph, keep the app working
             const ctx = canvas.getContext('2d');
             if(rMultipleChartInstance) rMultipleChartInstance.destroy();
-            Chart.defaults.color = '#94a3b8'; Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = cssVar('--text-secondary'); Chart.defaults.font.family = "'Inter', sans-serif";
             rMultipleChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -4132,7 +4182,7 @@
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    scales: { y: { grid: { color: '#2b3342' }, ticks: { precision: 0 } }, x: { grid: { display: false } } },
+                    scales: { y: { grid: { color: cssVar('--grid') }, ticks: { precision: 0 } }, x: { grid: { display: false } } },
                     plugins: { legend: { display: false } }
                 }
             });

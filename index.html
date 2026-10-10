@@ -3075,12 +3075,18 @@
         }
 
         // ===================== MODEL PERFORMANCE =====================
-        // Every model is listed, even with no trades in range, matching Session Performance.
+        // Only models with trades in range are listed, matching Session Performance.
         function updateModelPerformance(scoped) {
             const tbody = document.getElementById('modelPerformanceBody');
             if (!tbody) return;
-            tbody.innerHTML = TRADE_TAGS.map(tag => {
-                const list = scoped.filter(t => (t.tags || []).includes(tag));
+            const rows = TRADE_TAGS
+                .map(tag => ({ tag, list: scoped.filter(t => (t.tags || []).includes(tag)) }))
+                .filter(r => r.list.length > 0);
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No trades in this range.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = rows.map(({ tag, list }) => {
                 const s = summarize(list);
                 const denom = list.length - s.be;
                 const wr = denom > 0 ? ((s.wins / denom) * 100).toFixed(1) : '0.0';

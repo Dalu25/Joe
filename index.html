@@ -487,25 +487,6 @@
         </div>
 
         <!-- DASHBOARD VIEW -->
-        <!-- SHARED FILTERS: used by Dashboard and Advanced Statistics -->
-        <div class="filter-container" id="sharedFilters" style="margin-top: 0.75rem;">
-            <div class="filter-group">
-                <input type="date" id="dashDateFrom" class="date-toggle" onchange="sharedFilterChanged()">
-                <span class="date-sep">–</span>
-                <input type="date" id="dashDateTo" class="date-toggle" onchange="sharedFilterChanged()">
-                <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="sharedAllTime()">All Time</button>
-                <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="sharedThisMonth()">This Month</button>
-                <select id="pairFilter" class="select-toggle" onchange="sharedFilterChanged()">
-                    <option value="all">All Pairs</option>
-                </select>
-                <select id="tradeTypeFilter" class="select-toggle" onchange="sharedFilterChanged()" title="Me = your own trades. Signal = trades you took from someone else's call.">
-                    <option value="me" selected>Me</option>
-                    <option value="all">All trades</option>
-                    <option value="signal">Signal</option>
-                </select>
-            </div>
-        </div>
-
         <section id="dashboard" class="view-section active">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
                 <div class="dash-range-note" style="margin-bottom:0;">Stats for: <strong id="dash-range-label" style="color:var(--text-primary);">All Time</strong></div>
@@ -902,6 +883,25 @@
             <div id="perfProgressCard"></div>
             <div class="grid-cards" id="perfKpis" style="margin-top:1rem;"></div>
         </section>
+
+        <!-- SHARED FILTERS: used by Dashboard and Advanced Statistics -->
+        <div class="filter-container" id="sharedFilters" style="margin-top: 1.25rem;">
+            <div class="filter-group">
+                <input type="date" id="dashDateFrom" class="date-toggle" onchange="sharedFilterChanged()">
+                <span class="date-sep">–</span>
+                <input type="date" id="dashDateTo" class="date-toggle" onchange="sharedFilterChanged()">
+                <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="sharedAllTime()">All Time</button>
+                <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="sharedThisMonth()">This Month</button>
+                <select id="pairFilter" class="select-toggle" onchange="sharedFilterChanged()">
+                    <option value="all">All Pairs</option>
+                </select>
+                <select id="tradeTypeFilter" class="select-toggle" onchange="sharedFilterChanged()" title="Me = your own trades. Signal = trades you took from someone else's call.">
+                    <option value="me" selected>Me</option>
+                    <option value="all">All trades</option>
+                    <option value="signal">Signal</option>
+                </select>
+            </div>
+        </div>
 
     </main>
 
@@ -3351,8 +3351,9 @@
             const sel = document.getElementById('pnlChartAccount');
             if (!sel) return;
             const current = sel.value || 'all';
-            sel.innerHTML = '<option value="all">All accounts</option>' + accounts.map(a => `<option value="${jEsc(a.id)}">${jEsc(a.name)}${a.isClosed ? ' (archived)' : ''}</option>`).join('');
-            sel.value = (current === 'all' || accounts.some(a => a.id === current)) ? current : 'all';
+            const active = accounts.filter(a => !a.isClosed);
+            sel.innerHTML = '<option value="all">All accounts</option>' + active.map(a => `<option value="${jEsc(a.id)}">${jEsc(a.name)}</option>`).join('');
+            sel.value = (current === 'all' || active.some(a => a.id === current)) ? current : 'all';
         }
 
         function renderChart(sourceTrades) {

@@ -3086,6 +3086,31 @@
             let h = w / ratio;
             if (h > pageH - margin * 2) { h = pageH - margin * 2; w = h * ratio; }
             doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, w, h);
+
+            // Journal notes go in the PDF only, below the review image
+            const j = journal.weeks[reviewCtx.start] || {};
+            const notes = [['What worked', j.worked], ['What needs work', j.needs], ["Next week's focus", j.focus]]
+                .filter(([, v]) => v && String(v).trim());
+            if (notes.length) {
+                let y = margin + h + 24;
+                if (pageH - margin - y < 90) { doc.addPage(); y = margin; }
+                const textW = pageW - margin * 2;
+                notes.forEach(([label, text]) => {
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(12);
+                    if (y > pageH - margin) { doc.addPage(); y = margin; }
+                    doc.text(label, margin, y);
+                    y += 16;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(11);
+                    doc.splitTextToSize(String(text), textW).forEach(line => {
+                        if (y > pageH - margin) { doc.addPage(); y = margin; }
+                        doc.text(line, margin, y);
+                        y += 15;
+                    });
+                    y += 10;
+                });
+            }
             doc.save(reviewFileStem() + '.pdf');
         }
 

@@ -26,7 +26,7 @@
             --bg-surface-hover: #161616;
             --border: #3a3a3a;
             --text-primary: #ffffff;
-            --text-secondary: #d4d4d4;
+            --text-secondary: #ffffff;
             --accent: #ffffff;
             --accent-hover: #d4d4d4;
             --on-accent: #000000;
@@ -365,7 +365,7 @@
         .stat-row.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .stat-tile { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
         .stat-label { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
-        .stat-value { font-size: 1.15rem; font-weight: 700; }
+        .stat-value { font-size: 1.3rem; font-weight: 700; }
         .stat-sub { font-size: 0.75rem; color: var(--text-secondary); }
         .trade-tile { flex-direction: row; justify-content: space-between; align-items: center; gap: 0.75rem; }
         .review-notes textarea { min-height: 120px; }
@@ -1851,7 +1851,7 @@
                         </div>
                         ${pct !== null ? `<div style="text-align:right;">
                             <div class="stat-label">Profit</div>
-                            <div class="stat-value" style="font-size:1.5rem;">${fmtMoney(r.bal - acc.balance)} <span class="stat-sub" style="font-size:0.85rem;">/ ${fmtMoney(acc.profitTarget - acc.balance)}</span></div>
+                            <div class="stat-value">${fmtMoney(r.bal - acc.balance)} <span class="stat-sub" style="font-size:0.85rem;">/ ${fmtMoney(acc.profitTarget - acc.balance)}</span></div>
                             <div style="color:var(--success); font-weight:700;">${pct.toFixed(0)}%</div>
                         </div>` : ''}
                     </div>

@@ -695,85 +695,29 @@
                 <div style="position: relative; height: 260px; width: 100%;"><canvas id="rMultipleChart"></canvas></div>
             </div>
 
-            <!-- SYMBOL PERFORMANCE TABLE -->
+            <!-- PERFORMANCE BY (session / model / symbol, one card with a selector) -->
             <details class="toggle-section">
-                <summary>📈 Symbol Performance</summary>
+                <summary>📊 Performance by</summary>
                 <div class="toggle-body no-pad">
-                    <div class="table-container" style="border:none; border-radius:0;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Symbol</th>
-                                    <th>Trades</th>
-                                    <th>Win Rate</th>
-                                    <th>Total R:R</th>
-                                    <th>Total P&L</th>
-                                </tr>
-                            </thead>
-                            <tbody id="symbolPerformanceBody"></tbody>
-                        </table>
+                    <div style="padding:0.75rem 1rem;">
+                        <select id="perfByDim" class="select-toggle" onchange="updatePerformanceBy()" aria-label="Break performance down by">
+                            <option value="session">Session</option>
+                            <option value="model">Model</option>
+                            <option value="symbol">Symbol</option>
+                        </select>
                     </div>
-                </div>
-            </details>
-
-            <!-- DAY PERFORMANCE TABLE -->
-            <details class="toggle-section">
-                <summary>📅 Performance by Day</summary>
-                <div class="toggle-body no-pad">
                     <div class="table-container" style="border:none; border-radius:0;">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Day</th>
-                                    <th>Trades</th>
-                                    <th>Win Rate</th>
-                                    <th>Total R:R</th>
-                                    <th>Total P&L</th>
-                                </tr>
-                            </thead>
-                            <tbody id="dayPerformanceBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </details>
-
-            <!-- SESSION PERFORMANCE TABLE -->
-            <details class="toggle-section">
-                <summary>🕒 Session Performance</summary>
-                <div class="toggle-body no-pad">
-                    <div class="table-container" style="border:none; border-radius:0;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Session</th>
-                                    <th>Trades</th>
-                                    <th>Win Rate</th>
-                                    <th>Total R:R</th>
-                                    <th>Total P&L</th>
-                                </tr>
-                            </thead>
-                            <tbody id="sessionPerformanceBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </details>
-
-            <!-- MODEL PERFORMANCE TABLE -->
-            <details class="toggle-section">
-                <summary>🎯 Model Performance</summary>
-                <div class="toggle-body no-pad">
-                    <div class="table-container" style="border:none; border-radius:0;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Model</th>
+                                    <th id="perfByLabel">Session</th>
                                     <th>Trades</th>
                                     <th>Win Rate</th>
                                     <th>Total R:R</th>
                                     <th>Total P&amp;L</th>
                                 </tr>
                             </thead>
-                            <tbody id="modelPerformanceBody"></tbody>
+                            <tbody id="perfByBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -2940,27 +2884,47 @@
             document.getElementById('tradeSymbol').focus();
         }
 
-        // ===================== MODEL PERFORMANCE =====================
-        // Only models with trades in range are listed, matching Session Performance.
-        function updateModelPerformance(scoped) {
-            const tbody = document.getElementById('modelPerformanceBody');
+        // ===================== PERFORMANCE BY (session / model / symbol) =====================
+        // Each option lists only groups that have trades in the current range.
+        let perfByScoped = [];
+        const SESSION_LABELS = { 'AS': 'Asian', 'LO': 'London', 'NY AM': 'New York AM', 'NY PM': 'New York PM', 'LC': 'London Close', '': 'Not Specified' };
+
+        function perfByGroups(dim, scoped) {
+            if (dim === 'model') {
+                return TRADE_TAGS
+                    .map(tag => ({ label: tag, list: scoped.filter(t => (t.tags || []).includes(tag)) }))
+                    .filter(g => g.list.length > 0);
+            }
+            if (dim === 'symbol') {
+                const map = {};
+                scoped.forEach(t => { const k = t.symbol || 'Unknown'; (map[k] = map[k] || []).push(t); });
+                return Object.keys(map)
+                    .map(k => ({ label: k, list: map[k] }))
+                    .sort((a, b) => summarize(b.list).pnl - summarize(a.list).pnl);
+            }
+            return ['AS', 'LO', 'NY AM', 'NY PM', 'LC', '']
+                .map(k => ({ label: SESSION_LABELS[k], list: scoped.filter(t => (t.session || '') === k) }))
+                .filter(g => g.list.length > 0);
+        }
+
+        function updatePerformanceBy(scoped) {
+            if (scoped) perfByScoped = scoped;
+            const tbody = document.getElementById('perfByBody');
             if (!tbody) return;
-            const rows = TRADE_TAGS
-                .map(tag => ({ tag, list: scoped.filter(t => (t.tags || []).includes(tag)) }))
-                .filter(r => r.list.length > 0);
-            if (rows.length === 0) {
+            const dim = document.getElementById('perfByDim').value;
+            document.getElementById('perfByLabel').textContent = { session: 'Session', model: 'Model', symbol: 'Symbol' }[dim];
+            const groups = perfByGroups(dim, perfByScoped);
+            if (groups.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No trades in this range.</td></tr>`;
                 return;
             }
-            tbody.innerHTML = rows.map(({ tag, list }) => {
+            tbody.innerHTML = groups.map(({ label, list }) => {
                 const s = summarize(list);
-                const denom = list.length - s.be;
-                const wr = denom > 0 ? ((s.wins / denom) * 100).toFixed(1) : '0.0';
                 const cls = s.pnl > 0 ? 'text-success' : (s.pnl < 0 ? 'text-danger' : 'text-warning');
                 return `<tr>
-                    <td style="font-weight:600;">${tag}</td>
-                    <td>${list.length}</td>
-                    <td>${wr}%</td>
+                    <td style="font-weight:600;">${label}</td>
+                    <td>${s.n}</td>
+                    <td>${s.wr.toFixed(1)}%</td>
                     <td>${s.r.toFixed(2)}R</td>
                     <td class="${cls}">${fmtMoney(s.pnl)}</td>
                 </tr>`;
@@ -4197,7 +4161,6 @@
             // Account balances/drawdown/target are untouched since those come from raw trades.
             if(signalFilter === 'exclude') scoped = scoped.filter(t => !t.isSignal);
             else if(signalFilter === 'only') scoped = scoped.filter(t => t.isSignal);
-            updateModelPerformance(scoped);
 
             const wT = scoped.filter(t => t.outcome === 'win');
             const lT = scoped.filter(t => t.outcome === 'loss');
@@ -4280,111 +4243,7 @@
             renderRMultipleChart(scoped);
             renderMonthlyConsistency();
             updatePortfolioOverview();
-            updateSymbolPerformance(scoped);
-            updateDayPerformance(scoped);
-            updateSessionPerformance(scoped);
-        }
-
-        // SYMBOL PERFORMANCE BREAKDOWN
-        function updateSymbolPerformance(scoped) {
-            const map = {};
-            scoped.forEach(t => {
-                const sym = t.symbol || 'Unknown';
-                if(!map[sym]) map[sym] = { trades: 0, wins: 0, be: 0, rr: 0, pnl: 0 };
-                map[sym].trades++;
-                if(t.outcome === 'win') map[sym].wins++;
-                if(t.outcome === 'breakeven') map[sym].be++;
-                map[sym].rr += (parseFloat(t.rr) || 0);
-                map[sym].pnl += t.pnl;
-            });
-            const rows = Object.keys(map).sort((a, b) => map[b].pnl - map[a].pnl);
-            const tbody = document.getElementById('symbolPerformanceBody');
-            if(!tbody) return;
-            if(rows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No trades in this range.</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = rows.map(sym => {
-                const d = map[sym];
-                const denom = d.trades - d.be;
-                const wr = denom > 0 ? ((d.wins / denom) * 100).toFixed(1) : '0.0';
-                return `<tr>
-                    <td style="font-weight:600;">${sym}</td>
-                    <td>${d.trades}</td>
-                    <td>${wr}%</td>
-                    <td>${d.rr.toFixed(2)}R</td>
-                    <td class="${d.pnl > 0 ? 'text-success' : (d.pnl < 0 ? 'text-danger' : 'text-warning')}">${fmtMoney(d.pnl)}</td>
-                </tr>`;
-            }).join('');
-        }
-
-        // DAY-OF-WEEK PERFORMANCE BREAKDOWN
-        function updateDayPerformance(scoped) {
-            const dayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const map = {};
-            scoped.forEach(t => {
-                const dow = new Date(t.date + 'T00:00:00').getDay();
-                if(!map[dow]) map[dow] = { trades: 0, wins: 0, be: 0, rr: 0, pnl: 0 };
-                map[dow].trades++;
-                if(t.outcome === 'win') map[dow].wins++;
-                if(t.outcome === 'breakeven') map[dow].be++;
-                map[dow].rr += (parseFloat(t.rr) || 0);
-                map[dow].pnl += t.pnl;
-            });
-            const rows = [0, 1, 2, 3, 4, 5, 6].filter(k => map[k]);
-            const tbody = document.getElementById('dayPerformanceBody');
-            if(!tbody) return;
-            if(rows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No trades in this range.</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = rows.map(dow => {
-                const d = map[dow];
-                const denom = d.trades - d.be;
-                const wr = denom > 0 ? ((d.wins / denom) * 100).toFixed(1) : '0.0';
-                return `<tr>
-                    <td style="font-weight:600;">${dayLabels[dow]}</td>
-                    <td>${d.trades}</td>
-                    <td>${wr}%</td>
-                    <td>${d.rr.toFixed(2)}R</td>
-                    <td class="${d.pnl > 0 ? 'text-success' : (d.pnl < 0 ? 'text-danger' : 'text-warning')}">${fmtMoney(d.pnl)}</td>
-                </tr>`;
-            }).join('');
-        }
-
-        // SESSION PERFORMANCE BREAKDOWN
-        function updateSessionPerformance(scoped) {
-            const sessionLabels = { 'AS': 'Asian', 'LO': 'London', 'NY AM': 'New York AM', 'NY PM': 'New York PM', 'LC': 'London Close', '': 'Not Specified' };
-            const map = {};
-            scoped.forEach(t => {
-                const key = t.session || '';
-                if(!map[key]) map[key] = { trades: 0, wins: 0, be: 0, rr: 0, pnl: 0 };
-                map[key].trades++;
-                if(t.outcome === 'win') map[key].wins++;
-                if(t.outcome === 'breakeven') map[key].be++;
-                map[key].rr += (parseFloat(t.rr) || 0);
-                map[key].pnl += t.pnl;
-            });
-            const order = ['AS', 'LO', 'NY AM', 'NY PM', 'LC', ''];
-            const rows = order.filter(k => map[k]);
-            const tbody = document.getElementById('sessionPerformanceBody');
-            if(!tbody) return;
-            if(rows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No trades in this range.</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = rows.map(key => {
-                const d = map[key];
-                const denom = d.trades - d.be;
-                const wr = denom > 0 ? ((d.wins / denom) * 100).toFixed(1) : '0.0';
-                return `<tr>
-                    <td style="font-weight:600;">${sessionLabels[key] || key}</td>
-                    <td>${d.trades}</td>
-                    <td>${wr}%</td>
-                    <td>${d.rr.toFixed(2)}R</td>
-                    <td class="${d.pnl > 0 ? 'text-success' : (d.pnl < 0 ? 'text-danger' : 'text-warning')}">${fmtMoney(d.pnl)}</td>
-                </tr>`;
-            }).join('');
+            updatePerformanceBy(scoped);
         }
 
         // MONTHLY CONSISTENCY SCORE — measures how evenly distributed daily P&L is this month

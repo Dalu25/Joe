@@ -3090,7 +3090,8 @@
         }
 
         function exportData() {
-            const payload = { app: 'TradeTracker', version: 2, exportedAt: new Date().toISOString(), accounts, trades: compactTrades(trades), journal };
+            const cfg = gsCfg();
+            const payload = { app: 'TradeTracker', version: 2, exportedAt: new Date().toISOString(), accounts, trades: compactTrades(trades), journal, sheetSettings: { clientId: cfg.clientId, sheetId: cfg.sheetId } };
             const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -3155,6 +3156,12 @@
                         accounts = newAccounts;
                         trades = newTrades;
                         if (data.journal) { journal = normalizeJournal(data.journal); saveJournal(); }
+                        if (data.sheetSettings) {
+                            try {
+                                if (data.sheetSettings.clientId) localStorage.setItem('tj_gs_client_id', data.sheetSettings.clientId);
+                                if (data.sheetSettings.sheetId) localStorage.setItem('tj_gs_sheet_id', data.sheetSettings.sheetId);
+                            } catch (e) { /* storage blocked */ }
+                        }
                         saveData(); alert('Restore complete.'); updateUI();
                     } else alert('Incorrect JSON scheme structural layout mapping.');
                 } catch (err) { alert('System parsing error occurred.'); }
@@ -4383,10 +4390,16 @@
             refreshTimer: null,
             authIntent: null, // 'manual' (user clicked Connect) or 'silent' (background re-auth)
         };
+        // Built-in defaults so every device and browser connects without re-entering them.
+        // The OAuth Client ID is public by design; the Sheet ID alone cannot open the sheet,
+        // since Google still requires signing in with the owner's account.
+        const GS_DEFAULTS = { clientId: '', sheetId: '' };
         function gsCfg() {
+            let saved = {};
+            try { saved = { clientId: localStorage.getItem('tj_gs_client_id') || '', sheetId: localStorage.getItem('tj_gs_sheet_id') || '' }; } catch (e) { /* storage blocked */ }
             return {
-                clientId: localStorage.getItem('tj_gs_client_id') || '',
-                sheetId: localStorage.getItem('tj_gs_sheet_id') || '',
+                clientId: saved.clientId || GS_DEFAULTS.clientId,
+                sheetId: saved.sheetId || GS_DEFAULTS.sheetId,
             };
         }
         function gsAutoSyncEnabled() {

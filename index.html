@@ -637,7 +637,13 @@
                 <div class="card kpi-card"><span class="card-title">Total RR</span><span class="card-value" id="stat-rr-card">0.00R</span></div>
                 <div class="card kpi-card"><span class="card-title">Profit Factor</span><span class="card-value" id="stat-profit-factor">0.00</span></div>
             </div>
-            <div class="dash-range-note" style="margin-top:-0.25rem;">Total R:R <strong id="stat-total-rr" style="color:var(--text-primary);">0.00R</strong> · Avg R:R <strong id="stat-avg-rr" style="color:var(--text-primary);">0.00R</strong> · <strong id="stat-wins" class="text-success">0</strong> wins · <strong id="stat-losses" class="text-danger">0</strong> losses · <strong id="stat-be" class="text-warning">0</strong> breakevens · Expectancy <strong id="stat-expectancy" style="color:var(--text-primary);">$0.00</strong></div>
+            <div class="dash-range-note" style="margin-top:-0.25rem;">
+                <span style="white-space:nowrap;">Avg R:R <strong id="stat-avg-rr" style="color:var(--text-primary);">0.00R</strong></span> ·
+                <span style="white-space:nowrap;"><strong id="stat-wins" class="text-success">0</strong> wins</span> ·
+                <span style="white-space:nowrap;"><strong id="stat-losses" class="text-danger">0</strong> losses</span> ·
+                <span style="white-space:nowrap;"><strong id="stat-be" class="text-warning">0</strong> breakevens</span> ·
+                <span style="white-space:nowrap;">Expectancy <strong id="stat-expectancy" style="color:var(--text-primary);">$0.00</strong></span>
+            </div>
             <div class="stat-row c4">
                 <div class="card kpi-card"><span class="card-title">Avg Win Value</span><span class="card-value text-success" id="stat-avg-win">$0.00</span></div>
                 <div class="card kpi-card"><span class="card-title">Avg Loss Value</span><span class="card-value text-danger" id="stat-avg-loss">$0.00</span></div>
@@ -2810,7 +2816,8 @@
             const values = [expFor(20), expFor(50)].filter(v => v !== null);
             const exp = values.length ? values.reduce((x, v) => x + v, 0) / values.length : 0;
             el.innerText = fmtSigned(exp);
-            el.className = 'card-value ' + pnlClass(exp);
+            el.className = '';
+            el.style.color = exp > 0 ? 'var(--success)' : (exp < 0 ? 'var(--danger)' : 'var(--text-primary)');
         }
 
         // ===================== PERFORMANCE BY (session / model / symbol) =====================
@@ -4207,7 +4214,6 @@
             document.getElementById('stat-avg-win').innerText = fmtMoney(wT.length ? (tWin / wT.length) : 0);
             document.getElementById('stat-avg-loss').innerText = fmtMoney(-(lT.length ? (tLoss / lT.length) : 0));
             document.getElementById('stat-profit-factor').innerText = tLoss === 0 ? (tWin > 0 ? '∞' : '0.00') : (tWin / tLoss).toFixed(2);
-            document.getElementById('stat-total-rr').innerText = totalRR.toFixed(2) + 'R';
             document.getElementById('stat-avg-rr').innerText = avgRR.toFixed(2) + 'R';
             
             document.getElementById('stat-win-streak').innerText = maxWinStreak;

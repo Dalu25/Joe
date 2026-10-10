@@ -1879,12 +1879,24 @@
             const monthPnl = trades.filter(t => t.accountId === acc.id && t.date >= mRange.from && t.date <= mRange.to).reduce((s, t) => s + t.pnl, 0);
             const overallPnl = r.s.pnl;
             const startBal = acc.balance || 1;
+            const perfLegs = trades.filter(t => t.accountId === acc.id);
+            const perfWins = perfLegs.filter(t => t.outcome === 'win').length;
+            const perfBE = perfLegs.filter(t => t.outcome === 'breakeven').length;
+            const perfLosses = perfLegs.filter(t => t.outcome === 'loss').length;
+            const perfDen = perfLegs.length - perfBE;
+            const perfWR = perfDen > 0 ? (perfWins / perfDen) * 100 : 0;
+            const perfRRTrades = perfLegs.filter(hasRValue);
+            const perfAvgRR = perfRRTrades.length ? perfRRTrades.reduce((s, t) => s + (parseFloat(t.rr) || 0), 0) / perfRRTrades.length : 0;
+            const perfTotalRR = perfRRTrades.reduce((s, t) => s + (parseFloat(t.rr) || 0), 0);
             const kpi = (title, val, sub) => `<div class="card kpi-card"><span class="card-title">${title}</span><span class="card-value ${pnlClass(val)}">${fmtSigned(val)}</span>${sub ? `<span class="stat-sub">${sub}</span>` : ''}</div>`;
             document.getElementById('perfKpis').innerHTML =
                 kpi("Today's P&L", todayPnl) +
                 kpi('This Week', weekPnl) +
                 kpi('This Month', monthPnl) +
-                kpi('Overall Performance', overallPnl, `${((overallPnl / startBal) * 100).toFixed(1)}%`);
+                kpi('Overall Performance', overallPnl, `${((overallPnl / startBal) * 100).toFixed(1)}%`) +
+                `<div class="card kpi-card"><span class="card-title">Win Rate</span><span class="card-value">${perfWR.toFixed(1)}%</span><span class="stat-sub">${perfWins}W · ${perfLosses}L · ${perfBE}BE</span></div>` +
+                `<div class="card kpi-card"><span class="card-title">Avg R:R</span><span class="card-value">${perfAvgRR.toFixed(2)}R</span><span class="stat-sub">Total ${perfTotalRR.toFixed(2)}R</span></div>`;
+
 
             const accTrades = trades.filter(t => t.accountId === acc.id);
             const logical = getLogicalTrades(accTrades).sort((a, b) => {

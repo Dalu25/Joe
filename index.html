@@ -1651,7 +1651,10 @@
             document.getElementById('cardModalTitle').innerText = isDay ? 'Day Score Card' : 'Weekly Score Card';
             document.getElementById('cardNoteLabel').innerText = isDay ? 'Day notes' : 'Weekly takeaway';
             const noteEl = document.getElementById('cardNote');
-            noteEl.value = isDay ? ((journal.days[cardCtx.key] || {}).note || '') : ((journal.weeks[cardCtx.key] || {}).takeaway || '');
+            noteEl.value = isDay ? ((journal.days[cardCtx.key] || {}).note || '') : '';
+            noteEl.style.display = isDay ? '' : 'none';
+            document.getElementById('cardNoteLabel').style.display = isDay ? '' : 'none';
+            document.getElementById('cardNoteCount').style.display = isDay ? '' : 'none';
             document.getElementById('cardNoteCount').innerText = `${noteEl.value.length}/260`;
             const gradeRow = document.getElementById('cardGradeRow');
             gradeRow.style.display = isDay ? 'flex' : 'none';
@@ -1672,7 +1675,6 @@
             const el = document.getElementById('cardNote');
             document.getElementById('cardNoteCount').innerText = `${el.value.length}/260`;
             if (cardCtx.kind === 'day') journalDay(cardCtx.key).note = el.value;
-            else journalWeek(cardCtx.key).takeaway = el.value;
             clearTimeout(onCardNoteInput._t);
             onCardNoteInput._t = setTimeout(saveJournal, 400);
             renderCard();
@@ -1698,20 +1700,23 @@
                     note: j.note || ''
                 });
             } else {
-                const w = weekSummary(cardCtx.key);
-                const j = journal.weeks[cardCtx.key] || {};
-                drawScoreCard(canvas, {
-                    theme, kicker: 'Trading journal', title: weekLabel(cardCtx.key),
-                    pnlValue: w.s.pnl, pnlText: fmtSigned(w.s.pnl), pnlLabel: 'Net weekly P&L',
-                    tiles: [
-                        { label: 'Total R', value: fmtR(w.s.r) },
-                        { label: 'Trades', value: String(w.s.n) },
-                        { label: 'Win rate', value: `${w.s.wr.toFixed(1)}%` },
-                        { label: 'Best day', value: w.best ? [dayShortLabel(w.best.date), fmtMoney(w.best.pnl)] : '-' },
-                    ],
-                    note: j.takeaway || ''
-                });
+                drawScoreCard(canvas, buildWeekCardOpts(cardCtx.key, theme));
             }
+        }
+        // One design for the weekly card, used by the card itself and by the weekly review export
+        function buildWeekCardOpts(startStr, theme) {
+            const w = weekSummary(startStr);
+            return {
+                theme, kicker: 'Trading journal', title: weekLabel(startStr),
+                pnlValue: w.s.pnl, pnlText: fmtSigned(w.s.pnl), pnlLabel: 'Net weekly P&L',
+                tiles: [
+                    { label: 'Total R', value: fmtR(w.s.r) },
+                    { label: 'Trades', value: String(w.s.n) },
+                    { label: 'Win rate', value: `${w.s.wr.toFixed(1)}%` },
+                    { label: 'Best day', value: w.best ? [dayShortLabel(w.best.date), fmtMoney(w.best.pnl)] : '-' },
+                ],
+                note: ''
+            };
         }
         function saveCardImage() {
             const canvas = document.getElementById('cardCanvas');
@@ -2963,119 +2968,28 @@
         }
 
         // ===================== WEEKLY REVIEW =====================
-        const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         // ===================== WEEKLY REVIEW EXPORT =====================
-        function getWeekReview() {
-            const start = parseYmd(reviewCtx.start);
-            const end = parseYmd(weekEndOf(reviewCtx.start));
-            const list = getLogicalTrades(trades.filter(t => t.date >= reviewCtx.start && t.date <= weekEndOf(reviewCtx.start)));
-            const byDay = new Map();
-            list.forEach(t => { if (!byDay.has(t.date)) byDay.set(t.date, []); byDay.get(t.date).push(t); });
-            return { start, end, list, s: summarize(list), days: [...byDay.keys()].sort(), byDay };
+        function weekCardCanvas(startStr, theme) {
+            const canvas = document.getElementById('cardCanvas');
+            drawScoreCard(canvas, buildWeekCardOpts(startStr, theme));
+            return canvas;
         }
         function reviewFileStem() {
             return 'weekly-review-' + reviewCtx.start;
         }
-        // Draws the review onto a canvas in a light, print-friendly palette
-        function drawReviewCanvas() {
-            const R = getWeekReview();
-            const W = 900, PAD = 48, SCALE = 2, ROW = 34;
-            const sans = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
-            const green = '#2c824b', red = '#ba3030';
-            const colorFor = v => (v > 0 ? green : (v < 0 ? red : '#000000'));
-
-            let H = 215 + 60;
-            R.days.forEach(day => { H += 26 + R.byDay.get(day).length * ROW + 18; });
-            if (!R.days.length) H += 40;
-            H = Math.max(H, 420);
-
-            const c = document.createElement('canvas');
-            c.width = W * SCALE;
-            c.height = H * SCALE;
-            const x = c.getContext('2d');
-            x.scale(SCALE, SCALE);
-            x.fillStyle = '#ffffff';
-            x.fillRect(0, 0, W, H);
-
-            x.fillStyle = '#000000';
-            x.font = `700 30px ${sans}`;
-            x.fillText('Weekly Review', PAD, 58);
-            const label = `${MONTH_SHORT[R.start.getMonth()]} ${R.start.getDate()} – ${MONTH_SHORT[R.end.getMonth()]} ${R.end.getDate()}, ${R.end.getFullYear()}`;
-            x.fillStyle = '#444444';
-            x.font = `400 18px ${sans}`;
-            x.fillText(label, PAD, 88);
-
-            const stats = [
-                ['Net P&L', fmtMoney(R.s.pnl), R.s.pnl],
-                ['Trades', String(R.list.length), 0],
-                ['Win Rate', R.list.length ? R.s.wr.toFixed(1) + '%' : '—', 0],
-                ['Total R', R.s.r.toFixed(2) + 'R', R.s.r]
-            ];
-            const colW = (W - PAD * 2) / 4;
-            stats.forEach((st, i) => {
-                const sx = PAD + i * colW;
-                x.fillStyle = '#666666';
-                x.font = `600 14px ${sans}`;
-                x.fillText(st[0].toUpperCase(), sx, 130);
-                x.fillStyle = colorFor(st[2]);
-                x.font = `700 26px ${sans}`;
-                x.fillText(st[1], sx, 162);
-            });
-            x.fillStyle = '#cccccc';
-            x.fillRect(PAD, 185, W - PAD * 2, 1);
-
-            let y = 215;
-            if (!R.days.length) {
-                x.fillStyle = '#444444';
-                x.font = `400 18px ${sans}`;
-                x.fillText('No trades this week.', PAD, y + 10);
-            }
-            R.days.forEach(day => {
-                const d = parseYmd(day);
-                const dayList = R.byDay.get(day);
-                const dayPnl = dayList.reduce((a, t) => a + t.pnl, 0);
-                x.fillStyle = '#000000';
-                x.font = `700 20px ${sans}`;
-                x.fillText(`${WEEKDAY_SHORT[d.getDay()]} ${MONTH_SHORT[d.getMonth()]} ${d.getDate()}`, PAD, y);
-                x.textAlign = 'right';
-                x.fillStyle = colorFor(dayPnl);
-                x.fillText(fmtMoney(dayPnl), W - PAD, y);
-                x.textAlign = 'left';
-                y += 26;
-                dayList.forEach(t => {
-                    const left = `${t.symbol}${t.session ? ' · ' + t.session : ''}${(t.tags || []).length ? ' · ' + t.tags.join(' ') : ''}`;
-                    const ow = t.outcome === 'win' ? 'Win' : (t.outcome === 'loss' ? 'Loss' : 'BE');
-                    const rText = hasRValue(t) ? parseFloat(t.rr).toFixed(2) + 'R' : 'No risk';
-                    x.fillStyle = '#000000';
-                    x.font = `400 17px ${sans}`;
-                    x.fillText(left, PAD + 12, y);
-                    x.textAlign = 'right';
-                    x.fillStyle = colorFor(t.pnl);
-                    x.fillText(`${ow} · ${rText} · ${fmtMoney(t.pnl)}`, W - PAD, y);
-                    x.textAlign = 'left';
-                    y += ROW;
-                });
-                y += 18;
-            });
-
-            x.fillStyle = '#888888';
-            x.font = `400 13px ${sans}`;
-            x.fillText('TradeTracker', PAD, H - 24);
-            return c;
-        }
         function saveReviewImage() {
-            drawReviewCanvas().toBlob(blob => {
+            weekCardCanvas(reviewCtx.start, 'light').toBlob(blob => {
                 if (!blob) { alert('Could not create the image.'); return; }
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
                 a.download = reviewFileStem() + '.png';
                 a.click();
-                setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+                setTimeout(() => URL.revokeObjectURL(a.href), 2000);
             }, 'image/png');
         }
         function exportReviewPDF() {
             if (!window.jspdf) { alert('The PDF library did not load. Check your connection.'); return; }
-            const canvas = drawReviewCanvas();
+            const canvas = weekCardCanvas(reviewCtx.start, 'light');
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'pt', format: 'letter' });
             const pageW = doc.internal.pageSize.getWidth();
@@ -3087,7 +3001,7 @@
             if (h > pageH - margin * 2) { h = pageH - margin * 2; w = h * ratio; }
             doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, w, h);
 
-            // Journal notes go in the PDF only, below the review image
+            // Journal notes go in the PDF only, below the card
             const j = journal.weeks[reviewCtx.start] || {};
             const notes = [['What worked', j.worked], ['What needs work', j.needs], ["Next week's focus", j.focus]]
                 .filter(([, v]) => v && String(v).trim());

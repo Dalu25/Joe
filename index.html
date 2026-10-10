@@ -491,7 +491,6 @@
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
                 <div class="dash-range-note" style="margin-bottom:0;">Stats for: <strong id="dash-range-label" style="color:var(--text-primary);">All Time</strong></div>
                 <div style="display:flex; align-items:center; gap:0.6rem;">
-                    <button class="btn btn-outline" type="button" onclick="openWeeklyReview()">Weekly Review</button>
                     <span id="syncState" style="font-size:0.8rem; color:var(--text-secondary);"></span>
                     <span id="dashSaveStatus" style="font-size:0.8rem; color:var(--text-secondary);"></span>
                     <button class="btn btn-outline" type="button" id="dashSaveBtn" onclick="gsManualSave()" title="Push the latest data to Google Sheets right now — useful before closing the app">Save Now</button>
@@ -615,33 +614,7 @@
             <div id="accounts-list" style="display:flex; flex-direction:column; gap:0.75rem;"></div>
 
             <!-- DYNAMIC TARGET SINGLE ACCOUNT INSIGHTS PANE -->
-            <div id="account-focused-view" style="display: none; flex-direction: column; gap: 1.5rem; background: var(--bg-surface); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-top: 1rem;">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-                    <h3 id="focused-account-name" style="font-size:1.3rem; color:var(--accent);">Selected Account Breakdown</h3>
-                    <button class="btn btn-outline" style="min-height:36px; padding:0 1rem;" onclick="closeAccountFocus()">Close Focus View</button>
-                </div>
-                <div class="grid-cards">
-                    <div class="card" style="background:var(--bg-base);"><span class="card-title">Account Performance</span><span class="card-value" id="f-acc-pnl">$0.00</span></div>
-                    <div class="card" style="background:var(--bg-base);"><span class="card-title">Win Rate</span><span class="card-value" id="f-acc-wr">0%</span></div>
-                    <div class="card" style="background:var(--bg-base);"><span class="card-title">Trades Vol</span><span class="card-value" id="f-acc-count">0</span></div>
-                    <div class="card" style="background:var(--bg-base);"><span class="card-title">Total Return</span><span class="card-value" id="f-acc-rr">0.00R</span></div>
-                </div>
-                <h4 style="font-size:0.95rem; color:var(--text-secondary);">Assigned Executions</h4>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Status</th>
-                                <th>Date</th>
-                                <th>Symbol</th>
-                                <th>R:R Space</th>
-                                <th>P&L Result</th>
-                            </tr>
-                        </thead>
-                        <tbody id="focused-account-trades"></tbody>
-                    </table>
-                </div>
-            </div>
+            
         </section>
 
         <!-- STATS VIEW -->
@@ -1101,31 +1074,6 @@
         </div>
     </div>
 
-    <!-- WEEKLY REVIEW MODAL -->
-    <div class="modal-overlay" id="reviewModal">
-        <div class="modal modal-wide">
-            <div class="modal-header">
-                <h2>Weekly Review</h2>
-                <button class="close-btn" onclick="closeModal('reviewModal')">&times;</button>
-            </div>
-            <strong id="reviewWeekLabel" style="display:block; text-align:center; margin-top:0.25rem;"></strong>
-            <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
-                <button class="btn btn-outline" type="button" style="flex:1;" onclick="shiftReviewWeek(-1)">&lsaquo; Prev</button>
-                <button class="btn btn-outline" type="button" style="flex:1;" onclick="shiftReviewWeek(1)">Next &rsaquo;</button>
-            </div>
-            <div id="reviewGenerateWrap" style="margin-top:1rem;">
-                <button class="btn" type="button" style="width:100%;" onclick="generateWeeklyReview()">Generate Review</button>
-            </div>
-            <div id="reviewResult" style="display:none;">
-                <div id="reviewBody" style="display:flex; flex-direction:column; gap:1rem; margin-top:1rem;"></div>
-                <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-                    <button class="btn btn-outline" type="button" style="flex:1;" onclick="saveReviewImage()">Save as Image</button>
-                    <button class="btn" type="button" style="flex:1;" onclick="exportReviewPDF()">Export PDF</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- CSV IMPORT MODAL -->
     <div class="modal-overlay" id="csvModal">
         <div class="modal">
@@ -1338,7 +1286,6 @@
         let accounts = normalizeAccounts(readStoredJson('tj_accounts', []));
         let trades = parseStoredTrades(readStoredJson('tj_trades', []));
         let editingGroupId = null;
-        let selectedFocusAccountId = null;
         
         let pnlChartInstance = null;
         let rMultipleChartInstance = null;
@@ -1422,7 +1369,8 @@
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-            event.currentTarget.classList.add('active');
+            const navItem = document.querySelector(`.nav-item[onclick="switchTab('${tabId}')"]`);
+            if (navItem) navItem.classList.add('active');
             
             const titles = { dashboard: 'Dashboard', accounts: 'Accounts Management', stats: 'Advanced Performance Statistics', manage: 'System Data Control', history: 'Trades & History', performance: 'Account Performance' };
             const subtitles = { dashboard: 'Real-time performance overview', accounts: 'Manage balances, targets & drawdown limits', stats: 'Deep dive into your trading performance', manage: 'Backup, restore, and cloud sync', history: 'Every trade and trading day', performance: 'Prop account targets, drawdown, consistency and equity curve' };
@@ -1843,6 +1791,10 @@
                     ${noteBox('What worked', 'worked', j.worked)}
                     ${noteBox('What needs work', 'needs', j.needs)}
                     ${noteBox("Next week's focus", 'focus', j.focus)}
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-top:1rem; margin-bottom:5.5rem;">
+                    <button class="btn btn-outline" type="button" style="flex:1;" onclick="saveReviewImage()">Save as Image</button>
+                    <button class="btn" type="button" style="flex:1;" onclick="exportReviewPDF()">Export PDF</button>
                 </div>`;
         }
 
@@ -1910,7 +1862,6 @@
             if (!acc) return;
             if (confirm(`Mark "${acc.name}" as passed and archive it? It will move to Archived Accounts. Trade history and stats are kept — you can reopen it anytime.`)) {
                 acc.isClosed = true;
-                if (selectedFocusAccountId === id) closeAccountFocus();
                 saveData();
                 updateUI();
             }
@@ -2571,7 +2522,6 @@
             if(confirm('Wipe this account ledger completely from processing logs? This permanently deletes the account AND all its trade history. This cannot be undone.\n\nIf you just want to stop trading this account but keep your history, use the "Close Account" (archive) button instead.')) {
                 accounts = accounts.filter(a => a.id !== id);
                 trades = trades.filter(t => t.accountId !== id); // Cascading data cleanup
-                if(selectedFocusAccountId === id) closeAccountFocus();
                 saveData(); updateUI();
             }
         }
@@ -2584,7 +2534,6 @@
             if(!acc) return;
             if(confirm(`Close "${acc.name}"? It will move to Archived Accounts. Trade history and stats are kept — you can reopen it anytime.`)) {
                 acc.isClosed = true;
-                if(selectedFocusAccountId === id) closeAccountFocus();
                 saveData(); updateUI();
             }
         }
@@ -2634,7 +2583,7 @@
                         </summary>
                         <div class="toggle-body">
                             <div style="display:flex; justify-content:flex-end; gap:0.25rem; margin-bottom:0.5rem;">
-                                <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Open Full Analysis" onclick="targetAccountFocus('${acc.id}')">
+                                <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Account Performance" onclick="openAccountPerformance('${acc.id}')">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
                                 </button>
                                 <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Reopen Account" onclick="reopenAccount('${acc.id}', event)">
@@ -2658,96 +2607,10 @@
 
         // ===================== DRAWDOWN & STREAK ANALYTICS =====================
 
-        function computeCurrentStreak(accTrades) {
-            const sorted = [...accTrades].sort((a,b) => new Date(a.date) - new Date(b.date));
-            let streak = 0, type = null;
-            for(let i = sorted.length - 1; i >= 0; i--) {
-                const t = sorted[i];
-                if(t.outcome === 'breakeven') break;
-                if(type === null) { type = t.outcome; streak = 1; }
-                else if(t.outcome === type) { streak++; }
-                else break;
-            }
-            return { streak, type };
-        }
-
-        function renderStreakDots(accTrades) {
-            const container = document.getElementById('f-acc-streak-dots');
-            if(!container) return;
-            const sorted = [...accTrades].sort((a,b) => new Date(a.date) - new Date(b.date));
-            const last = sorted.slice(-10);
-            if(last.length === 0) {
-                container.innerHTML = `<span style="font-size:0.7rem; color:var(--text-secondary);">No trades yet</span>`;
-                return;
-            }
-            container.innerHTML = last.map(t => {
-                const color = t.outcome === 'win' ? 'var(--success)' : (t.outcome === 'loss' ? 'var(--danger)' : 'var(--warning)');
-                return `<span class="streak-dot" style="background:${color};"></span>`;
-            }).join('');
-        }
-
-        // SINGLE ACCOUNT SPECIFIC STATS COMPILATION WINDOWS
-        function targetAccountFocus(id) {
-            selectedFocusAccountId = id;
-            updateAccountsView();
-            renderFocusedAccountSection();
-        }
-
-        function closeAccountFocus() {
-            selectedFocusAccountId = null;
-            document.getElementById('account-focused-view').style.display = 'none';
-            updateAccountsView();
-        }
-
-        function renderFocusedAccountSection() {
-            const acc = accounts.find(a => a.id === selectedFocusAccountId);
-            if(!acc) return;
-            
-            const pane = document.getElementById('account-focused-view');
-            pane.style.display = 'flex';
-            document.getElementById('focused-account-name').innerText = `${acc.name} Analysis Space`;
-
-            const accTrades = trades.filter(t => t.accountId === selectedFocusAccountId);
-            const totalPnl = accTrades.reduce((s, t) => s + t.pnl, 0);
-            const wins = accTrades.filter(t => t.outcome === 'win').length;
-            const be = accTrades.filter(t => t.outcome === 'breakeven').length;
-            const validDenominator = accTrades.length - be;
-            const wr = validDenominator > 0 ? ((wins / validDenominator) * 100).toFixed(1) : 0;
-            const totalRR = accTrades.reduce((s, t) => s + (parseFloat(t.rr) || 0), 0);
-
-            document.getElementById('f-acc-pnl').innerText = fmtMoney(totalPnl);
-            document.getElementById('f-acc-pnl').className = 'card-value ' + (totalPnl >= 0 ? 'text-success' : 'text-danger');
-            document.getElementById('f-acc-wr').innerText = `${wr}%`;
-            document.getElementById('f-acc-count').innerText = accTrades.length;
-            document.getElementById('f-acc-rr').innerText = `${totalRR.toFixed(2)}R`;
-            document.getElementById('f-acc-rr').className = 'card-value ' + (totalRR > 0 ? 'text-success' : (totalRR < 0 ? 'text-danger' : ''));
-
-            // Render trade history for this account
-            const tbody = document.getElementById('focused-account-trades');
-            tbody.innerHTML = '';
-            
-            if(accTrades.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No executions registered on this account profile</td></tr>`;
-                return;
-            }
-
-            // Sort trades by date for display (newest first)
-            const sortedTrades = [...accTrades].sort((a, b) => new Date(b.date) - new Date(a.date));
-            sortedTrades.forEach(t => {
-                let badge = '';
-                if(t.outcome === 'win') badge = '<span class="badge badge-win">Win</span>';
-                else if(t.outcome === 'loss') badge = '<span class="badge badge-loss">Loss</span>';
-                else badge = '<span class="badge badge-breakeven">BE</span>';
-                
-                tbody.innerHTML += `
-                    <tr style="cursor:pointer;" onclick="showTradeDetails('${t.groupId || t.id}')">
-                        <td>${badge}</td>
-                        <td>${t.date}</td>
-                        <td style="font-weight:600;">${t.symbol}</td>
-                        <td>${rrCell(t)}</td>
-                        <td class="${t.pnl > 0 ? 'text-success' : (t.pnl < 0 ? 'text-danger' : 'text-warning')}">${fmtMoney(t.pnl)}</td>
-                    </tr>`;
-            });
+        // Account detail lives on the Account Performance page
+        function openAccountPerformance(id) {
+            perfSetAccount(id);
+            switchTab('performance');
         }
 
         // TRADE DATA ENGINE OPERATIONS
@@ -2808,7 +2671,6 @@
 
             tradeFormSnapshot = null;
             saveData(); updateUI();
-            if(selectedFocusAccountId) renderFocusedAccountSection();
 
             if(addAnother) { resetTradeFormForNext(); return; }
             closeModal('tradeModal');
@@ -2818,7 +2680,6 @@
             if(confirm('Purge execution parameters permanently? This removes the trade across every linked account.')) {
                 trades = trades.filter(t => (t.groupId || t.id) !== groupId);
                 saveData(); updateUI();
-                if(selectedFocusAccountId) renderFocusedAccountSection();
             }
         }
 
@@ -3103,75 +2964,17 @@
 
         // ===================== WEEKLY REVIEW =====================
         const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        let reviewWeekStart = null;
-        function startOfWeek(d) {
-            const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-            x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-            return x;
-        }
-        function openWeeklyReview() {
-            reviewWeekStart = startOfWeek(new Date());
-            renderWeeklyReview();
-            document.getElementById('reviewResult').style.display = 'none';
-            document.getElementById('reviewGenerateWrap').style.display = 'block';
-            document.getElementById('reviewModal').classList.add('active');
-        }
-        function generateWeeklyReview() {
-            renderWeeklyReview();
-            document.getElementById('reviewResult').style.display = 'block';
-            document.getElementById('reviewGenerateWrap').style.display = 'none';
-        }
-        function shiftReviewWeek(n) {
-            reviewWeekStart = new Date(reviewWeekStart.getFullYear(), reviewWeekStart.getMonth(), reviewWeekStart.getDate() + 7 * n);
-            renderWeeklyReview();
-        }
-        function renderWeeklyReview() {
-            const start = reviewWeekStart;
-            const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
-            document.getElementById('reviewWeekLabel').innerText = `${MONTH_SHORT[start.getMonth()]} ${start.getDate()} – ${MONTH_SHORT[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
-
-            const list = getLogicalTrades(trades.filter(t => t.date >= ymd(start) && t.date <= ymd(end)));
-            const s = summarize(list);
-            const pnlCls = s.pnl > 0 ? 'text-success' : (s.pnl < 0 ? 'text-danger' : '');
-            const byDay = new Map();
-            list.forEach(t => { if (!byDay.has(t.date)) byDay.set(t.date, []); byDay.get(t.date).push(t); });
-
-            const cards = `
-                <div class="grid-cards" style="grid-template-columns: 1fr 1fr;">
-                    <div class="card kpi-card"><span class="card-title">Net P&amp;L</span><span class="card-value ${pnlCls}">${fmtMoney(s.pnl)}</span></div>
-                    <div class="card kpi-card"><span class="card-title">Trades</span><span class="card-value">${list.length}</span></div>
-                    <div class="card kpi-card"><span class="card-title">Win Rate</span><span class="card-value">${list.length ? s.wr.toFixed(1) + '%' : '—'}</span></div>
-                    <div class="card kpi-card"><span class="card-title">Total RR</span><span class="card-value">${s.r.toFixed(2)}R</span></div>
-                </div>`;
-
-            const days = [...byDay.keys()].sort();
-            const dayBlocks = days.length ? days.map(day => {
-                const d = parseYmd(day);
-                const dayList = byDay.get(day);
-                const dayPnl = dayList.reduce((a, t) => a + t.pnl, 0);
-                const rows = dayList.map(t => {
-                    const tags = (t.tags || []).map(tg => ` <span style="font-size:0.75rem; border:1px solid var(--border); border-radius:999px; padding:0 0.4rem;">${escHtml(tg)}</span>`).join('');
-                    const ow = t.outcome === 'win' ? 'Win' : (t.outcome === 'loss' ? 'Loss' : 'BE');
-                    const rText = hasRValue(t) ? parseFloat(t.rr).toFixed(2) + 'R' : 'No risk';
-                    return `<div style="display:flex; justify-content:space-between; gap:0.5rem; padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span>${escHtml(t.symbol)}${t.session ? ' · ' + escHtml(t.session) : ''}${tags}</span><span>${ow} · ${rText} · ${fmtMoney(t.pnl)}</span></div>`;
-                }).join('');
-                return `<div class="card"><div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><strong>${WEEKDAY_SHORT[d.getDay()]} ${MONTH_SHORT[d.getMonth()]} ${d.getDate()}</strong><span>${fmtMoney(dayPnl)}</span></div>${rows}</div>`;
-            }).join('') : '<div class="card" style="color:var(--text-secondary);">No trades this week.</div>';
-
-            document.getElementById('reviewBody').innerHTML = cards + dayBlocks;
-        }
-
         // ===================== WEEKLY REVIEW EXPORT =====================
         function getWeekReview() {
-            const start = reviewWeekStart;
-            const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
-            const list = getLogicalTrades(trades.filter(t => t.date >= ymd(start) && t.date <= ymd(end)));
+            const start = parseYmd(reviewCtx.start);
+            const end = parseYmd(weekEndOf(reviewCtx.start));
+            const list = getLogicalTrades(trades.filter(t => t.date >= reviewCtx.start && t.date <= weekEndOf(reviewCtx.start)));
             const byDay = new Map();
             list.forEach(t => { if (!byDay.has(t.date)) byDay.set(t.date, []); byDay.get(t.date).push(t); });
             return { start, end, list, s: summarize(list), days: [...byDay.keys()].sort(), byDay };
         }
         function reviewFileStem() {
-            return 'weekly-review-' + ymd(reviewWeekStart);
+            return 'weekly-review-' + reviewCtx.start;
         }
         // Draws the review onto a canvas in a light, print-friendly palette
         function drawReviewCanvas() {
@@ -3408,7 +3211,6 @@
             if (!confirm(`Import ${records.length} trades? ${skipped} rows will be skipped.`)) return;
             trades.unshift(...records);
             saveData(); closeModal('csvModal'); updateUI();
-            if (selectedFocusAccountId) renderFocusedAccountSection();
             alert(`Imported ${records.length} trades.`);
         }
 
@@ -3498,7 +3300,7 @@
                 localStorage.removeItem('tj_trades');
                 localStorage.removeItem('tj_journal');
                 accounts = []; trades = []; journal = normalizeJournal(null);
-                closeAccountFocus(); resetAccountForm(); updateUI();
+                resetAccountForm(); updateUI();
                 alert('Application memory reset completely executed.');
             }
         }
@@ -3516,9 +3318,6 @@
             }
             if(document.getElementById('history').classList.contains('active')) renderHistory();
             if(document.getElementById('performance').classList.contains('active')) renderPerformancePage();
-            if(selectedFocusAccountId) {
-                renderFocusedAccountSection();
-            }
         }
 
         // ACCOUNT BALANCES MANAGEMENT INTERFACES (FULLY INTERACTIVE ADJUSTMENT FORMS)
@@ -3661,7 +3460,7 @@
                         </summary>
                         <div class="toggle-body">
                             <div style="display:flex; justify-content:flex-end; gap:0.25rem; margin-bottom:0.5rem;">
-                                <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Open Full Analysis" onclick="targetAccountFocus('${acc.id}')">
+                                <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Account Performance" onclick="openAccountPerformance('${acc.id}')">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
                                 </button>
                                 <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Close Account (archive, keep trade history)" onclick="closeAccount('${acc.id}', event)">
@@ -5053,7 +4852,6 @@
                 localStorage.setItem('tj_trades', JSON.stringify(compactTrades(trades)));
                 try { localStorage.removeItem('tj_gs_dirty'); localStorage.setItem('tj_gs_last_sync', String(Date.now())); } catch (e) { /* ignore */ }
                 gsRefreshSyncState();
-                closeAccountFocus();
                 resetAccountForm();
                 updateUI();
                 gsSetStatus('Synced just now', true);

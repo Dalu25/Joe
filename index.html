@@ -409,6 +409,8 @@
         .cmp-table th:first-child, .cmp-table td:first-child { text-align: left; font-weight: 600; }
         .cmp-table th { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
         @media (max-width: 640px) { .cmp-sides { grid-template-columns: 1fr !important; } }
+            .tag-chip { padding: 0.35rem 0.75rem; min-height: 34px; border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 0.85rem; cursor: pointer; }
+        .tag-chip.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
     </style>
 </head>
 <body>
@@ -487,6 +489,7 @@
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
                 <div class="dash-range-note" style="margin-bottom:0;">Stats for: <strong id="dash-range-label" style="color:var(--text-primary);">All Time</strong></div>
                 <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <button class="btn btn-outline" type="button" onclick="openWeeklyReview()">Weekly Review</button>
                     <span id="syncState" style="font-size:0.8rem; color:var(--text-secondary);"></span>
                     <span id="dashSaveStatus" style="font-size:0.8rem; color:var(--text-secondary);"></span>
                     <button class="btn btn-outline" type="button" id="dashSaveBtn" onclick="gsManualSave()" title="Push the latest data to Google Sheets right now — useful before closing the app">Save Now</button>
@@ -811,6 +814,7 @@
                     </div>
                 </div>
             </details>
+        <div id="statsBreakdown"></div>
         </section>
         
         <!-- MANAGE DATA VIEW -->
@@ -868,10 +872,19 @@
                 <summary>Export & Backup</summary>
                 <div class="toggle-body">
                     <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Download all your trade and account data as a JSON file, or export your trade log as CSV.</p>
+                    <p id="backupStatus" style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.85rem;"></p>
                     <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                         <button class="btn" onclick="exportData()">Export Data</button>
                         <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
                     </div>
+                </div>
+            </details>
+            <details class="toggle-section" style="max-width:500px;">
+                <summary>Import Trades (CSV)</summary>
+                <div class="toggle-body">
+                    <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Upload a broker or prop firm CSV export. Choose the account and the matching columns.</p>
+                    <input type="file" id="importCsvFile" accept=".csv,text/csv" onchange="importCsvFile(event)" style="display:none;">
+                    <button class="btn btn-outline" onclick="document.getElementById('importCsvFile').click()">Choose CSV</button>
                 </div>
             </details>
             <details class="toggle-section" style="max-width:500px;">
@@ -997,8 +1010,9 @@
                 
                 <div class="form-group">
                     <label>Symbol / Asset Pair</label>
-                    <input type="text" id="tradeSymbol" class="form-control" list="symbolOptions" placeholder="e.g. EURUSD" autocomplete="off" required>
+                    <input type="text" id="tradeSymbol" class="form-control" list="symbolOptions" placeholder="e.g. EURUSD" autocomplete="off" required onblur="normalizeSymbolInput()">
                     <datalist id="symbolOptions"></datalist>
+                    <div id="recentSymbols" style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.5rem;"></div>
                 </div>
                 
                 <div class="form-group">
@@ -1019,12 +1033,8 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>Outcome</label>
-                    <select id="tradeOutcome" class="form-control" required onchange="handleOutcomeChange()">
-                        <option value="win">Win</option>
-                        <option value="loss">Loss</option>
-                        <option value="breakeven">Breakeven</option>
-                    </select>
+                    <label>Setup</label>
+                    <div id="tradeTagChips" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
                 </div>
                 
                 <div class="form-group">
@@ -1048,14 +1058,51 @@
                 
                 <div class="form-group">
                     <label>Chart Link</label>
-                    <input type="url" id="tradeLink" class="form-control" placeholder="https://tradingview.com/x/... ">
+                    <div style="display:flex; gap:0.5rem;"><input type="url" id="tradeLink" class="form-control" style="flex:1;" placeholder="https://tradingview.com/x/... "><button type="button" class="btn btn-outline" onclick="pasteChartLink()">Paste</button></div>
                 </div>
                 
-                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.5rem;">
                     <button type="submit" class="btn" style="flex: 1;">Save Order</button>
+                    <button type="submit" class="btn btn-outline" data-again="1" style="flex: 1;">Save &amp; Add Another</button>
                     <button type="button" class="btn btn-outline" style="flex: 1;" onclick="closeModal('tradeModal')">Dismiss</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- WEEKLY REVIEW MODAL -->
+    <div class="modal-overlay" id="reviewModal">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h2>Weekly Review</h2>
+                <button class="close-btn" onclick="closeModal('reviewModal')">&times;</button>
+            </div>
+            <strong id="reviewWeekLabel" style="display:block; text-align:center; margin-top:0.25rem;"></strong>
+            <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                <button class="btn btn-outline" type="button" style="flex:1;" onclick="shiftReviewWeek(-1)">&lsaquo; Prev</button>
+                <button class="btn btn-outline" type="button" style="flex:1;" onclick="shiftReviewWeek(1)">Next &rsaquo;</button>
+            </div>
+            <div id="reviewBody" style="display:flex; flex-direction:column; gap:1rem; margin-top:1rem;"></div>
+        </div>
+    </div>
+
+    <!-- CSV IMPORT MODAL -->
+    <div class="modal-overlay" id="csvModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Import CSV</h2>
+                <button class="close-btn" onclick="closeModal('csvModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Account</label>
+                <select id="csvAccount" class="form-control" onchange="updateCsvPreview()"></select>
+            </div>
+            <div id="csvMapping" style="display:flex; flex-direction:column; gap:0.75rem;"></div>
+            <div id="csvPreview" style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.75rem;"></div>
+            <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+                <button class="btn" type="button" style="flex:1;" onclick="runCsvImport()">Import</button>
+                <button class="btn btn-outline" type="button" style="flex:1;" onclick="closeModal('csvModal')">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -1173,7 +1220,7 @@
                     groups.set(gid, {
                         groupId: gid, symbol: t.symbol, date: t.date, outcome: t.outcome,
                         session: t.session, isSignal: t.isSignal, isMe: t.isMe,
-                        note: t.note, link: t.link, images: [], createdAt: t.createdAt,
+                        note: t.note, link: t.link, images: [], createdAt: t.createdAt, tags: t.tags || [],
                         legs: [],
                     });
                 }
@@ -1196,7 +1243,7 @@
                         symbol: g.symbol, date: g.date, outcome: g.outcome, rr: leg.rr,
                         pnl: leg.pnl, session: g.session, riskAmount: leg.riskAmount,
                         isSignal: g.isSignal, isMe: g.isMe, note: g.note, link: g.link,
-                        images: g.images, createdAt: g.createdAt,
+                        images: g.images, createdAt: g.createdAt, tags: g.tags || [],
                     });
                 });
             });
@@ -1483,6 +1530,7 @@
             if (typeof updateUI === 'function') updateUI();
         }
         applyAppTheme(getAppTheme());
+        renderBackupStatus();
         gsRefreshSyncState();
 
         function getCardTheme() { return localStorage.getItem('tj_card_theme') === 'light' ? 'light' : 'dark'; }
@@ -2258,7 +2306,7 @@
                     groupId: first.groupId || first.id,
                     id: first.id,
                     symbol: first.symbol, date: first.date, outcome: first.outcome,
-                    session: first.session, isSignal: first.isSignal, isMe: first.isMe,
+                    session: first.session, isSignal: first.isSignal, isMe: first.isMe, tags: first.tags || [],
                     note: first.note, link: first.link, images: first.images,
                     pnl: totalPnl, rr: parseFloat(avgRr.toFixed(2)), riskAmount: totalRisk,
                     accountCount: recs.length, records: recs, createdAt: first.createdAt
@@ -2293,7 +2341,6 @@
             document.getElementById('trade-modal-title').innerText = 'New Execution Entry';
             document.getElementById('tradeForm').reset();
             document.getElementById('tradeDate').valueAsDate = new Date();
-            document.getElementById('tradeOutcome').value = 'win';
             document.getElementById('tradeSignal').checked = false;
             document.getElementById('tradeMe').checked = false;
             
@@ -2302,7 +2349,11 @@
             renderAvailableAccounts();
             renderSelectedAccounts();
             populateSymbolDatalist();
+            selectedTradeTags = [];
+            renderTradeTags();
+            renderRecentSymbols();
             document.getElementById('tradeModal').classList.add('active');
+            tradeFormSnapshot = tradeFormState();
         }
 
         function openEditModal(groupId) {
@@ -2321,7 +2372,7 @@
                 if(acc) {
                     selectedTradeAccounts.push(acc);
                     tradeAccountData[acc.id] = {
-                        pnl: Math.abs(gt.pnl),
+                        pnl: gt.pnl,
                         risk: (gt.riskAmount !== null && gt.riskAmount !== undefined && gt.riskAmount !== '') ? gt.riskAmount : ''
                     };
                 }
@@ -2331,24 +2382,34 @@
             
             document.getElementById('tradeSymbol').value = trade.symbol || '';
             document.getElementById('tradeDate').value = trade.date;
-            document.getElementById('tradeOutcome').value = trade.outcome || 'win';
             document.getElementById('tradeSession').value = trade.session || '';
             document.getElementById('tradeSignal').checked = trade.isSignal || false;
             document.getElementById('tradeMe').checked = trade.isMe || false;
             document.getElementById('tradeNote').value = trade.note || '';
             document.getElementById('tradeLink').value = trade.link || '';
 
+            selectedTradeTags = [...(trade.tags || [])];
+            renderTradeTags();
             renderAvailableAccounts();
             renderSelectedAccounts();
             document.getElementById('tradeModal').classList.add('active');
+            tradeFormSnapshot = tradeFormState();
         }
 
         function closeModal(id) {
+            // Unsaved entries are confirmed before the form closes
+            if (id === 'tradeModal') {
+                if (tradeFormSnapshot !== null && tradeFormState() !== tradeFormSnapshot && !confirm('Discard this entry?')) return;
+                tradeFormSnapshot = null;
+            }
             document.getElementById(id).classList.remove('active');
         }
 
-        function handleOutcomeChange() {
-            refreshAllAccountRr();
+        // Outcome comes from the P&L sign, so a loss can never be logged as a win
+        function outcomeFromPnl(p) {
+            if (p === '' || p === null || p === undefined || isNaN(parseFloat(p))) return '';
+            const v = parseFloat(p);
+            return v > 0 ? 'win' : (v < 0 ? 'loss' : 'breakeven');
         }
 
         // Auto-calculates R:R from Risked Amount and P/L, sign-adjusted for outcome
@@ -2363,11 +2424,10 @@
 
         // Per-account live R:R helpers (each selected account has its own P/L and risk)
         function getAccountRr(accountId) {
-            const outcome = document.getElementById('tradeOutcome').value;
             const d = tradeAccountData[accountId] || { pnl: '', risk: '' };
             const pnlAbs = Math.abs(parseFloat(d.pnl) || 0);
             const riskAbs = Math.abs(parseFloat(d.risk) || 0);
-            return computeRr(outcome, pnlAbs, riskAbs);
+            return computeRr(outcomeFromPnl(d.pnl), pnlAbs, riskAbs);
         }
 
         function updateAccountTradeValue(accountId, field, value) {
@@ -2650,7 +2710,8 @@
         // TRADE DATA ENGINE OPERATIONS
         function saveTrade(e) {
             e.preventDefault();
-            
+            const addAnother = !!(e.submitter && e.submitter.dataset.again === '1') && !editingGroupId;
+
             if(selectedTradeAccounts.length === 0) {
                 alert('Please select at least one account for this trade.');
                 return;
@@ -2659,13 +2720,18 @@
             for(const acc of selectedTradeAccounts) {
                 const d = tradeAccountData[acc.id];
                 if(!d || d.pnl === '' || d.pnl === undefined || d.pnl === null || isNaN(parseFloat(d.pnl))) {
-                    alert(`Please enter a P/L for ${acc.name}.`);
+                    alert(`Please enter a P&L for ${acc.name}.`);
                     return;
                 }
             }
 
-            const outcome = document.getElementById('tradeOutcome').value;
-            const symbol = document.getElementById('tradeSymbol').value.trim().toUpperCase();
+            const noRisk = selectedTradeAccounts.filter(acc => {
+                const r = tradeAccountData[acc.id].risk;
+                return !(parseFloat(r) > 0);
+            });
+            if(noRisk.length && !confirm(`No risk entered for ${noRisk.map(a => a.name).join(', ')}. Those trades will be left out of R averages. Save anyway?`)) return;
+
+            const symbol = normalizeSymbol(document.getElementById('tradeSymbol').value);
             const date = document.getElementById('tradeDate').value;
             const session = document.getElementById('tradeSession').value;
             const isSignal = document.getElementById('tradeSignal').checked;
@@ -2678,26 +2744,30 @@
 
             const newGroupRecords = selectedTradeAccounts.map(acc => {
                 const d = tradeAccountData[acc.id];
-                const pnlAbs = Math.abs(parseFloat(d.pnl) || 0);
-                const finalPnl = (outcome === 'loss') ? -pnlAbs : ((outcome === 'breakeven') ? 0 : pnlAbs);
+                const pnl = parseFloat(d.pnl);
+                const outcome = outcomeFromPnl(pnl);
                 const riskAmount = (d.risk === '' || d.risk === undefined || d.risk === null) ? null : Math.abs(parseFloat(d.risk) || 0);
-                const rr = computeRr(outcome, pnlAbs, riskAmount || 0);
+                const rr = computeRr(outcome, Math.abs(pnl), riskAmount || 0);
                 const existingRec = existingGroupTrades.find(t => t.accountId === acc.id);
                 const images = existingRec ? (existingRec.images || []) : [];
                 const id = existingRec ? existingRec.id : (Date.now().toString() + '_' + acc.id);
                 // createdAt is set once at creation and never touched again, so editing a
                 // trade's date/details doesn't reorder it in history — only new trades get "now".
                 const createdAt = existingRec ? existingRec.createdAt : Date.now();
-                return { id, groupId, accountId: acc.id, symbol, date, outcome, rr, pnl: finalPnl, session, riskAmount, isSignal, isMe, note, link, images, createdAt };
+                return { id, groupId, accountId: acc.id, symbol, date, outcome, rr, pnl, session, riskAmount, isSignal, isMe, note, link, images, createdAt, tags: [...selectedTradeTags] };
             });
 
             if(editingGroupId) {
                 trades = trades.filter(t => (t.groupId || t.id) !== editingGroupId);
             }
             trades.unshift(...newGroupRecords);
-            
-            saveData(); closeModal('tradeModal'); updateUI();
+
+            tradeFormSnapshot = null;
+            saveData(); updateUI();
             if(selectedFocusAccountId) renderFocusedAccountSection();
+
+            if(addAnother) { resetTradeFormForNext(); return; }
+            closeModal('tradeModal');
         }
 
         function deleteTrade(groupId) {
@@ -2720,6 +2790,7 @@
                 <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><strong>Status Metrics:</strong> ${badge}`;
             if(trade.isSignal) html += ` <span class="badge badge-signal">Signal</span>`;
             if(trade.isMe) html += ` <span class="badge badge-me">Me</span>`;
+            (trade.tags || []).forEach(tg => { html += ` <span style="font-size:0.8rem; border:1px solid var(--border); border-radius:999px; padding:0.1rem 0.5rem;">${escHtml(tg)}</span>`; });
             html += `</div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><strong>Pair Vector:</strong> <span>${trade.symbol}</span></div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><strong>Timeline Date:</strong> <span>${trade.date}</span></div>`;
@@ -2837,7 +2908,8 @@
                 return;
             }
 
-            container.innerHTML = selectedTradeAccounts.map(acc => {
+            const copyBtn = selectedTradeAccounts.length > 1 ? '<button type="button" class="btn btn-outline" style="min-height:32px; font-size:0.8rem; align-self:flex-start;" onclick="copyFirstToAll()">Copy first row to all</button>' : '';
+            container.innerHTML = copyBtn + selectedTradeAccounts.map(acc => {
                 const d = tradeAccountData[acc.id] || { pnl: '', risk: '' };
                 const rrText = `${getAccountRr(acc.id).toFixed(2)}R`;
                 return `
@@ -2845,14 +2917,14 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                         <div>
                             <strong style="display:block;">${acc.name}</strong>
-                            <small style="color:var(--text-secondary);">${fmtMoney(getAccountCurrentBalance(acc))}</small>
+                            <small style="color:var(--text-secondary);">${fmtMoney(getAccountCurrentBalance(acc))}${outcomeWord(d.pnl) ? ' · ' + outcomeWord(d.pnl) : ''}</small>
                         </div>
                         <button type="button" class="btn btn-outline" style="padding:0.2rem 0.5rem; min-height:28px; font-size:0.8rem;" onclick="removeTradeAccount('${acc.id}')">×</button>
                     </div>
                     <div style="display:flex; gap:0.5rem;">
                         <div style="flex:1;">
-                            <label style="font-size:0.7rem; color:var(--text-secondary);">P/L ($)</label>
-                            <input type="number" class="form-control" style="padding:0.4rem; font-size:0.85rem;" step="0.01" min="0" placeholder="e.g. 500" value="${d.pnl}" oninput="updateAccountTradeValue('${acc.id}','pnl',this.value)">
+                            <label style="font-size:0.7rem; color:var(--text-secondary);">P&amp;L ($) · minus for loss</label>
+                            <input type="number" class="form-control" style="padding:0.4rem; font-size:0.85rem;" step="0.01" placeholder="e.g. 500 or -150" value="${d.pnl}" oninput="updateAccountTradeValue('${acc.id}','pnl',this.value)">
                         </div>
                         <div style="flex:1;">
                             <label style="font-size:0.7rem; color:var(--text-secondary);">Risk ($)</label>
@@ -2870,6 +2942,293 @@
             document.getElementById('tradeAccountIds').value = selectedTradeAccounts.map(a => a.id).join(',');
         }
 
+        // ===================== TRADE FORM HELPERS =====================
+        const TRADE_TAGS = ['CRT', 'CSD', 'FVG', 'OB'];
+        const CSV_SESSIONS = ['AS', 'LO', 'NY AM', 'NY PM', 'LC'];
+        let tradeFormSnapshot = null;
+        let selectedTradeTags = [];
+
+        function escHtml(v) {
+            return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+        }
+        function outcomeWord(p) {
+            const o = outcomeFromPnl(p);
+            return o === 'win' ? 'Win' : (o === 'loss' ? 'Loss' : (o === 'breakeven' ? 'Breakeven' : ''));
+        }
+        function normalizeSymbol(s) {
+            return String(s || '').toUpperCase().replace(/[\s\/\-_]/g, '');
+        }
+        function normalizeSymbolInput() {
+            const el = document.getElementById('tradeSymbol');
+            el.value = normalizeSymbol(el.value);
+        }
+        function copyFirstToAll() {
+            const first = tradeAccountData[selectedTradeAccounts[0].id];
+            if (!first) return;
+            selectedTradeAccounts.forEach(acc => { tradeAccountData[acc.id] = { pnl: first.pnl, risk: first.risk }; });
+            renderSelectedAccounts();
+        }
+        function toggleTradeTag(tag) {
+            const i = selectedTradeTags.indexOf(tag);
+            if (i >= 0) selectedTradeTags.splice(i, 1); else selectedTradeTags.push(tag);
+            renderTradeTags();
+        }
+        function renderTradeTags() {
+            const box = document.getElementById('tradeTagChips');
+            if (!box) return;
+            box.innerHTML = TRADE_TAGS.map(tag => {
+                const on = selectedTradeTags.includes(tag);
+                return `<button type="button" class="tag-chip${on ? ' active' : ''}" aria-pressed="${on}" onclick="toggleTradeTag('${tag}')">${tag}</button>`;
+            }).join('');
+        }
+        function renderRecentSymbols() {
+            const box = document.getElementById('recentSymbols');
+            if (!box) return;
+            const recent = [];
+            [...trades].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).forEach(t => {
+                const s = String(t.symbol || '');
+                if (/^[A-Z0-9.^!]+$/.test(s) && !recent.includes(s) && recent.length < 6) recent.push(s);
+            });
+            box.innerHTML = recent.map(s => `<button type="button" class="tag-chip" onclick="setTradeSymbol('${s}')">${s}</button>`).join('');
+        }
+        function setTradeSymbol(s) {
+            document.getElementById('tradeSymbol').value = s;
+        }
+        async function pasteChartLink() {
+            try {
+                const text = (await navigator.clipboard.readText()).trim();
+                if (/^https?:\/\//i.test(text)) document.getElementById('tradeLink').value = text;
+                else alert('No link on the clipboard.');
+            } catch (err) {
+                alert('Clipboard is blocked here. Paste the link manually.');
+            }
+        }
+        function tradeFormState() {
+            return JSON.stringify([
+                document.getElementById('tradeSymbol').value,
+                document.getElementById('tradeDate').value,
+                document.getElementById('tradeSession').value,
+                document.getElementById('tradeSignal').checked,
+                document.getElementById('tradeMe').checked,
+                document.getElementById('tradeNote').value,
+                document.getElementById('tradeLink').value,
+                selectedTradeTags,
+                selectedTradeAccounts.map(a => [a.id, tradeAccountData[a.id] || null])
+            ]);
+        }
+        function resetTradeFormForNext() {
+            // Keeps date, session and the selected accounts; clears what changes per trade
+            document.getElementById('tradeSymbol').value = '';
+            document.getElementById('tradeNote').value = '';
+            document.getElementById('tradeLink').value = '';
+            document.getElementById('tradeSignal').checked = false;
+            document.getElementById('tradeMe').checked = false;
+            selectedTradeTags = [];
+            tradeAccountData = {};
+            selectedTradeAccounts.forEach(acc => { tradeAccountData[acc.id] = { pnl: '', risk: '' }; });
+            renderTradeTags();
+            renderSelectedAccounts();
+            renderRecentSymbols();
+            tradeFormSnapshot = tradeFormState();
+            document.getElementById('tradeSymbol').focus();
+        }
+
+        // ===================== STATS BREAKDOWN =====================
+        const BREAKDOWN_SESSIONS = [['AS', 'Asian'], ['LO', 'London'], ['NY AM', 'NY AM'], ['NY PM', 'NY PM'], ['LC', 'London Close'], ['', 'Not specified']];
+        function breakdownRow(label, list) {
+            const s = summarize(list);
+            const rs = list.filter(hasRValue).map(t => parseFloat(t.rr)).filter(v => !isNaN(v));
+            const avgR = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
+            const cls = s.pnl > 0 ? 'text-success' : (s.pnl < 0 ? 'text-danger' : '');
+            return `<tr><td>${escHtml(label)}</td><td>${list.length}</td><td>${list.length ? s.wr.toFixed(1) + '%' : '—'}</td><td>${avgR === null ? '—' : avgR.toFixed(2) + 'R'}</td><td class="${cls}">${list.length ? fmtMoney(s.pnl) : '—'}</td></tr>`;
+        }
+        function renderStatsBreakdown(list) {
+            const box = document.getElementById('statsBreakdown');
+            if (!box) return;
+            const head = '<thead><tr><th>Group</th><th>Trades</th><th>Win Rate</th><th>Avg R</th><th>Net P&amp;L</th></tr></thead>';
+            const sessionRows = BREAKDOWN_SESSIONS.map(([code, label]) => breakdownRow(label, list.filter(t => (t.session || '') === code))).join('');
+            const tagRows = TRADE_TAGS.map(tag => breakdownRow(tag, list.filter(t => (t.tags || []).includes(tag)))).join('');
+            box.innerHTML = `
+            <details class="toggle-section" open style="margin-top:0.5rem;">
+                <summary>Breakdown by Session & Setup</summary>
+                <div class="toggle-body">
+                    <div class="table-container"><table>${head}<tbody>${sessionRows}</tbody></table></div>
+                    <div class="table-container" style="margin-top:0.75rem;"><table>${head}<tbody>${tagRows}</tbody></table></div>
+                </div>
+            </details>`;
+        }
+
+        // ===================== WEEKLY REVIEW =====================
+        const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        let reviewWeekStart = null;
+        function startOfWeek(d) {
+            const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+            return x;
+        }
+        function openWeeklyReview() {
+            reviewWeekStart = startOfWeek(new Date());
+            renderWeeklyReview();
+            document.getElementById('reviewModal').classList.add('active');
+        }
+        function shiftReviewWeek(n) {
+            reviewWeekStart = new Date(reviewWeekStart.getFullYear(), reviewWeekStart.getMonth(), reviewWeekStart.getDate() + 7 * n);
+            renderWeeklyReview();
+        }
+        function renderWeeklyReview() {
+            const start = reviewWeekStart;
+            const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+            document.getElementById('reviewWeekLabel').innerText = `${MONTH_SHORT[start.getMonth()]} ${start.getDate()} – ${MONTH_SHORT[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
+
+            const list = getLogicalTrades(trades.filter(t => t.date >= ymd(start) && t.date <= ymd(end)));
+            const s = summarize(list);
+            const pnlCls = s.pnl > 0 ? 'text-success' : (s.pnl < 0 ? 'text-danger' : '');
+            const byDay = new Map();
+            list.forEach(t => { if (!byDay.has(t.date)) byDay.set(t.date, []); byDay.get(t.date).push(t); });
+
+            const cards = `
+                <div class="grid-cards" style="grid-template-columns: 1fr 1fr;">
+                    <div class="card kpi-card"><span class="card-title">Net P&amp;L</span><span class="card-value ${pnlCls}">${fmtMoney(s.pnl)}</span></div>
+                    <div class="card kpi-card"><span class="card-title">Trades</span><span class="card-value">${list.length}</span></div>
+                    <div class="card kpi-card"><span class="card-title">Win Rate</span><span class="card-value">${list.length ? s.wr.toFixed(1) + '%' : '—'}</span></div>
+                    <div class="card kpi-card"><span class="card-title">Total RR</span><span class="card-value">${s.r.toFixed(2)}R</span></div>
+                </div>`;
+
+            const days = [...byDay.keys()].sort();
+            const dayBlocks = days.length ? days.map(day => {
+                const d = parseYmd(day);
+                const dayList = byDay.get(day);
+                const dayPnl = dayList.reduce((a, t) => a + t.pnl, 0);
+                const rows = dayList.map(t => {
+                    const tags = (t.tags || []).map(tg => ` <span style="font-size:0.75rem; border:1px solid var(--border); border-radius:999px; padding:0 0.4rem;">${escHtml(tg)}</span>`).join('');
+                    const ow = t.outcome === 'win' ? 'Win' : (t.outcome === 'loss' ? 'Loss' : 'BE');
+                    const rText = hasRValue(t) ? parseFloat(t.rr).toFixed(2) + 'R' : 'No risk';
+                    return `<div style="display:flex; justify-content:space-between; gap:0.5rem; padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem;"><span>${escHtml(t.symbol)}${t.session ? ' · ' + escHtml(t.session) : ''}${tags}</span><span>${ow} · ${rText} · ${fmtMoney(t.pnl)}</span></div>`;
+                }).join('');
+                return `<div class="card"><div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><strong>${WEEKDAY_SHORT[d.getDay()]} ${MONTH_SHORT[d.getMonth()]} ${d.getDate()}</strong><span>${fmtMoney(dayPnl)}</span></div>${rows}</div>`;
+            }).join('') : '<div class="card" style="color:var(--text-secondary);">No trades this week.</div>';
+
+            document.getElementById('reviewBody').innerHTML = cards + dayBlocks;
+        }
+
+        // ===================== CSV IMPORT =====================
+        let csvState = null; // { headers, rows }
+        const CSV_FIELDS = [
+            { key: 'date', label: 'Date', req: true, guess: /date|time/i },
+            { key: 'symbol', label: 'Symbol', req: true, guess: /symbol|pair|instrument|market|ticker/i },
+            { key: 'pnl', label: 'P&L', req: true, guess: /p\s*&?\s*l\b|pnl|profit|net|result/i },
+            { key: 'risk', label: 'Risk', req: false, guess: /risk/i },
+            { key: 'session', label: 'Session', req: false, guess: /session/i }
+        ];
+        function parseCsv(text) {
+            const rows = [];
+            let row = [], cell = '', quoted = false;
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i];
+                if (quoted) {
+                    if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+                    else if (c === '"') quoted = false;
+                    else cell += c;
+                } else if (c === '"') quoted = true;
+                else if (c === ',') { row.push(cell.trim()); cell = ''; }
+                else if (c === '\n') { row.push(cell.trim()); rows.push(row); row = []; cell = ''; }
+                else if (c !== '\r') cell += c;
+            }
+            row.push(cell.trim());
+            rows.push(row);
+            return rows.filter(r => r.some(c => c !== ''));
+        }
+        function parseCsvDate(s) {
+            const t = String(s || '').trim().split(/[ T]/)[0];
+            let m = t.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
+            if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+            m = t.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
+            if (m) return `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`; // month first, as in US exports
+            return '';
+        }
+        function parseCsvNumber(s) {
+            let v = String(s || '').trim().replace(/[−–]/g, '-');
+            if (!v) return NaN;
+            const paren = /^\(.*\)$/.test(v);
+            v = v.replace(/[^0-9.\-]/g, '');
+            let n = parseFloat(v);
+            if (paren) n = -Math.abs(n);
+            return n;
+        }
+        function getCsvMap() {
+            const map = {};
+            CSV_FIELDS.forEach(f => {
+                const el = document.querySelector(`#csvMapping [data-csv="${f.key}"]`);
+                map[f.key] = el && el.value !== '' ? parseInt(el.value, 10) : -1;
+            });
+            return map;
+        }
+        function importCsvFile(event) {
+            const file = event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            if (!accounts.some(a => !a.isClosed)) { alert('Create an open account first.'); return; }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const rows = parseCsv(String(e.target.result).replace(/^﻿/, ''));
+                if (rows.length < 2) { alert('No rows found in this file.'); return; }
+                csvState = { headers: rows[0], rows: rows.slice(1) };
+                renderCsvModal();
+                document.getElementById('csvModal').classList.add('active');
+            };
+            reader.readAsText(file);
+        }
+        function renderCsvModal() {
+            document.getElementById('csvAccount').innerHTML = accounts.filter(a => !a.isClosed)
+                .map(a => `<option value="${a.id}">${escHtml(a.name)}</option>`).join('');
+            const h = csvState.headers;
+            document.getElementById('csvMapping').innerHTML = CSV_FIELDS.map(f => {
+                const guessIdx = h.findIndex(x => f.guess.test(x));
+                const none = f.req ? '' : '<option value="">None</option>';
+                const opts = none + h.map((x, i) => `<option value="${i}"${i === guessIdx ? ' selected' : ''}>${escHtml(x || 'Column ' + (i + 1))}</option>`).join('');
+                return `<div class="form-group"><label>${f.label}${f.req ? '' : ' (optional)'}</label><select class="form-control" data-csv="${f.key}" onchange="updateCsvPreview()">${opts}</select></div>`;
+            }).join('');
+            updateCsvPreview();
+        }
+        function buildCsvRecords() {
+            const m = getCsvMap();
+            const accountId = document.getElementById('csvAccount').value;
+            const existing = new Set(trades.filter(t => t.accountId === accountId).map(t => `${t.date}|${t.symbol}|${t.pnl}`));
+            const records = [];
+            let skipped = 0;
+            csvState.rows.forEach((r, i) => {
+                const date = parseCsvDate(r[m.date] || '');
+                const symbol = normalizeSymbol(r[m.symbol] || '');
+                const pnl = parseCsvNumber(r[m.pnl] || '');
+                if (!date || !symbol || isNaN(pnl) || !accountId) { skipped++; return; }
+                const key = `${date}|${symbol}|${pnl}`;
+                if (existing.has(key)) { skipped++; return; } // already imported or already logged
+                existing.add(key);
+                const riskRaw = m.risk >= 0 ? parseCsvNumber(r[m.risk] || '') : NaN;
+                const riskAmount = (!isNaN(riskRaw) && riskRaw > 0) ? Math.abs(riskRaw) : null;
+                const outcome = outcomeFromPnl(pnl);
+                const rr = computeRr(outcome, Math.abs(pnl), riskAmount || 0);
+                const sessionRaw = m.session >= 0 ? String(r[m.session] || '').toUpperCase() : '';
+                const session = CSV_SESSIONS.includes(sessionRaw) ? sessionRaw : '';
+                const gid = `${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}`;
+                records.push({ id: `${gid}_${accountId}`, groupId: gid, accountId, symbol, date, outcome, rr, pnl, session, riskAmount, isSignal: false, isMe: true, note: '', link: '', images: [], createdAt: Date.now() - i, tags: [] });
+            });
+            return { records, skipped };
+        }
+        function updateCsvPreview() {
+            const { records, skipped } = buildCsvRecords();
+            document.getElementById('csvPreview').innerText = `${records.length} trades ready · ${skipped} rows skipped`;
+        }
+        function runCsvImport() {
+            const { records, skipped } = buildCsvRecords();
+            if (!records.length) { alert('Nothing to import.'); return; }
+            if (!confirm(`Import ${records.length} trades? ${skipped} rows will be skipped.`)) return;
+            trades.unshift(...records);
+            saveData(); closeModal('csvModal'); updateUI();
+            if (selectedFocusAccountId) renderFocusedAccountSection();
+            alert(`Imported ${records.length} trades.`);
+        }
+
         function removeTradeAccount(accountId) {
             selectedTradeAccounts = selectedTradeAccounts.filter(a => a.id !== accountId);
             delete tradeAccountData[accountId];
@@ -2878,15 +3237,28 @@
         }
 
         function exportData() {
-            const blob = new Blob([JSON.stringify({ accounts, trades: compactTrades(trades), journal })], {type: 'application/json'});
+            const payload = { app: 'TradeTracker', version: 2, exportedAt: new Date().toISOString(), accounts, trades: compactTrades(trades), journal };
+            const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `crt_journal_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.href = url;
+            a.download = `tradetracker_backup_${new Date().toISOString().split('T')[0]}.json`;
             a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            try { localStorage.setItem('tj_last_backup', String(Date.now())); } catch (e) { /* ignore */ }
+            renderBackupStatus();
+        }
+
+        function renderBackupStatus() {
+            const el = document.getElementById('backupStatus');
+            if (!el) return;
+            let last = null;
+            try { last = localStorage.getItem('tj_last_backup'); } catch (e) { /* ignore */ }
+            el.textContent = last ? 'Last backup: ' + new Date(Number(last)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'No backup downloaded yet.';
         }
 
         function exportCSV() {
-            const headers = ['Date','Account','Symbol','Session','Outcome','RR','Risked Amount','PnL','Signal','Me','Note'];
+            const headers = ['Date','Account','Symbol','Session','Outcome','RR','Risked Amount','PnL','Signal','Me','Note','Tags'];
             const escapeCell = (v) => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""').replace(/\n/g, ' ')}"`;
 
             let csv = headers.map(escapeCell).join(',') + '\n';
@@ -2903,7 +3275,8 @@
                     t.pnl,
                     t.isSignal ? 'Yes' : '',
                     t.isMe ? 'Yes' : '',
-                    t.note || ''
+                    t.note || '',
+                    (t.tags || []).join(' ')
                 ];
                 csv += row.map(escapeCell).join(',') + '\n';
             });
@@ -2923,10 +3296,13 @@
                 try {
                     const data = JSON.parse(e.target.result);
                     if (data.accounts && data.trades) {
-                        accounts = normalizeAccounts(data.accounts);
-                        trades = parseStoredTrades(data.trades);
+                        const newAccounts = normalizeAccounts(data.accounts);
+                        const newTrades = parseStoredTrades(data.trades);
+                        if (!confirm(`Replace current data (${accounts.length} accounts, ${trades.length} trade legs) with ${newAccounts.length} accounts and ${newTrades.length} trade legs from this file?`)) return;
+                        accounts = newAccounts;
+                        trades = newTrades;
                         if (data.journal) { journal = normalizeJournal(data.journal); saveJournal(); }
-                        saveData(); alert('Data processing mapping restored successfully.'); updateUI();
+                        saveData(); alert('Restore complete.'); updateUI();
                     } else alert('Incorrect JSON scheme structural layout mapping.');
                 } catch (err) { alert('System parsing error occurred.'); }
             };
@@ -3900,6 +4276,7 @@
             // Account balances/drawdown/target are untouched since those come from raw trades.
             if(signalFilter === 'exclude') scoped = scoped.filter(t => !t.isSignal);
             else if(signalFilter === 'only') scoped = scoped.filter(t => t.isSignal);
+            renderStatsBreakdown(scoped);
 
             const wT = scoped.filter(t => t.outcome === 'win');
             const lT = scoped.filter(t => t.outcome === 'loss');

@@ -645,9 +645,8 @@
                 <div class="card kpi-card"><span class="card-title">Total Losses ($)</span><span class="card-value text-danger" id="stat-total-losses-amt">$0.00</span></div>
             </div>
 
-            <div class="stat-row c2">
-                <div class="card kpi-card"><span class="card-title">Expectancy · last 20</span><span class="card-value" id="stat-exp-20">$0.00</span><span class="stat-sub" id="stat-exp-20-sub">-</span></div>
-                <div class="card kpi-card"><span class="card-title">Expectancy · last 50</span><span class="card-value" id="stat-exp-50">$0.00</span><span class="stat-sub" id="stat-exp-50-sub">-</span></div>
+            <div class="stat-row c4">
+                <div class="card kpi-card"><span class="card-title">Expectancy</span><span class="card-value" id="stat-expectancy">$0.00</span></div>
             </div>
 
             <h3 style="font-size:1.1rem; margin-top:0.5rem;">Streaks &amp; Extremes</h3>
@@ -2799,33 +2798,23 @@
             document.getElementById('tradeSymbol').focus();
         }
 
-        // ===================== ROLLING EXPECTANCY =====================
-        // Average result per trade over the last N logical trades in the current filter.
-        // Shows $ per trade and R per trade (R only for trades that have a risk amount).
+        // ===================== EXPECTANCY =====================
+        // One figure: the average of the expectancy over the last 20 and the last 50 logical trades.
         function renderExpectancy(scoped) {
+            const el = document.getElementById('stat-expectancy');
+            if (!el) return;
             const sorted = [...scoped].sort((a, b) => {
                 if (a.date !== b.date) return a.date < b.date ? -1 : 1;
                 return (a.createdAt || 0) - (b.createdAt || 0);
             });
-            [20, 50].forEach(n => {
+            const expFor = n => {
                 const win = sorted.slice(-n);
-                const valEl = document.getElementById(`stat-exp-${n}`);
-                const subEl = document.getElementById(`stat-exp-${n}-sub`);
-                if (!valEl) return;
-                if (win.length === 0) {
-                    valEl.innerText = '$0.00';
-                    subEl.innerText = 'No trades in range';
-                    return;
-                }
-                const s = summarize(win);
-                const rTrades = win.filter(hasRValue);
-                const avgR = rTrades.length ? rTrades.reduce((x, t) => x + (parseFloat(t.rr) || 0), 0) / rTrades.length : null;
-                const exp = s.pnl / win.length;
-                valEl.innerText = fmtSigned(exp) + ' / trade';
-                valEl.className = 'card-value ' + pnlClass(exp);
-                const note = win.length < n ? `Only ${win.length} trade${win.length === 1 ? '' : 's'} so far` : `${n} trades`;
-                subEl.innerText = `${avgR === null ? 'No R data' : (avgR >= 0 ? '+' : '') + avgR.toFixed(2) + 'R / trade'} · ${s.wr.toFixed(1)}% win rate · ${note}`;
-            });
+                return win.length ? summarize(win).pnl / win.length : null;
+            };
+            const values = [expFor(20), expFor(50)].filter(v => v !== null);
+            const exp = values.length ? values.reduce((x, v) => x + v, 0) / values.length : 0;
+            el.innerText = fmtSigned(exp);
+            el.className = 'card-value ' + pnlClass(exp);
         }
 
         // ===================== PERFORMANCE BY (session / model / symbol) =====================

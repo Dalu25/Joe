@@ -34,10 +34,10 @@
             --accent-glow: rgba(255, 255, 255, 0.25);
             --grid: #3a3a3a;
             --chart-line: #ffffff;
-            --danger: #c0736e;
-            --danger-bg: rgba(192, 115, 110, 0.12);
-            --success: #6f9f84;
-            --success-bg: rgba(111, 159, 132, 0.12);
+            --danger: #d55e5e;
+            --danger-bg: rgba(213, 94, 94, 0.12);
+            --success: #3aad64;
+            --success-bg: rgba(58, 173, 100, 0.12);
             --warning: #b99a62;
             --warning-bg: rgba(185, 154, 98, 0.1);
             --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -59,11 +59,11 @@
             --accent-glow: rgba(0, 0, 0, 0.18);
             --grid: #d0d0d0;
             --chart-line: #0a0a0a;
-            --danger: #a4544e;
-            --success: #3f7a5a;
+            --danger: #ba3030;
+            --success: #2c824b;
             --warning: #92703a;
-            --danger-bg: rgba(164, 84, 78, 0.10);
-            --success-bg: rgba(63, 122, 90, 0.10);
+            --danger-bg: rgba(186, 48, 48, 0.10);
+            --success-bg: rgba(44, 130, 75, 0.10);
             --warning-bg: rgba(146, 112, 58, 0.10);
         }
 
@@ -1524,7 +1524,7 @@
             const sub = dark ? '#8d99b5' : '#64748b';
             const tileBg = dark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.05)';
             const tileLine = dark ? 'rgba(255,255,255,0.10)' : 'rgba(15,23,42,0.12)';
-            const green = dark ? '#86b49a' : '#3f7a5a', red = dark ? '#caa09b' : '#a4544e';
+            const green = dark ? '#4fb873' : '#2c824b', red = dark ? '#e07a7a' : '#ba3030';
             const font = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
             const g = c.createLinearGradient(0, 0, W, H);
@@ -3162,7 +3162,7 @@
                 type: 'line',
                 data: { labels: labels.length ? labels : ['No Matrix Data'], datasets: [{
                     label: 'Net Accumulation', data: data.length ? data : [0],
-                    borderColor: cssVar('--success'), backgroundColor: 'rgba(111, 159, 132, 0.08)',
+                    borderColor: cssVar('--success'), backgroundColor: 'rgba(58, 173, 100, 0.08)',
                     segment: {
                         borderColor: (ctx) => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) < 0 ? cssVar('--danger') : cssVar('--success'),
                         backgroundColor: (ctx) => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) < 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(34, 197, 94, 0.08)'
@@ -4194,7 +4194,7 @@
                     datasets: [{
                         label: 'Trades',
                         data: bucketOrder.map(k => buckets[k]),
-                        backgroundColor: ['#c0736e', '#b99a62', '#8fb8a0', '#6f9f84', '#5a8a6d'],
+                        backgroundColor: ['#d55e5e', '#b99a62', '#5fbb7e', '#3aad64', '#2f9155'],
                         borderRadius: 4,
                         maxBarThickness: 60
                     }]

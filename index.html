@@ -137,7 +137,12 @@
         .card.clickable:hover { border-color: var(--accent); }
         .card.active-account { border-color: var(--accent); background: linear-gradient(145deg, var(--bg-surface), var(--bg-surface-hover)); }
         .card-title { color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
-        .card-value { font-size: 1.6rem; font-weight: 700; word-break: break-all; }
+        .card-value { font-size: 1.6rem; font-weight: 700; white-space: nowrap; }
+         (max-width: 600px) {
+            .card-value { font-size: 1.35rem; }
+            .kpi-card .card-value { font-size: 1.4rem; letter-spacing: -0.02em; }
+        }
+        .no-risk { color: var(--text-secondary); font-size: 0.8rem; font-style: italic; }
         .kpi-card .card-value { font-size: 1.75rem; letter-spacing: -0.01em; }
         .text-success { color: var(--success); } .text-danger { color: var(--danger); } .text-warning { color: var(--warning); }
 
@@ -482,6 +487,7 @@
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
                 <div class="dash-range-note" style="margin-bottom:0;">Stats for: <strong id="dash-range-label" style="color:var(--text-primary);">All Time</strong></div>
                 <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span id="syncState" style="font-size:0.8rem; color:var(--text-secondary);"></span>
                     <span id="dashSaveStatus" style="font-size:0.8rem; color:var(--text-secondary);"></span>
                     <button class="btn btn-outline" type="button" id="dashSaveBtn" onclick="gsManualSave()" title="Push the latest data to Google Sheets right now — useful before closing the app">Save Now</button>
                 </div>
@@ -1460,6 +1466,9 @@
 
         // ---- Score card rendering (canvas) ----
         let cardCtx = null; // { kind: 'day'|'week', key }
+        function rrCell(t) {
+            return hasRValue(t) ? `${t.rr}R` : '<span class="no-risk" title="No risk entered — left out of R averages">No risk</span>';
+        }
         function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
         function getAppTheme() { try { return localStorage.getItem('tj_app_theme') === 'light' ? 'light' : 'dark'; } catch (e) { return 'dark'; } }
         function applyAppTheme(t) {
@@ -1474,6 +1483,7 @@
             if (typeof updateUI === 'function') updateUI();
         }
         applyAppTheme(getAppTheme());
+        gsRefreshSyncState();
 
         function getCardTheme() { return localStorage.getItem('tj_card_theme') === 'light' ? 'light' : 'dark'; }
         function setCardTheme(t) { localStorage.setItem('tj_card_theme', t); renderCard(); }
@@ -2001,7 +2011,7 @@
                     const acc = accounts.find(a => a.id === t.accountId);
                     const badge = t.outcome === 'win' ? '<span class="badge badge-win">Win</span>' : (t.outcome === 'loss' ? '<span class="badge badge-loss">Loss</span>' : '<span class="badge badge-breakeven">BE</span>');
                     const gid = jEsc(t.groupId || t.id);
-                    return `<tr class="clickable" onclick="showTradeDetails('${gid}')"><td>${badge}</td><td>${t.date}</td><td>${jEsc(acc ? acc.name : '-')}</td><td style="font-weight:600;">${jEsc(t.symbol)}</td><td>${jEsc(t.session || '-')}</td><td>${t.rr ? t.rr + 'R' : '0.00R'}</td><td class="${pnlClass(t.pnl)}">${fmtMoney(t.pnl)}</td><td class="action-btns" onclick="event.stopPropagation()"><button class="btn btn-outline" style="padding:0.3rem; min-height:32px; min-width:32px;" onclick="openEditModal('${gid}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="btn btn-danger" style="padding:0.3rem; min-height:32px; min-width:32px; display:inline-flex; align-items:center; justify-content:center;" onclick="deleteTrade('${gid}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>`;
+                    return `<tr class="clickable" onclick="showTradeDetails('${gid}')"><td>${badge}</td><td>${t.date}</td><td>${jEsc(acc ? acc.name : '-')}</td><td style="font-weight:600;">${jEsc(t.symbol)}</td><td>${jEsc(t.session || '-')}</td><td>${rrCell(t)}</td><td class="${pnlClass(t.pnl)}">${fmtMoney(t.pnl)}</td><td class="action-btns" onclick="event.stopPropagation()"><button class="btn btn-outline" style="padding:0.3rem; min-height:32px; min-width:32px;" onclick="openEditModal('${gid}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="btn btn-danger" style="padding:0.3rem; min-height:32px; min-width:32px; display:inline-flex; align-items:center; justify-content:center;" onclick="deleteTrade('${gid}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>`;
                 }).join('');
                 body.innerHTML = rowsHtml || '<tr><td colspan="8" style="text-align:center; color:var(--text-secondary);">No trades</td></tr>';
                 histPager(rows.length, pages);
@@ -2631,7 +2641,7 @@
                         <td>${badge}</td>
                         <td>${t.date}</td>
                         <td style="font-weight:600;">${t.symbol}</td>
-                        <td>${t.rr ? t.rr + 'R' : '0.00R'}</td>
+                        <td>${rrCell(t)}</td>
                         <td class="${t.pnl > 0 ? 'text-success' : (t.pnl < 0 ? 'text-danger' : 'text-warning')}">${fmtMoney(t.pnl)}</td>
                     </tr>`;
             });
@@ -4443,7 +4453,9 @@
                 // Clear a generous range first so a shorter push never leaves stale chunk rows behind.
                 await gsClearValues('JournalData!A1:C5000');
                 await gsUpdateValues('JournalData!A1:C' + grid.length, grid);
+                try { localStorage.setItem('tj_gs_last_sync', String(Date.now())); } catch (e) { /* ignore */ }
                 gsClearDirty(version);
+                gsRefreshSyncState();
                 gsSetStatus('Synced just now', true);
             } catch (err) {
                 gsSetStatus('Push failed: ' + err.message, false);
@@ -4479,7 +4491,8 @@
                 localStorage.setItem('tj_journal', JSON.stringify(journal));
                 localStorage.setItem('tj_accounts', JSON.stringify(accounts));
                 localStorage.setItem('tj_trades', JSON.stringify(compactTrades(trades)));
-                try { localStorage.removeItem('tj_gs_dirty'); } catch (e) { /* ignore */ }
+                try { localStorage.removeItem('tj_gs_dirty'); localStorage.setItem('tj_gs_last_sync', String(Date.now())); } catch (e) { /* ignore */ }
+                gsRefreshSyncState();
                 closeAccountFocus();
                 resetAccountForm();
                 updateUI();
@@ -4499,6 +4512,17 @@
             if (localStorage.getItem('tj_gs_granted') !== 'true') return; // never connected — nothing to sync to
             gsLocalVersion++;
             try { localStorage.setItem('tj_gs_dirty', '1'); } catch (e) { /* storage full — flag not persisted */ }
+            gsRefreshSyncState();
+        }
+        function gsRefreshSyncState() {
+            const el = document.getElementById('syncState');
+            if (!el) return;
+            if (localStorage.getItem('tj_gs_granted') !== 'true') { el.textContent = ''; return; }
+            if (gsHasUnsyncedChanges()) { el.textContent = 'Not synced'; el.style.color = 'var(--warning)'; return; }
+            let last = null;
+            try { last = localStorage.getItem('tj_gs_last_sync'); } catch (e) { /* ignore */ }
+            el.textContent = last ? 'Synced ' + new Date(Number(last)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Synced';
+            el.style.color = 'var(--text-secondary)';
         }
         function gsClearDirty(version) {
             if (version !== gsLocalVersion) return; // edited again mid-push — stay dirty

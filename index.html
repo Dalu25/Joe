@@ -3312,7 +3312,15 @@
             let m = t.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
             if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
             m = t.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
-            if (m) return `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`; // month first, as in US exports
+            if (m) {
+                // Month first (US exports) unless the first number can only be a day
+                let mo = parseInt(m[1], 10), da = parseInt(m[2], 10);
+                if (mo > 12 && da <= 12) { const tmp = mo; mo = da; da = tmp; }
+                const y = parseInt(m[3], 10);
+                const check = new Date(y, mo - 1, da);
+                if (check.getFullYear() !== y || check.getMonth() !== mo - 1 || check.getDate() !== da) return '';
+                return `${y}-${String(mo).padStart(2, '0')}-${String(da).padStart(2, '0')}`;
+            }
             return '';
         }
         function parseCsvNumber(s) {

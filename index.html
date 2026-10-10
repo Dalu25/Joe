@@ -512,6 +512,7 @@
                 <div style="display:flex; align-items:center; gap:0.6rem;">
                     <span id="syncState" style="font-size:0.8rem; color:var(--text-secondary);"></span>
                     <span id="dashSaveStatus" style="font-size:0.8rem; color:var(--text-secondary);"></span>
+                    <button class="btn btn-outline" type="button" id="dashSaveBtn" onclick="gsManualSave()" title="Push the latest data to Google Sheets now. Status shows here.">Sync</button>
                 </div>
             </div>
 
@@ -797,7 +798,6 @@
                     </div>
                     <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                         <button class="btn" id="gsConnectBtn" type="button" onclick="gsConnect()">Connect</button>
-                        <button class="btn btn-outline" type="button" id="dashSaveBtn" onclick="gsManualSave()" title="Push the latest data to Google Sheets right now. Status shows on the Dashboard.">Save Now</button>
                         <button class="btn btn-outline" type="button" onclick="gsPull()">Pull from Sheet</button>
                         <button class="btn btn-outline" type="button" onclick="gsSignOut()">Sign Out</button>
                     </div>
@@ -4623,7 +4623,7 @@
                 gsPush();
             }
         });
-        // Manual "Save Now" button on the homepage — pushes immediately instead
+        // Manual "Sync" button on the dashboard — pushes immediately instead
         // of waiting on the debounce, for right before closing the app. Auto-pull
         // on connect/reconnect is untouched by this; this only ever pushes.
         async function gsManualSave() {

@@ -34,12 +34,12 @@
             --accent-glow: rgba(255, 255, 255, 0.25);
             --grid: #262626;
             --chart-line: #ffffff;
-            --danger: #ef4444;
-            --danger-bg: rgba(239, 68, 68, 0.12);
-            --success: #22c55e;
-            --success-bg: rgba(34, 197, 94, 0.12);
-            --warning: #f59e0b;
-            --warning-bg: rgba(245, 158, 11, 0.1);
+            --danger: #c0736e;
+            --danger-bg: rgba(192, 115, 110, 0.12);
+            --success: #6f9f84;
+            --success-bg: rgba(111, 159, 132, 0.12);
+            --warning: #b99a62;
+            --warning-bg: rgba(185, 154, 98, 0.1);
             --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             --sidebar-width: 250px;
             --sidebar-collapsed-width: 80px;
@@ -59,6 +59,12 @@
             --accent-glow: rgba(0, 0, 0, 0.18);
             --grid: #e5e5e5;
             --chart-line: #0a0a0a;
+            --danger: #a4544e;
+            --success: #3f7a5a;
+            --warning: #92703a;
+            --danger-bg: rgba(164, 84, 78, 0.10);
+            --success-bg: rgba(63, 122, 90, 0.10);
+            --warning-bg: rgba(146, 112, 58, 0.10);
         }
 
 
@@ -1517,7 +1523,7 @@
             const sub = dark ? '#8d99b5' : '#64748b';
             const tileBg = dark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.05)';
             const tileLine = dark ? 'rgba(255,255,255,0.10)' : 'rgba(15,23,42,0.12)';
-            const green = dark ? '#4ade80' : '#16a34a', red = dark ? '#f87171' : '#dc2626';
+            const green = dark ? '#86b49a' : '#3f7a5a', red = dark ? '#caa09b' : '#a4544e';
             const font = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
             const g = c.createLinearGradient(0, 0, W, H);
@@ -3143,14 +3149,14 @@
                 type: 'line',
                 data: { labels: labels.length ? labels : ['No Matrix Data'], datasets: [{
                     label: 'Net Accumulation', data: data.length ? data : [0],
-                    borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.08)',
+                    borderColor: cssVar('--success'), backgroundColor: 'rgba(111, 159, 132, 0.08)',
                     segment: {
-                        borderColor: (ctx) => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) < 0 ? '#ef4444' : '#22c55e',
+                        borderColor: (ctx) => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) < 0 ? cssVar('--danger') : cssVar('--success'),
                         backgroundColor: (ctx) => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) < 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(34, 197, 94, 0.08)'
                     },
                     fill: true, tension: 0.35, borderWidth: 2, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 4,
                     pointBackgroundColor: cssVar('--bg-base'),
-                    pointHoverBorderColor: (ctx) => (ctx.parsed && ctx.parsed.y < 0) ? '#ef4444' : '#22c55e'
+                    pointHoverBorderColor: (ctx) => (ctx.parsed && ctx.parsed.y < 0) ? cssVar('--danger') : cssVar('--success')
                 }] },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: cssVar('--grid') } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } }
             });
@@ -4175,7 +4181,7 @@
                     datasets: [{
                         label: 'Trades',
                         data: bucketOrder.map(k => buckets[k]),
-                        backgroundColor: ['#ef4444', '#f59e0b', '#34d399', '#10b981', '#00b87c'],
+                        backgroundColor: ['#c0736e', '#b99a62', '#8fb8a0', '#6f9f84', '#5a8a6d'],
                         borderRadius: 4,
                         maxBarThickness: 60
                     }]
@@ -4226,7 +4232,7 @@
         function gsSetStatus(text, on) {
             const dot = document.getElementById('gsSyncDot');
             const label = document.getElementById('gsSyncStatus');
-            if (dot) dot.style.background = on === true ? '#10b981' : (on === false ? 'var(--danger)' : 'var(--text-secondary)');
+            if (dot) dot.style.background = on === true ? 'var(--success)' : (on === false ? 'var(--danger)' : 'var(--text-secondary)');
             if (label) label.textContent = text;
         }
         function gsScheduleSilentRefresh() {

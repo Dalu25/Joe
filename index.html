@@ -512,7 +512,6 @@
                 <div style="display:flex; align-items:center; gap:0.6rem;">
                     <span id="syncState" style="font-size:0.8rem; color:var(--text-secondary);"></span>
                     <span id="dashSaveStatus" style="font-size:0.8rem; color:var(--text-secondary);"></span>
-                    <button class="btn btn-outline" type="button" id="dashSaveBtn" onclick="gsManualSave()" title="Push the latest data to Google Sheets right now — useful before closing the app">Save Now</button>
                 </div>
             </div>
 
@@ -525,7 +524,10 @@
 
             <div class="dashboard-grid">
                 <div class="chart-container">
-                    <h3 style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">Cumulative P&L Curve</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem;">
+                        <h3 style="margin:0; color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">Cumulative P&L Curve</h3>
+                        <select id="pnlChartAccount" class="select-toggle" onchange="updateDashboard()" aria-label="Chart account"></select>
+                    </div>
                     <div style="position: relative; height: 260px; width: 100%;"><canvas id="pnlChart"></canvas></div>
                 </div>
                 <div class="calendar-container">
@@ -612,7 +614,14 @@
                 </div>
             </details>
             
-            <h3 style="margin-top: 1rem; font-size:1.1rem;">Active Accounts Overview</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-top:1rem; margin-bottom:0.5rem;">
+                <h3 style="font-size:1.1rem; margin:0;">Accounts</h3>
+                <select id="accountStatusFilter" class="select-toggle" onchange="updateAccountsView()" aria-label="Show accounts">
+                    <option value="active" selected>Active</option>
+                    <option value="archived">Archived (passed or closed)</option>
+                    <option value="all">All</option>
+                </select>
+            </div>
             <div id="accounts-list" style="display:flex; flex-direction:column; gap:0.75rem;"></div>
 
             <!-- DYNAMIC TARGET SINGLE ACCOUNT INSIGHTS PANE -->
@@ -788,21 +797,23 @@
                     </div>
                     <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                         <button class="btn" id="gsConnectBtn" type="button" onclick="gsConnect()">Connect</button>
-                        <button class="btn btn-outline" type="button" onclick="gsPush()">Push to Sheet</button>
+                        <button class="btn btn-outline" type="button" id="dashSaveBtn" onclick="gsManualSave()" title="Push the latest data to Google Sheets right now. Status shows on the Dashboard.">Save Now</button>
                         <button class="btn btn-outline" type="button" onclick="gsPull()">Pull from Sheet</button>
                         <button class="btn btn-outline" type="button" onclick="gsSignOut()">Sign Out</button>
                     </div>
                 </div>
             </details>
             <details class="toggle-section" style="max-width:500px;">
-                <summary>Export & Backup</summary>
+                <summary>Backup &amp; Restore</summary>
                 <div class="toggle-body">
-                    <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Download all your trade and account data as a JSON file, or export your trade log as CSV.</p>
+                    <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Download all your trade and account data as a JSON backup, export the trade log as CSV, or restore a previous JSON backup.</p>
                     <p id="backupStatus" style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.85rem;"></p>
                     <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                         <button class="btn" onclick="exportData()">Export Data</button>
                         <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
+                        <button class="btn btn-outline" onclick="document.getElementById('restoreFile').click()">Restore from JSON</button>
                     </div>
+                    <input type="file" id="restoreFile" accept=".json" onchange="restoreData(event)" style="display:none;">
                 </div>
             </details>
             <details class="toggle-section" style="max-width:500px;">
@@ -811,14 +822,6 @@
                     <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Upload a broker or prop firm CSV export. Choose the account and the matching columns.</p>
                     <input type="file" id="importCsvFile" accept=".csv,text/csv" onchange="importCsvFile(event)" style="display:none;">
                     <button class="btn btn-outline" onclick="document.getElementById('importCsvFile').click()">Choose CSV</button>
-                </div>
-            </details>
-            <details class="toggle-section" style="max-width:500px;">
-                <summary>Restore Data</summary>
-                <div class="toggle-body">
-                    <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Upload a previously exported JSON file to restore your journal.</p>
-                    <input type="file" id="restoreFile" accept=".json" onchange="restoreData(event)" style="display:none;">
-                    <button class="btn btn-outline" onclick="document.getElementById('restoreFile').click()">Choose File & Restore</button>
                 </div>
             </details>
             <details class="toggle-section" style="max-width:500px; border-color: var(--danger);">
@@ -891,14 +894,13 @@
                     <select id="perfAccountSelect" class="select-toggle" onchange="perfSetAccount(this.value)"></select>
                     <span class="stat-sub" id="perfTradeCount"></span>
                 </div>
-                <button class="btn btn-outline" type="button" onclick="openCompare()">Compare accounts</button>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button class="btn btn-outline" type="button" onclick="openPerfTrades()">View trades</button>
+                    <button class="btn btn-outline" type="button" onclick="openCompare()">Compare accounts</button>
+                </div>
             </div>
             <div id="perfProgressCard"></div>
             <div class="grid-cards" id="perfKpis" style="margin-top:1rem;"></div>
-            <div class="chart-container" style="margin-top:1rem;">
-                <h3 style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">Equity Curve</h3>
-                <div style="position: relative; height: 260px; width: 100%;"><canvas id="perfEquityChart"></canvas></div>
-            </div>
         </section>
 
     </main>
@@ -1579,7 +1581,7 @@
         function openCardModal() {
             const isDay = cardCtx.kind === 'day';
             document.getElementById('cardModalTitle').innerText = isDay ? 'Day Score Card' : 'Weekly Score Card';
-            document.getElementById('cardNoteLabel').innerText = isDay ? 'Day notes' : 'Weekly takeaway';
+            document.getElementById('cardNoteLabel').innerText = 'Day notes'; // week cards have no note; weekly notes live in the review
             const noteEl = document.getElementById('cardNote');
             noteEl.value = isDay ? ((journal.days[cardCtx.key] || {}).note || '') : '';
             noteEl.style.display = isDay ? '' : 'none';
@@ -1786,21 +1788,13 @@
 
         // ---- Account Performance page ----
         let perfAccountId = null;
-        let perfChartInstance = null;
         function perfSetAccount(id) { perfAccountId = id; renderPerformancePage(); }
+        function openPerfTrades() { hist.accountId = perfAccountId; switchTab('history'); }
         function perfEnsureAccount() {
             const active = accounts.filter(a => !a.isClosed);
             if (!perfAccountId || !active.some(a => a.id === perfAccountId)) perfAccountId = active[0] ? active[0].id : null;
         }
-        function markAccountPassed(id) {
-            const acc = accounts.find(a => a.id === id);
-            if (!acc) return;
-            if (confirm(`Mark "${acc.name}" as passed and archive it? It will move to Archived Accounts. Trade history and stats are kept — you can reopen it anytime.`)) {
-                acc.isClosed = true;
-                saveData();
-                updateUI();
-            }
-        }
+        function markAccountPassed(id) { setAccountStatus(id, 'passed'); }
         function renderPerformancePage() {
             perfEnsureAccount();
             const active = accounts.filter(a => !a.isClosed);
@@ -1813,7 +1807,6 @@
                 document.getElementById('perfTradeCount').innerText = '';
                 document.getElementById('perfProgressCard').innerHTML = `<div class="card" style="text-align:center; padding:2rem; color:var(--text-secondary);">Add an account to see its performance</div>`;
                 document.getElementById('perfKpis').innerHTML = '';
-                if (perfChartInstance) { perfChartInstance.destroy(); perfChartInstance = null; }
                 return;
             }
 
@@ -1878,23 +1871,6 @@
                 `<div class="card kpi-card"><span class="card-title">Avg R:R</span><span class="card-value">${perfAvgRR.toFixed(2)}R</span><span class="stat-sub">Total ${perfTotalRR.toFixed(2)}R</span></div>`;
 
 
-            const accTrades = trades.filter(t => t.accountId === acc.id);
-            const logical = getLogicalTrades(accTrades).sort((a, b) => {
-                const d = new Date(a.date) - new Date(b.date);
-                if (d !== 0) return d;
-                return (a.createdAt || 0) - (b.createdAt || 0);
-            });
-            let run = acc.balance + (acc.balanceAdjustment || 0);
-            const labels = ['Start'], data = [run];
-            logical.forEach(t => { run += t.pnl; labels.push(t.date); data.push(run); });
-            if (typeof Chart === 'undefined') return; // chart library didn't load — skip the graph, keep the app working
-            const ctx = document.getElementById('perfEquityChart').getContext('2d');
-            if (perfChartInstance) perfChartInstance.destroy();
-            perfChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: { labels, datasets: [{ label: 'Balance', data, borderColor: cssVar('--chart-line'), backgroundColor: cssVar('--accent-soft'), fill: true, tension: 0.35, borderWidth: 2, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 4, pointBackgroundColor: cssVar('--bg-base'), pointHoverBorderColor: cssVar('--chart-line') }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: cssVar('--grid') } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } }
-            });
         }
 
 
@@ -1955,7 +1931,8 @@
         function renderHistory() {
             document.getElementById('histHideArchived').checked = hist.hideArchived;
             const accSel = document.getElementById('histAccount');
-            const prev = accSel.value || 'all';
+            const prev = hist.accountId || accSel.value || 'all';
+            hist.accountId = null;
             const accPool = hist.hideArchived ? accounts.filter(a => !a.isClosed) : accounts;
             accSel.innerHTML = '<option value="all">All Accounts</option>' + accPool.map(a => `<option value="${jEsc(a.id)}">${jEsc(a.name)}${a.isClosed ? ' (archived)' : ''}</option>`).join('');
             accSel.value = accPool.some(a => a.id === prev) ? prev : 'all';
@@ -2458,83 +2435,23 @@
             }
         }
 
-        // Close (archive) an account — hides it from the active list and blocks new trades
-        // against it, but keeps the account record and every trade tied to it fully intact.
-        function closeAccount(id, event) {
+        // One account status control: Active, Passed or Closed. Passed and Closed are both archived.
+        function setAccountStatus(id, status, event) {
             if (event) event.stopPropagation();
             const acc = accounts.find(a => a.id === id);
-            if(!acc) return;
-            if(confirm(`Close "${acc.name}"? It will move to Archived Accounts. Trade history and stats are kept — you can reopen it anytime.`)) {
-                acc.isClosed = true;
-                saveData(); updateUI();
+            if (!acc) return;
+            const current = acc.isClosed ? (acc.closedReason === 'passed' ? 'passed' : 'closed') : 'active';
+            if (status === current) return;
+            if (status !== 'active') {
+                const verb = status === 'passed' ? 'Mark as passed and archive' : 'Close';
+                if (!confirm(`${verb} "${acc.name}"? It moves to Archived. Trade history and stats are kept — you can reopen it anytime.`)) {
+                    updateAccountsView(); // reset the status control
+                    return;
+                }
             }
-        }
-
-        function reopenAccount(id, event) {
-            if (event) event.stopPropagation();
-            const acc = accounts.find(a => a.id === id);
-            if(!acc) return;
-            acc.isClosed = false;
+            acc.isClosed = status !== 'active';
+            acc.closedReason = status === 'active' ? null : status;
             saveData(); updateUI();
-        }
-
-        function renderArchivedAccounts() {
-            let archiveContainer = document.getElementById('archived-accounts-section');
-            const closedAccounts = accounts.filter(a => a.isClosed);
-
-            if(!archiveContainer) {
-                // Build the section once and insert it right after the active accounts grid.
-                const activeGrid = document.getElementById('accounts-list');
-                archiveContainer = document.createElement('div');
-                archiveContainer.id = 'archived-accounts-section';
-                archiveContainer.style.marginTop = '2rem';
-                activeGrid.insertAdjacentElement('afterend', archiveContainer);
-            }
-
-            if(closedAccounts.length === 0) {
-                archiveContainer.innerHTML = '';
-                return;
-            }
-
-            let html = `<details class="toggle-section" style="margin-top:0;">
-                <summary style="color: var(--text-secondary);">🗄️ Archived Accounts (${closedAccounts.length})</summary>
-                <div class="toggle-body">
-                <div style="display:flex; flex-direction:column; gap:0.75rem;">`;
-            closedAccounts.forEach(acc => {
-                const accTrades = trades.filter(t => t.accountId === acc.id);
-                const netAccountPnl = accTrades.reduce((s, t) => s + t.pnl, 0);
-                const currentBalance = getAccountCurrentBalance(acc);
-                html += `
-                    <details class="toggle-section" style="margin-top:0; opacity:0.75;">
-                        <summary>
-                            <span style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
-                                <span style="color:var(--text-secondary); font-weight:700;">${acc.name}</span>
-                                <span style="font-weight:400; color:var(--text-secondary); font-size:0.9rem;">${fmtMoney(currentBalance)}</span>
-                                <span style="font-size:0.65rem; background:var(--bg-base); padding:0.15rem 0.4rem; border-radius:4px;">CLOSED</span>
-                            </span>
-                        </summary>
-                        <div class="toggle-body">
-                            <div style="display:flex; justify-content:flex-end; gap:0.25rem; margin-bottom:0.5rem;">
-                                <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Account Performance" onclick="openAccountPerformance('${acc.id}')">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
-                                </button>
-                                <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Reopen Account" onclick="reopenAccount('${acc.id}', event)">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                                </button>
-                                <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Delete permanently (wipes trade history too)" onclick="deleteAccount('${acc.id}', event)">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                </button>
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:0.1rem; font-size:0.8rem; color:var(--text-secondary);">
-                                <span>Default Capital: <strong>${fmtMoney(acc.balance)}</strong></span>
-                                <span>Final P&L: <strong class="${netAccountPnl >= 0 ? 'text-success' : 'text-danger'}">${netAccountPnl >= 0 ? '+' : ''}${fmtMoney(netAccountPnl)}</strong></span>
-                                <span>${accTrades.length} trade${accTrades.length === 1 ? '' : 's'} preserved</span>
-                            </div>
-                        </div>
-                    </details>`;
-            });
-            html += `</div></div></details>`;
-            archiveContainer.innerHTML = html;
         }
 
         // ===================== DRAWDOWN & STREAK ANALYTICS =====================
@@ -2934,26 +2851,57 @@
                 setTimeout(() => URL.revokeObjectURL(a.href), 2000);
             }, 'image/png');
         }
+        // ===================== SHARED PDF LOOK (weekly review + period reports) =====================
+        const PDF_STYLE = { margin: 50, top: 60, ink: [20, 20, 20], muted: [80, 80, 80], faint: [120, 120, 120], rule: [220, 220, 220] };
+        function newPdfDoc() {
+            const { jsPDF } = window.jspdf;
+            return new jsPDF({ unit: 'pt', format: 'letter' });
+        }
+        // Draws the shared title block at `top` and returns the y where content starts.
+        function pdfStart(doc, title, subtitle, top) {
+            const pageW = doc.internal.pageSize.getWidth();
+            const m = PDF_STYLE.margin;
+            let y = top ?? PDF_STYLE.top;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...PDF_STYLE.ink);
+            doc.text(title, m, y); y += 22;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(13); doc.setTextColor(...PDF_STYLE.muted);
+            doc.text(String(subtitle), m, y); y += 30;
+            doc.setDrawColor(...PDF_STYLE.rule); doc.line(m, y, pageW - m, y);
+            return y + 25;
+        }
+        // Adds the shared page-number footer to every page, then saves the file.
+        function pdfFinish(doc, fileName) {
+            const pageW = doc.internal.pageSize.getWidth();
+            const pageH = doc.internal.pageSize.getHeight();
+            const pages = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pages; i++) {
+                doc.setPage(i);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...PDF_STYLE.faint);
+                doc.text(`Trading Journal · Page ${i} of ${pages}`, PDF_STYLE.margin, pageH - 22);
+            }
+            doc.save(fileName);
+        }
+
         function exportReviewPDF() {
             if (!window.jspdf) { alert('The PDF library did not load. Check your connection.'); return; }
             const canvas = weekCardCanvas(reviewCtx.start, 'light');
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+            const doc = newPdfDoc();
             const pageW = doc.internal.pageSize.getWidth();
             const pageH = doc.internal.pageSize.getHeight();
-            const margin = 36;
+            const margin = PDF_STYLE.margin;
+            const top = pdfStart(doc, 'Trading Journal', weekLabel(reviewCtx.start));
             const ratio = canvas.width / canvas.height;
             let w = pageW - margin * 2;
             let h = w / ratio;
-            if (h > pageH - margin * 2) { h = pageH - margin * 2; w = h * ratio; }
-            doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, w, h);
+            if (h > pageH - top - margin) { h = pageH - top - margin; w = h * ratio; }
+            doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, top, w, h);
 
             // Journal notes go in the PDF only, below the card
             const j = journal.weeks[reviewCtx.start] || {};
             const notes = [['What worked', j.worked], ['What needs work', j.needs], ["Next week's focus", j.focus]]
                 .filter(([, v]) => v && String(v).trim());
             if (notes.length) {
-                let y = margin + h + 24;
+                let y = top + h + 24;
                 if (pageH - margin - y < 90) { doc.addPage(); y = margin; }
                 const textW = pageW - margin * 2;
                 notes.forEach(([label, text]) => {
@@ -2972,7 +2920,7 @@
                     y += 10;
                 });
             }
-            doc.save(reviewFileStem() + '.pdf');
+            pdfFinish(doc, reviewFileStem() + '.pdf');
         }
 
         // ===================== CSV IMPORT =====================
@@ -3211,15 +3159,17 @@
             const container = document.getElementById('accounts-list'); 
             container.innerHTML = '';
             
-            const activeAccounts = accounts.filter(a => !a.isClosed);
+            const filterVal = document.getElementById('accountStatusFilter').value;
+            const shownAccounts = accounts.filter(a => filterVal === 'all' || (filterVal === 'archived') === !!a.isClosed);
 
-            if(activeAccounts.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-secondary);">No active tracking profiles. ${accounts.length > 0 ? 'Check Archived Accounts below.' : 'Create one to get started.'}</div>`;
-                renderArchivedAccounts();
+            if(shownAccounts.length === 0) {
+                const msg = filterVal === 'archived' ? 'No archived accounts.'
+                    : (accounts.length > 0 ? 'No active accounts. Switch the filter to see archived ones.' : 'Create one to get started.');
+                container.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-secondary);">${msg}</div>`;
                 return;
             }
 
-            activeAccounts.forEach(acc => {
+            shownAccounts.forEach(acc => {
                 const accTrades = trades.filter(t => t.accountId === acc.id);
                 const netAccountPnl = accTrades.reduce((s, t) => s + t.pnl, 0);
                 const currentBalance = getAccountCurrentBalance(acc);
@@ -3341,6 +3291,7 @@
                                 <span style="font-weight:400; color:var(--text-secondary); font-size:0.9rem;">${fmtMoney(currentBalance)}</span>
                                 ${targetReached ? '<span style="background:var(--success-bg,rgba(16,185,129,0.15)); color:var(--success); font-size:0.65rem; padding:0.15rem 0.4rem; border-radius:4px; font-weight:700;">TARGET HIT</span>' : ''}
                                 ${dailyTargetReached ? '<span style="background:var(--success-bg,rgba(16,185,129,0.15)); color:var(--success); font-size:0.65rem; padding:0.15rem 0.4rem; border-radius:4px; font-weight:700;">DAILY TARGET HIT</span>' : ''}
+                                ${acc.isClosed ? `<span style="font-size:0.65rem; background:var(--bg-base); color:var(--text-secondary); padding:0.15rem 0.4rem; border-radius:4px;">${acc.closedReason === 'passed' ? 'PASSED' : 'CLOSED'}</span>` : ''}
                                 ${limitReached ? '<span style="background:var(--danger-bg,rgba(239,68,68,0.15)); color:var(--danger); font-size:0.65rem; padding:0.15rem 0.4rem; border-radius:4px; font-weight:700;">MAX LOSS HIT</span>' : ''}
                             </span>
                         </summary>
@@ -3349,9 +3300,11 @@
                                 <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Account Performance" onclick="openAccountPerformance('${acc.id}')">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
                                 </button>
-                                <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Close Account (archive, keep trade history)" onclick="closeAccount('${acc.id}', event)">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
-                                </button>
+                                <select class="select-toggle" style="min-height:30px; padding:0.2rem 1.6rem 0.2rem 0.6rem; font-size:0.72rem;" title="Account status" aria-label="Account status" onclick="event.stopPropagation()" onchange="setAccountStatus('${acc.id}', this.value, event)">
+                                    <option value="active" ${!acc.isClosed ? 'selected' : ''}>Active</option>
+                                    <option value="passed" ${acc.isClosed && acc.closedReason === 'passed' ? 'selected' : ''}>Passed</option>
+                                    <option value="closed" ${acc.isClosed && acc.closedReason !== 'passed' ? 'selected' : ''}>Closed</option>
+                                </select>
                                 <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Edit" onclick="loadAccountEdit('${acc.id}', event)">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                 </button>
@@ -3391,11 +3344,17 @@
                         </div>
                     </details>`;
             });
-
-            renderArchivedAccounts();
         }
 
         // GRAPH PERFORMANCE INFRASTRUCTURE
+        function populateChartAccountSelect() {
+            const sel = document.getElementById('pnlChartAccount');
+            if (!sel) return;
+            const current = sel.value || 'all';
+            sel.innerHTML = '<option value="all">All accounts</option>' + accounts.map(a => `<option value="${jEsc(a.id)}">${jEsc(a.name)}${a.isClosed ? ' (archived)' : ''}</option>`).join('');
+            sel.value = (current === 'all' || accounts.some(a => a.id === current)) ? current : 'all';
+        }
+
         function renderChart(sourceTrades) {
             if (typeof Chart === 'undefined') return; // chart library didn't load — skip the graph, keep the app working
             const ctx = document.getElementById('pnlChart').getContext('2d');
@@ -3752,27 +3711,15 @@
 
         function exportPeriodReportPDF() {
             if(!lastReportData) { alert('Generate a report first'); return; }
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+            const doc = newPdfDoc();
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
-            const marginX = 50;
-            let y = 60;
+            const marginX = PDF_STYLE.margin;
+            let y = PDF_STYLE.top;
             const checkPageBreak = (needed) => { if(y + needed > pageHeight - 50) { doc.addPage(); y = 60; } };
             const green = [16, 150, 90], red = [220, 50, 50];
 
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(18);
-            doc.setTextColor(20, 20, 20);
-            doc.text('Trading Journal', marginX, y);
-            y += 22;
-            doc.setFontSize(13);
-            doc.setTextColor(80, 80, 80);
-            doc.text(lastReportData.heading, marginX, y);
-            y += 30;
-            doc.setDrawColor(220, 220, 220);
-            doc.line(marginX, y, pageWidth - marginX, y);
-            y += 25;
+            y = pdfStart(doc, 'Trading Journal', lastReportData.heading, y);
 
             const drawSectionTitle = (title) => {
                 checkPageBreak(30);
@@ -3890,7 +3837,7 @@
             doc.text(`Generated ${new Date().toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' })}`, marginX, pageHeight - 30);
 
             const fileLabel = `${lastReportData.typeLabel}_${lastReportData.periodLabel}`.replace(/[^a-z0-9]+/gi, '_');
-            doc.save(`TradeReport_${fileLabel}.pdf`);
+            pdfFinish(doc, `TradeReport_${fileLabel}.pdf`);
         }
 
         function copyPeriodReport() {
@@ -4093,7 +4040,9 @@
             if(pair !== 'all') rangeLabel += ` · ${pair}`;
             document.getElementById('dash-range-label').innerText = rangeLabel;
 
-            renderChart(baseTradesRaw);
+            populateChartAccountSelect();
+            const chartAcc = document.getElementById('pnlChartAccount').value;
+            renderChart(chartAcc === 'all' ? baseTradesRaw : baseTradesRaw.filter(t => t.accountId === chartAcc));
         }
 
         // ===================== SHARED FILTERS (Dashboard + Advanced Statistics) =====================

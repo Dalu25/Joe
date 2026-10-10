@@ -487,6 +487,25 @@
         </div>
 
         <!-- DASHBOARD VIEW -->
+        <!-- SHARED FILTERS: used by Dashboard and Advanced Statistics -->
+        <div class="filter-container" id="sharedFilters" style="margin-top: 0.75rem;">
+            <div class="filter-group">
+                <input type="date" id="dashDateFrom" class="date-toggle" onchange="sharedFilterChanged()">
+                <span class="date-sep">–</span>
+                <input type="date" id="dashDateTo" class="date-toggle" onchange="sharedFilterChanged()">
+                <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="sharedAllTime()">All Time</button>
+                <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="sharedThisMonth()">This Month</button>
+                <select id="pairFilter" class="select-toggle" onchange="sharedFilterChanged()">
+                    <option value="all">All Pairs</option>
+                </select>
+                <select id="tradeTypeFilter" class="select-toggle" onchange="sharedFilterChanged()" title="Me = your own trades. Signal = trades you took from someone else's call.">
+                    <option value="me" selected>Me</option>
+                    <option value="all">All trades</option>
+                    <option value="signal">Signal</option>
+                </select>
+            </div>
+        </div>
+
         <section id="dashboard" class="view-section active">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
                 <div class="dash-range-note" style="margin-bottom:0;">Stats for: <strong id="dash-range-label" style="color:var(--text-primary);">All Time</strong></div>
@@ -533,23 +552,6 @@
                 </div>
             </div>
 
-            <div class="filter-container" style="margin-top: 0.75rem;">
-                <div class="filter-group">
-                    <input type="date" id="dashDateFrom" class="date-toggle" onchange="onDashboardFilterChange()">
-                    <span class="date-sep">–</span>
-                    <input type="date" id="dashDateTo" class="date-toggle" onchange="onDashboardFilterChange()">
-                    <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="dashDateAllTime()">All Time</button>
-                    <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="dashDateThisMonth()">This Month</button>
-                    <select id="pairFilter" class="select-toggle" onchange="onDashboardFilterChange()">
-                        <option value="all">All Pairs</option>
-                    </select>
-                    <select id="tradeTypeFilter" class="select-toggle" onchange="onDashboardFilterChange()">
-                        <option value="all">Trade Type: All</option>
-                        <option value="me">Me</option>
-                        <option value="signal">Signal</option>
-                    </select>
-                </div>
-            </div>
         </section>
 
         <!-- ACCOUNTS VIEW -->
@@ -632,21 +634,6 @@
                     </div>
                 </div>
             </details>
-
-            <div class="filter-container" style="justify-content: flex-start;">
-                <div class="filter-group">
-                <input type="date" id="statsDateFrom" class="date-toggle" onchange="statsRangeChanged()">
-                <span class="date-sep">–</span>
-                <input type="date" id="statsDateTo" class="date-toggle" onchange="statsRangeChanged()">
-                <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="statsDateAllTime()">All Time</button>
-                <button type="button" class="btn btn-outline" style="padding:0.5rem 0.9rem; min-height:36px; border-radius:999px; font-size:0.78rem; flex-shrink:0;" onclick="statsDateThisMonth()">This Month</button>
-                <select id="statsSignalFilter" class="select-toggle" onchange="updateStatsView()">
-                    <option value="exclude" selected>Exclude Signal Trades</option>
-                    <option value="include">Include Signal Trades</option>
-                    <option value="only">Signal Trades Only</option>
-                </select>
-                </div>
-            </div>
 
             <div class="stat-row c4">
                 <div class="card kpi-card"><span class="card-title">Net P&amp;L</span><span class="card-value" id="stat-net-pnl">$0.00</span></div>
@@ -1276,8 +1263,6 @@
             document.getElementById('dashDateTo').value = dashDefaultRange.to;
             document.getElementById('histFrom').value = dashDefaultRange.from;
             document.getElementById('histTo').value = dashDefaultRange.to;
-            document.getElementById('statsDateFrom').value = dashDefaultRange.from;
-            document.getElementById('statsDateTo').value = dashDefaultRange.to;
             updateUI();
 
             // Daily Profit Target rolls over at 17:00 EST — re-render the accounts view
@@ -1313,6 +1298,7 @@
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
+            document.getElementById('sharedFilters').style.display = (tabId === 'dashboard' || tabId === 'stats') ? '' : 'none';
             const navItem = document.querySelector(`.nav-item[onclick="switchTab('${tabId}')"]`);
             if (navItem) navItem.classList.add('active');
             
@@ -2210,9 +2196,6 @@
         }
 
         // Same from/to semantics as the dashboard range: blank bound = open-ended.
-        function filterByDateInputs(arr, from, to) {
-            return arr.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
-        }
 
         function filterByDateRange(arr, range) {
             return arr.filter(t => isInDateRange(t.date, range));
@@ -3454,7 +3437,7 @@
 
         // ===================== PORTFOLIO OVERVIEW =====================
         function updatePortfolioOverview() {
-            const scopedTrades = filterByDateInputs(trades, document.getElementById('statsDateFrom').value, document.getElementById('statsDateTo').value);
+            const scopedTrades = applySharedFilter(trades);
 
             const openAccounts = accounts.filter(a => !a.isClosed);
             const openAccountIds = new Set(openAccounts.map(a => a.id));
@@ -4077,16 +4060,10 @@
 
         // CENTRAL PROCESSING DASHBOARD UPDATES WITH RECTIFIED DATA VISUALS
         function updateDashboard() {
-            const dashFrom = document.getElementById('dashDateFrom').value;
-            const dashTo = document.getElementById('dashDateTo').value;
+            const { from: dashFrom, to: dashTo, pair } = getSharedFilter();
             syncCalendarToDashRange(dashFrom, dashTo);
-            const pair = document.getElementById('pairFilter').value;
-            const tradeTypeFilter = document.getElementById('tradeTypeFilter').value;
 
-            let baseTradesRaw = trades.filter(t => (!dashFrom || t.date >= dashFrom) && (!dashTo || t.date <= dashTo));
-            if(pair !== 'all') baseTradesRaw = baseTradesRaw.filter(t => t.symbol === pair);
-            if(tradeTypeFilter === 'me') baseTradesRaw = baseTradesRaw.filter(t => t.isMe);
-            else if(tradeTypeFilter === 'signal') baseTradesRaw = baseTradesRaw.filter(t => t.isSignal);
+            const baseTradesRaw = applySharedFilter(trades);
 
             // Collapse multi-account legs into logical trades: 1 trade on 3 accounts = 1 trade, not 3.
             const baseTrades = getLogicalTrades(baseTradesRaw)
@@ -4119,48 +4096,46 @@
             renderChart(baseTradesRaw);
         }
 
-        function onDashboardFilterChange() {
+        // ===================== SHARED FILTERS (Dashboard + Advanced Statistics) =====================
+        function getSharedFilter() {
+            return {
+                from: document.getElementById('dashDateFrom').value,
+                to: document.getElementById('dashDateTo').value,
+                pair: document.getElementById('pairFilter').value,
+                type: document.getElementById('tradeTypeFilter').value
+            };
+        }
+        // Raw trades in the shared range, pair and trade type. Multi-account legs are kept; callers collapse them.
+        function applySharedFilter(list) {
+            const f = getSharedFilter();
+            return list.filter(t =>
+                (!f.from || t.date >= f.from) &&
+                (!f.to || t.date <= f.to) &&
+                (f.pair === 'all' || t.symbol === f.pair) &&
+                (f.type === 'all' || (f.type === 'me' ? t.isMe : t.isSignal))
+            );
+        }
+        function sharedFilterChanged() {
             updateDashboard();
-        }
-        function statsRangeChanged() {
             updateStatsView();
             updatePortfolioOverview();
         }
-        function statsDateThisMonth() {
-            const r = periodRange('thisMonth');
-            document.getElementById('statsDateFrom').value = r.from;
-            document.getElementById('statsDateTo').value = r.to;
-            statsRangeChanged();
-        }
-        function statsDateAllTime() {
-            document.getElementById('statsDateFrom').value = '';
-            document.getElementById('statsDateTo').value = '';
-            updateStatsView();
-            updatePortfolioOverview();
-        }
-        function dashDateThisMonth() {
+        function sharedThisMonth() {
             const r = periodRange('thisMonth');
             document.getElementById('dashDateFrom').value = r.from;
             document.getElementById('dashDateTo').value = r.to;
-            updateDashboard();
+            sharedFilterChanged();
         }
-        function dashDateAllTime() {
+        function sharedAllTime() {
             document.getElementById('dashDateFrom').value = '';
             document.getElementById('dashDateTo').value = '';
-            updateDashboard();
+            sharedFilterChanged();
         }
 
         // ADVANCED MATH STATISTICS (STREAKS, RISK CONSISTENCY & R-MULTIPLE DISTRIBUTION)
         function updateStatsView() {
-            const signalFilter = document.getElementById('statsSignalFilter').value;
-            const scopedRaw = filterByDateInputs(trades, document.getElementById('statsDateFrom').value, document.getElementById('statsDateTo').value);
-            let scoped = getLogicalTrades(scopedRaw); // 1 entry per logical trade, not per account leg
-
-            // Signal trades are excluded from performance stats by default — they measure
-            // someone else's call, not your own edge — but can be included or isolated here.
-            // Account balances/drawdown/target are untouched since those come from raw trades.
-            if(signalFilter === 'exclude') scoped = scoped.filter(t => !t.isSignal);
-            else if(signalFilter === 'only') scoped = scoped.filter(t => t.isSignal);
+            // Shared Me / All / Signal filter applies here; account balances/drawdown/target come from raw trades.
+            const scoped = getLogicalTrades(applySharedFilter(trades)); // 1 entry per logical trade, not per account leg
 
             const wT = scoped.filter(t => t.outcome === 'win');
             const lT = scoped.filter(t => t.outcome === 'loss');

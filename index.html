@@ -1113,10 +1113,15 @@
                 <button class="btn btn-outline" type="button" style="flex:1;" onclick="shiftReviewWeek(-1)">&lsaquo; Prev</button>
                 <button class="btn btn-outline" type="button" style="flex:1;" onclick="shiftReviewWeek(1)">Next &rsaquo;</button>
             </div>
-            <div id="reviewBody" style="display:flex; flex-direction:column; gap:1rem; margin-top:1rem;"></div>
-            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-                <button class="btn btn-outline" type="button" style="flex:1;" onclick="saveReviewImage()">Save as Image</button>
-                <button class="btn" type="button" style="flex:1;" onclick="exportReviewPDF()">Export PDF</button>
+            <div id="reviewGenerateWrap" style="margin-top:1rem;">
+                <button class="btn" type="button" style="width:100%;" onclick="generateWeeklyReview()">Generate Review</button>
+            </div>
+            <div id="reviewResult" style="display:none;">
+                <div id="reviewBody" style="display:flex; flex-direction:column; gap:1rem; margin-top:1rem;"></div>
+                <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                    <button class="btn btn-outline" type="button" style="flex:1;" onclick="saveReviewImage()">Save as Image</button>
+                    <button class="btn" type="button" style="flex:1;" onclick="exportReviewPDF()">Export PDF</button>
+                </div>
             </div>
         </div>
     </div>
@@ -3101,7 +3106,14 @@
         function openWeeklyReview() {
             reviewWeekStart = startOfWeek(new Date());
             renderWeeklyReview();
+            document.getElementById('reviewResult').style.display = 'none';
+            document.getElementById('reviewGenerateWrap').style.display = 'block';
             document.getElementById('reviewModal').classList.add('active');
+        }
+        function generateWeeklyReview() {
+            renderWeeklyReview();
+            document.getElementById('reviewResult').style.display = 'block';
+            document.getElementById('reviewGenerateWrap').style.display = 'none';
         }
         function shiftReviewWeek(n) {
             reviewWeekStart = new Date(reviewWeekStart.getFullYear(), reviewWeekStart.getMonth(), reviewWeekStart.getDate() + 7 * n);

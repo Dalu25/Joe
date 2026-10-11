@@ -1089,7 +1089,6 @@
                     <div class="slide-title" id="reviewTitle"></div>
                 </div>
                 <div style="display:flex; gap:0.5rem; align-items:center;">
-                    <button class="btn btn-outline" type="button" onclick="openWeekCardFromReview()">Weekly card</button>
                     <button class="btn btn-outline" type="button" onclick="closeSlide('reviewPanel')" style="border-radius:50%; width:40px; padding:0;">✕</button>
                 </div>
             </div>
@@ -1449,7 +1448,7 @@
         }
 
         // ---- Score card rendering (canvas) ----
-        let cardCtx = null; // { kind: 'day'|'week', key }
+        let cardCtx = null; // { kind: 'day', key }
         function rrCell(t) {
             return hasRValue(t) ? `${t.rr}R` : '<span class="no-risk" title="No risk entered — left out of R averages">No risk</span>';
         }
@@ -1594,7 +1593,6 @@
         }
 
         function openDayCard(dateStr) { cardCtx = { kind: 'day', key: dateStr }; openCardModal(); }
-        function openWeekCard(startStr) { cardCtx = { kind: 'week', key: startStr }; openCardModal(); }
         function openCardModal() {
             const isDay = cardCtx.kind === 'day';
             document.getElementById('cardModalTitle').innerText = isDay ? 'Day Score Card' : 'Weekly Score Card';
@@ -1648,8 +1646,6 @@
                     ],
                     note: j.note || ''
                 });
-            } else {
-                drawScoreCard(canvas, buildWeekCardOpts(cardCtx.key, theme));
             }
         }
         // One design for the weekly card, used by the card itself and by the weekly review export
@@ -1715,7 +1711,6 @@
         // ---- Weekly review ----
         let reviewCtx = null;
         function openWeekReview(startStr) { reviewCtx = { start: startStr }; renderWeekReview(); openSlide('reviewPanel'); }
-        function openWeekCardFromReview() { if (reviewCtx) openWeekCard(reviewCtx.start); }
         function onReviewNote(field, el) {
             if (!reviewCtx) return;
             journalWeek(reviewCtx.start)[field] = el.value;

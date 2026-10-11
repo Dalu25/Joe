@@ -1008,6 +1008,11 @@
                     <label>Chart Link</label>
                     <div style="display:flex; gap:0.5rem;"><input type="url" id="tradeLink" class="form-control" style="flex:1;" placeholder="https://tradingview.com/x/... "><button type="button" class="btn btn-outline" onclick="pasteChartLink()">Paste</button></div>
                 </div>
+
+                <div class="form-group">
+                    <label>Notion Link</label>
+                    <div style="display:flex; gap:0.5rem;"><input type="url" id="tradeNotionLink" class="form-control" style="flex:1;" placeholder="https://www.notion.so/..."><button type="button" class="btn btn-outline" onclick="pasteNotionLink()">Paste</button></div>
+                </div>
                 
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.5rem;">
                     <button type="submit" class="btn" style="flex: 1;">Save Order</button>
@@ -1152,7 +1157,7 @@
                     groups.set(gid, {
                         groupId: gid, symbol: t.symbol, date: t.date, outcome: t.outcome,
                         session: t.session, isSignal: t.isSignal, isMe: t.isMe,
-                        note: t.note, link: t.link, images: [], createdAt: t.createdAt, tags: t.tags || [],
+                        note: t.note, link: t.link, notionLink: t.notionLink || '', images: [], createdAt: t.createdAt, tags: t.tags || [],
                         legs: [],
                     });
                 }
@@ -1174,7 +1179,7 @@
                         id: leg.id, groupId: g.groupId, accountId: leg.accountId,
                         symbol: g.symbol, date: g.date, outcome: g.outcome, rr: leg.rr,
                         pnl: leg.pnl, session: g.session, riskAmount: leg.riskAmount,
-                        isSignal: g.isSignal, isMe: g.isMe, note: g.note, link: g.link,
+                        isSignal: g.isSignal, isMe: g.isMe, note: g.note, link: g.link, notionLink: g.notionLink || '',
                         images: g.images, createdAt: g.createdAt, tags: g.tags || [],
                     });
                 });
@@ -2215,7 +2220,7 @@
                     id: first.id,
                     symbol: first.symbol, date: first.date, outcome: first.outcome,
                     session: first.session, isSignal: first.isSignal, isMe: first.isMe, tags: first.tags || [],
-                    note: first.note, link: first.link, images: first.images,
+                    note: first.note, link: first.link, notionLink: first.notionLink || '', images: first.images,
                     pnl: totalPnl, rr: parseFloat(avgRr.toFixed(2)), riskAmount: totalRisk,
                     accountCount: recs.length, records: recs, createdAt: first.createdAt
                 };
@@ -2297,6 +2302,7 @@
             document.getElementById('tradeMe').checked = trade.isMe || false;
             document.getElementById('tradeNote').value = trade.note || '';
             document.getElementById('tradeLink').value = trade.link || '';
+            document.getElementById('tradeNotionLink').value = trade.notionLink || '';
 
             selectedTradeTags = [...(trade.tags || [])];
             renderTradeTags();
@@ -2510,6 +2516,7 @@
             const isMe = document.getElementById('tradeMe').checked;
             const note = document.getElementById('tradeNote').value;
             const link = document.getElementById('tradeLink').value.trim();
+            const notionLink = document.getElementById('tradeNotionLink').value.trim();
 
             const groupId = editingGroupId || (Date.now().toString() + '_' + Math.random().toString(36).slice(2, 8));
             const existingGroupTrades = editingGroupId ? trades.filter(t => (t.groupId || t.id) === editingGroupId) : [];
@@ -2526,7 +2533,7 @@
                 // createdAt is set once at creation and never touched again, so editing a
                 // trade's date/details doesn't reorder it in history — only new trades get "now".
                 const createdAt = existingRec ? existingRec.createdAt : Date.now();
-                return { id, groupId, accountId: acc.id, symbol, date, outcome, rr, pnl, session, riskAmount, isSignal, isMe, note, link, images, createdAt, tags: [...selectedTradeTags] };
+                return { id, groupId, accountId: acc.id, symbol, date, outcome, rr, pnl, session, riskAmount, isSignal, isMe, note, link, notionLink, images, createdAt, tags: [...selectedTradeTags] };
             });
 
             if(editingGroupId) {
@@ -2591,6 +2598,9 @@
                 
             if(trade.link) {
                 html += `<div style="display:flex; justify-content:space-between; margin-top:0.5rem;"><strong>Chart Mapping Link:</strong> <a href="${trade.link}" target="_blank" style="color:var(--accent); text-decoration:none;">Inspect Matrix Setup &nearr;</a></div>`;
+            }
+            if(trade.notionLink) {
+                html += `<div style="display:flex; justify-content:space-between; margin-top:0.5rem;"><strong>Notion:</strong> <a href="${trade.notionLink}" target="_blank" rel="noopener" style="color:var(--accent); text-decoration:none;">Open Notion Trade &nearr;</a></div>`;
             }
             html += `<div style="margin-top:1rem;"><strong>Execution Notes:</strong><div style="background:var(--bg-base); padding:1rem; border-radius:6px; margin-top:0.5rem; font-size:0.9rem; white-space: pre-wrap;">${trade.note || 'No notes defined.'}</div></div>`;
             
@@ -2769,6 +2779,15 @@
                 alert('Clipboard is blocked here. Paste the link manually.');
             }
         }
+        async function pasteNotionLink() {
+            try {
+                const text = (await navigator.clipboard.readText()).trim();
+                if (/^https?:\/\/([a-z0-9-]+\.)?notion\.(so|site)\//i.test(text)) document.getElementById('tradeNotionLink').value = text;
+                else alert('No Notion link on the clipboard.');
+            } catch (err) {
+                alert('Clipboard is blocked here. Paste the link manually.');
+            }
+        }
         function tradeFormState() {
             return JSON.stringify([
                 document.getElementById('tradeSymbol').value,
@@ -2779,6 +2798,7 @@
                 document.getElementById('tradeMe').checked,
                 document.getElementById('tradeNote').value,
                 document.getElementById('tradeLink').value,
+                document.getElementById('tradeNotionLink').value,
                 selectedTradeTags,
                 selectedTradeAccounts.map(a => [a.id, tradeAccountData[a.id] || null])
             ]);
@@ -2788,6 +2808,7 @@
             document.getElementById('tradeSymbol').value = '';
             document.getElementById('tradeNote').value = '';
             document.getElementById('tradeLink').value = '';
+            document.getElementById('tradeNotionLink').value = '';
             document.getElementById('tradeSignal').checked = false;
             document.getElementById('tradeMe').checked = false;
             selectedTradeTags = [];

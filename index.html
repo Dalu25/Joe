@@ -303,6 +303,8 @@
         .view-section { display: none; }
         .view-section.active { display: flex; flex-direction: column; gap: 0.75rem; }
         .view-section > .toggle-section { margin-top: 0; }
+        #manage { width: 100%; max-width: 760px; margin: 0 auto; }
+        #manage > .toggle-section { width: 100%; max-width: none; }
         .action-btns { display: flex; gap: 0.5rem; }
         
         @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }
@@ -819,7 +821,7 @@
         
         <!-- MANAGE DATA VIEW -->
         <section id="manage" class="view-section">
-            <details class="toggle-section" style="max-width:500px;">
+            <details class="toggle-section" >
                 <summary>Appearance</summary>
                 <div class="toggle-body">
                     <div class="seg" id="appThemeSeg">
@@ -829,7 +831,7 @@
                 </div>
             </details>
 
-            <details class="toggle-section" style="max-width:500px;">
+            <details class="toggle-section" >
                 <summary>Cloud Sync (Google Sheets)</summary>
                 <div class="toggle-body">
                     <details style="margin-bottom:1rem; font-size:0.85rem; color:var(--text-secondary);">
@@ -867,7 +869,7 @@
                     </div>
                 </div>
             </details>
-            <details class="toggle-section" style="max-width:500px;">
+            <details class="toggle-section" >
                 <summary>Backup &amp; Restore</summary>
                 <div class="toggle-body">
                     <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Download all your trade and account data as a JSON backup, export the trade log as CSV, or restore a previous JSON backup.</p>
@@ -880,7 +882,7 @@
                     <input type="file" id="restoreFile" accept=".json" onchange="restoreData(event)" style="display:none;">
                 </div>
             </details>
-            <details class="toggle-section" style="max-width:500px;">
+            <details class="toggle-section" >
                 <summary>Import Trades (CSV)</summary>
                 <div class="toggle-body">
                     <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Upload a broker or prop firm CSV export. Choose the account and the matching columns.</p>
@@ -888,7 +890,7 @@
                     <button class="btn btn-outline" onclick="document.getElementById('importCsvFile').click()">Choose CSV</button>
                 </div>
             </details>
-            <details class="toggle-section" style="max-width:500px; border-color: var(--danger);">
+            <details class="toggle-section" style="border-color: var(--danger);">
                 <summary class="text-danger">Wipe Application Memory</summary>
                 <div class="toggle-body">
                     <p style="color:var(--text-secondary); margin: 0 0 1rem 0; font-size: 0.9rem;">Permanently drop all local metric parameters, trade diaries, and registered accounts.</p>

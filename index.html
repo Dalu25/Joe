@@ -328,6 +328,45 @@
 
         /* ===== Journal cards, reviews, evaluations, history, comparison ===== */
         .cal-day, .cal-week-cell { position: relative; }
+        /* Calendar stats + $/% toggle */
+        .cal-stats { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem; }
+        .cal-stats-gauge { flex: 0 0 200px; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+        .cal-stats-gauge svg { width: 100%; max-width: 200px; height: auto; }
+        .cal-legend { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--text-secondary); justify-content: center; }
+        .cal-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+        .cal-legend b { color: var(--text-primary); }
+        .cal-stats-tiles { flex: 1 1 260px; display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+        .cal-stat-tile { background: var(--bg-base); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 0.85rem; }
+        .cal-stat-label { font-size: 0.72rem; color: var(--text-secondary); }
+        .cal-stat-value { font-size: 1.1rem; font-weight: 800; margin-top: 0.15rem; }
+        @media (max-width: 640px) { .cal-stats-gauge { flex: 1 1 100%; } }
+
+        /* Overview page */
+        .ov-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+        .ov-year-card { display: flex; flex-direction: column; gap: 1rem; }
+        .ov-title { font-size: 1rem; font-weight: 700; margin: 0; }
+        .ov-year-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem 1.5rem; }
+        .ov-month-title { background: none; border: none; color: var(--text-primary); font-weight: 700; font-size: 0.9rem; cursor: pointer; padding: 0; font-family: inherit; margin-bottom: 0.4rem; }
+        .ov-dow, .ov-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
+        .ov-dow { font-size: 0.6rem; color: var(--text-secondary); margin-bottom: 3px; }
+        .ov-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.66rem; border-radius: 4px; background: var(--bg-base); color: var(--text-secondary); }
+        .ov-day.has-trade { color: #fff; font-weight: 700; cursor: pointer; }
+        .ov-q-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+        .ov-q-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+        .ov-q-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; font-weight: 700; }
+        .ov-q-trades { color: var(--text-secondary); font-size: 0.78rem; font-weight: 500; margin-left: 0.5rem; }
+        .ov-row { display: grid; grid-template-columns: 56px 1fr 1.4fr 60px; align-items: center; gap: 0.6rem; padding: 0.55rem 0; border-top: 1px solid var(--border); font-size: 0.82rem; }
+        .ov-row-head { border-top: none; color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; }
+        .ov-val small { display: block; color: var(--text-secondary); font-size: 0.66rem; font-weight: 500; }
+        .ov-bar { position: relative; height: 8px; background: var(--bg-base); border-radius: 4px; }
+        .ov-bar::after { content: ''; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--text-primary); opacity: 0.5; transform: translateX(-1px); }
+        .ov-bar-fill { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+        .ov-bar-fill.pos { left: 50%; background: var(--success); }
+        .ov-bar-fill.neg { right: 50%; background: var(--danger); }
+        .ov-trades { text-align: right; }
+        @media (max-width: 900px) { .ov-year-grid { grid-template-columns: repeat(2, 1fr); } .ov-q-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 640px) { .ov-year-grid { grid-template-columns: 1fr; } .ov-day { font-size: 0.6rem; } }
+
         .cal-card-btn { position: absolute; top: 7px; right: 7px; display: inline-flex; align-items: center; gap: 3px; background: var(--accent-soft); border: 1px solid var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 2px 5px; cursor: pointer; font-size: 0.62rem; font-weight: 800; line-height: 1; font-family: inherit; }
         .cal-card-btn:hover { background: var(--accent-soft); }
         .cal-card-btn svg { width: 11px; height: 11px; }
@@ -437,6 +476,10 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             <span class="nav-text">Dashboard</span>
         </div>
+        <div class="nav-item" onclick="switchTab('overview')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span class="nav-text">Overview</span>
+        </div>
         <div class="nav-item" onclick="switchTab('accounts')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5H5a2 2 0 0 1 0-4h16v-4H3z"/></svg>
             <span class="nav-text">Accounts</span>
@@ -523,6 +566,10 @@
                             </label>
                         </div>
                         <div class="cal-header-right">
+                            <div class="seg cal-unit-seg" title="Show values in $ or %">
+                                <button type="button" data-unit="usd" onclick="setCalUnit('usd')">$</button>
+                                <button type="button" data-unit="pct" onclick="setCalUnit('pct')">%</button>
+                            </div>
                             <div class="cal-chips">
                                 <span class="cal-chip neutral" id="cal-month-chip">+$0.00</span>
                                 <span class="cal-chip neutral" id="cal-days-chip">0 days</span>
@@ -534,9 +581,30 @@
                         </div>
                     </div>
                     <div class="calendar-grid" id="calendar-grid"></div>
+                    <div class="cal-stats" id="cal-stats"></div>
                 </div>
             </div>
 
+        </section>
+
+        <!-- OVERVIEW VIEW -->
+        <section id="overview" class="view-section">
+            <div class="ov-toolbar">
+                <div class="seg cal-unit-seg">
+                    <button type="button" data-unit="usd" onclick="setCalUnit('usd')">$</button>
+                    <button type="button" data-unit="pct" onclick="setCalUnit('pct')">%</button>
+                </div>
+                <div class="calendar-nav">
+                    <button type="button" onclick="ovChangeYear(-1)">&lt;</button>
+                    <span id="ov-year-label" style="font-weight:800; font-size:1rem; padding:0 0.5rem;"></span>
+                    <button type="button" onclick="ovChangeYear(1)">&gt;</button>
+                </div>
+            </div>
+            <div class="card ov-year-card">
+                <h3 class="ov-title">Year at a Glance</h3>
+                <div class="ov-year-grid" id="ov-year-grid"></div>
+            </div>
+            <div class="ov-q-grid" id="ov-quarters"></div>
         </section>
 
         <!-- ACCOUNTS VIEW -->
@@ -1240,6 +1308,8 @@
         let rMultipleChartInstance = null;
         let calYear = new Date().getFullYear();
         let calMonth = new Date().getMonth();
+        let calUnit = localStorage.getItem('tj_cal_unit') === 'pct' ? 'pct' : 'usd';
+        let ovYear = new Date().getFullYear();
 
         // Global currency state with live exchange rates
         let currentCurrency = localStorage.getItem('tj_currency') || 'USD';
@@ -1320,8 +1390,8 @@
             const navItem = document.querySelector(`.nav-item[onclick="switchTab('${tabId}')"]`);
             if (navItem) navItem.classList.add('active');
             
-            const titles = { dashboard: 'Dashboard', accounts: 'Accounts Management', stats: 'Advanced Performance Statistics', manage: 'System Data Control', history: 'Trades & History', performance: 'Account Performance' };
-            const subtitles = { dashboard: 'Real-time performance overview', accounts: 'Manage balances, targets & drawdown limits', stats: 'Deep dive into your trading performance', manage: 'Backup, restore, and cloud sync', history: 'Every trade and trading day', performance: 'Prop account targets, drawdown, consistency and equity curve' };
+            const titles = { overview: 'Overview', dashboard: 'Dashboard', accounts: 'Accounts Management', stats: 'Advanced Performance Statistics', manage: 'System Data Control', history: 'Trades & History', performance: 'Account Performance' };
+            const subtitles = { overview: 'Year at a glance and quarterly breakdown', dashboard: 'Real-time performance overview', accounts: 'Manage balances, targets & drawdown limits', stats: 'Deep dive into your trading performance', manage: 'Backup, restore, and cloud sync', history: 'Every trade and trading day', performance: 'Prop account targets, drawdown, consistency and equity curve' };
             document.getElementById('page-title').innerText = titles[tabId] || 'Journal';
             document.getElementById('page-subtitle').innerText = subtitles[tabId] || '';
             updateUI();
@@ -3229,6 +3299,7 @@
                 updateDashboard();
                 renderCalendar();
             }
+            if(document.getElementById('overview').classList.contains('active')) renderOverview();
             if(document.getElementById('history').classList.contains('active')) renderHistory();
             if(document.getElementById('performance').classList.contains('active')) renderPerformancePage();
         }
@@ -3963,6 +4034,7 @@
         function renderCalendar() {
             const displayLabel = new Date(calYear, calMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
             document.getElementById('cal-month-display').innerText = displayLabel;
+            syncUnitSegs();
 
             const hideWeekends = calHideWeekendsEnabled();
             const hwToggle = document.getElementById('calHideWeekendsToggle');
@@ -3976,6 +4048,8 @@
             grid.style.gridTemplateColumns = isMobileCal ? `repeat(${dayColCount}, 1fr)` : `repeat(${dayColCount}, 1fr) 92px`;
 
             let monthlyAggregatePnl = 0;
+            const monthTrades = [];
+            let winDays = 0, lossDays = 0, beDays = 0;
             // Calendar highlight uses the actual calendar date. getCurrentTradingDayEST() rolls over
             // at 5pm New York time (for the Daily Profit Target), which made the highlight jump a day early.
             const _now = new Date();
@@ -3997,6 +4071,7 @@
             for (let w = 0; w < cells.length; w += 7) {
                 const weekCells = cells.slice(w, w + 7);
                 let weekPnl = 0, weekTrades = 0, weekActiveDays = 0;
+                const weekMatches = [];
 
                 weekCells.forEach((dayNum, dowIndex) => {
                     // dowIndex 0=Sun ... 6=Sat within this week row. Skip Sat/Sun entirely when hiding weekends.
@@ -4006,6 +4081,7 @@
                     const dailyMatches = trades.filter(t => t.date === dayString);
                     const dailySumPnl = dailyMatches.reduce((s, t) => s + t.pnl, 0);
                     monthlyAggregatePnl += dailySumPnl;
+                    monthTrades.push(...dailyMatches);
 
                     let dayCssClass = 'cal-day' + (dayString === calTodayStr ? ' is-today' : ''), innerHtml = `<span class="cal-date">${dayNum}</span>`;
                     let clickHandler = '';
@@ -4017,8 +4093,10 @@
                         const outcomeClass = dailySumPnl > 0 ? 'win' : (dailySumPnl < 0 ? 'loss' : 'breakeven');
                         dayCssClass += ' has-trade ' + outcomeClass;
                         weekPnl += dailySumPnl; weekTrades += dailyMatches.length; weekActiveDays++; monthlyTradingDays++;
+                        weekMatches.push(...dailyMatches);
+                        if (dailySumPnl > 0) winDays++; else if (dailySumPnl < 0) lossDays++; else beDays++;
                         innerHtml += calCardBtn(dayString, dailyMatches.length);
-                        innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${fmtMoney(Math.abs(dailySumPnl))}</span>
+                        innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${calSigned(dailySumPnl, calBaseFor(dailyMatches))}</span>
                             <div class="cal-day-meta">${dailyMatches.length} trade${dailyMatches.length > 1 ? 's' : ''}<br>${dayWinRate}%</div></div>
                             <span class="cal-dot ${outcomeClass}"></span>`;
                         clickHandler = `onclick="showDayTrades('${dayString}')" style="cursor:pointer;"`;
@@ -4033,7 +4111,7 @@
                 grid.innerHTML += `<div class="cal-week-cell">
                     ${calWeekBtn(weekStartStr)}
                     <span class="cal-week-label">Week ${weekNum}</span>
-                    <span class="cal-week-pnl ${weekTrades ? weekPnlClass : ''}">${weekTrades ? fmtMoney(weekPnl) : '$0'}</span>
+                    <span class="cal-week-pnl ${weekTrades ? weekPnlClass : ''}">${weekTrades ? calSigned(weekPnl, calBaseFor(weekMatches)) : calSigned(0, 1)}</span>
                     <span class="cal-week-meta">${weekTrades} trade${weekTrades !== 1 ? 's' : ''}</span>
                     <span class="cal-week-days-badge">${weekActiveDays} day${weekActiveDays !== 1 ? 's' : ''}</span>
                 </div>`;
@@ -4041,9 +4119,10 @@
             }
 
             const monthChip = document.getElementById('cal-month-chip');
-            monthChip.innerText = fmtMoney(monthlyAggregatePnl);
+            monthChip.innerText = calSigned(monthlyAggregatePnl, calBaseFor(monthTrades));
             monthChip.className = 'cal-chip ' + (monthlyAggregatePnl > 0 ? 'positive' : (monthlyAggregatePnl < 0 ? 'negative' : 'neutral'));
             document.getElementById('cal-days-chip').innerText = `${monthlyTradingDays} day${monthlyTradingDays !== 1 ? 's' : ''}`;
+            renderCalStats(winDays, lossDays, beDays, monthlyTradingDays);
         }
         function calHideWeekendsEnabled() {
             return localStorage.getItem('tj_cal_hide_weekends') === 'true';
@@ -4084,6 +4163,158 @@
             calYear = a.getFullYear();
             calMonth = a.getMonth();
             renderCalendar();
+        }
+
+        // ===================== $ / % DISPLAY, CALENDAR STATS, OVERVIEW =====================
+        // Percentage base = starting balance (balance + manual adjustment) of the accounts that traded in the period.
+        function calAccountBase(accountId) {
+            const a = accounts.find(x => x.id === accountId);
+            return a ? (a.balance || 0) + (a.balanceAdjustment || 0) : 0;
+        }
+        function calBaseFor(list) {
+            const ids = [...new Set(list.map(t => t.accountId))];
+            return ids.reduce((s, id) => s + calAccountBase(id), 0);
+        }
+        function calValue(pnl, base) {
+            if (calUnit !== 'pct') return pnl;
+            return base ? (pnl / base) * 100 : null;
+        }
+        function calSigned(pnl, base) {
+            const sign = pnl > 0 ? '+' : (pnl < 0 ? '-' : '');
+            if (calUnit === 'pct') {
+                if (!base) return '—';
+                return sign + Math.abs((pnl / base) * 100).toFixed(2) + '%';
+            }
+            return sign + fmtMoney(Math.abs(pnl));
+        }
+        function pnlTextClass(v) { return v > 0 ? 'text-success' : (v < 0 ? 'text-danger' : ''); }
+        function syncUnitSegs() {
+            document.querySelectorAll('.cal-unit-seg button').forEach(b => b.classList.toggle('active', b.dataset.unit === calUnit));
+        }
+        function setCalUnit(unit) {
+            calUnit = unit === 'pct' ? 'pct' : 'usd';
+            localStorage.setItem('tj_cal_unit', calUnit);
+            renderCalendar();
+            renderOverview();
+        }
+
+        function renderCalStats(w, l, b, days) {
+            const host = document.getElementById('cal-stats');
+            if (!host) return;
+            const total = w + l + b;
+            const wf = total ? w / total : 0, lf = total ? l / total : 0, bf = total ? b / total : 0;
+            const winRate = days ? ((w / days) * 100).toFixed(2) : '0.00';
+            const arc = 'M10 60 A50 50 0 0 1 110 60';
+            host.innerHTML = `
+                <div class="cal-stats-gauge">
+                    <svg viewBox="0 0 120 66" aria-hidden="true">
+                        <path d="${arc}" pathLength="100" fill="none" stroke="var(--bg-base)" stroke-width="12"/>
+                        <path d="${arc}" pathLength="100" fill="none" stroke="var(--success)" stroke-width="12" stroke-dasharray="${wf * 100} 100"/>
+                        <path d="${arc}" pathLength="100" fill="none" stroke="var(--danger)" stroke-width="12" stroke-dasharray="${lf * 100} 100" stroke-dashoffset="${-wf * 100}"/>
+                        <path d="${arc}" pathLength="100" fill="none" stroke="var(--warning)" stroke-width="12" stroke-dasharray="${bf * 100} 100" stroke-dashoffset="${-(wf + lf) * 100}"/>
+                    </svg>
+                    <div class="cal-legend">
+                        <span><i class="cal-dot win"></i>Wins <b>${w}</b></span>
+                        <span><i class="cal-dot loss"></i>Loss <b>${l}</b></span>
+                        <span><i class="cal-dot breakeven"></i>Breakeven <b>${b}</b></span>
+                    </div>
+                </div>
+                <div class="cal-stats-tiles">
+                    <div class="cal-stat-tile"><div class="cal-stat-label">Trading Days</div><div class="cal-stat-value">${days}</div></div>
+                    <div class="cal-stat-tile"><div class="cal-stat-label">Day Win Rate</div><div class="cal-stat-value">${winRate}%</div></div>
+                    <div class="cal-stat-tile"><div class="cal-stat-label">Winning Days</div><div class="cal-stat-value text-success">${w}</div></div>
+                    <div class="cal-stat-tile"><div class="cal-stat-label">Losing Days</div><div class="cal-stat-value text-danger">${l}</div></div>
+                </div>`;
+        }
+
+        function ovChangeYear(delta) {
+            ovYear += delta;
+            renderOverview();
+        }
+        function ovOpenMonth(m) {
+            switchTab('dashboard');
+            calYear = ovYear;
+            calMonth = m;
+            renderCalendar();
+        }
+
+        function renderOverview() {
+            const grid = document.getElementById('ov-year-grid');
+            if (!grid) return;
+            syncUnitSegs();
+            document.getElementById('ov-year-label').innerText = ovYear;
+
+            const yearTrades = trades.filter(t => t.date && t.date.slice(0, 4) === String(ovYear));
+            const byDay = {};
+            yearTrades.forEach(t => { (byDay[t.date] = byDay[t.date] || []).push(t); });
+            const dayInfo = {};
+            let maxAbs = 0;
+            Object.keys(byDay).forEach(d => {
+                const list = byDay[d];
+                const pnl = list.reduce((s, t) => s + t.pnl, 0);
+                const base = calBaseFor(list);
+                const v = calValue(pnl, base);
+                dayInfo[d] = { pnl, base, v, outcome: pnl > 0 ? 'win' : (pnl < 0 ? 'loss' : 'breakeven') };
+                if (v !== null) maxAbs = Math.max(maxAbs, Math.abs(v));
+            });
+
+            let yearHtml = '';
+            for (let m = 0; m < 12; m++) {
+                const firstDow = new Date(ovYear, m, 1).getDay();
+                const dim = new Date(ovYear, m + 1, 0).getDate();
+                const monthName = new Date(ovYear, m, 1).toLocaleString('default', { month: 'short' });
+                let days = '';
+                for (let i = 0; i < firstDow; i++) days += '<div></div>';
+                for (let d = 1; d <= dim; d++) {
+                    const ds = `${ovYear}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const info = dayInfo[ds];
+                    if (!info) { days += `<div class="ov-day">${d}</div>`; continue; }
+                    const alpha = (info.v === null || !maxAbs) ? 0.6 : 0.3 + 0.7 * Math.min(1, Math.abs(info.v) / maxAbs);
+                    const rgb = info.outcome === 'win' ? '34,197,94' : (info.outcome === 'loss' ? '239,68,68' : '245,158,11');
+                    days += `<div class="ov-day has-trade" style="background:rgba(${rgb},${alpha.toFixed(2)})" title="${ds}: ${calSigned(info.pnl, info.base)}" onclick="showDayTrades('${ds}')">${d}</div>`;
+                }
+                yearHtml += `<div class="ov-month"><button type="button" class="ov-month-title" onclick="ovOpenMonth(${m})">${monthName}</button>` +
+                    `<div class="ov-dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>` +
+                    `<div class="ov-days">${days}</div></div>`;
+            }
+            grid.innerHTML = yearHtml;
+
+            // Quarter breakdown
+            const monthStats = [];
+            for (let m = 0; m < 12; m++) {
+                const mKey = String(m + 1).padStart(2, '0');
+                const list = yearTrades.filter(t => t.date.slice(5, 7) === mKey);
+                const pnl = list.reduce((s, t) => s + t.pnl, 0);
+                const base = calBaseFor(list);
+                const wins = list.filter(t => t.outcome === 'win').length;
+                const be = list.filter(t => t.outcome === 'breakeven').length;
+                const denom = list.length - be;
+                monthStats.push({ list, pnl, base, v: calValue(pnl, base), trades: list.length, winRate: denom > 0 ? (wins / denom) * 100 : null });
+            }
+            const maxMonthAbs = Math.max(0, ...monthStats.map(s => s.v === null ? 0 : Math.abs(s.v)));
+            const monthNameOf = m => new Date(ovYear, m, 1).toLocaleString('default', { month: 'short' });
+
+            let qHtml = '';
+            for (let q = 0; q < 4; q++) {
+                const slice = monthStats.slice(q * 3, q * 3 + 3);
+                const qList = slice.flatMap(s => s.list);
+                const qPnl = qList.reduce((s, t) => s + t.pnl, 0);
+                const qBase = calBaseFor(qList);
+                qHtml += `<div class="ov-q-card">` +
+                    `<div class="ov-q-head"><span>Q${q + 1}</span><span><span class="${pnlTextClass(qPnl)}">${calSigned(qPnl, qBase)}</span><span class="ov-q-trades">${qList.length} trade${qList.length !== 1 ? 's' : ''}</span></span></div>` +
+                    `<div class="ov-row ov-row-head"><span>Month</span><span>Net P&amp;L</span><span></span><span class="ov-trades">Trades</span></div>`;
+                slice.forEach((s, i) => {
+                    const w = (s.v !== null && maxMonthAbs) ? (Math.abs(s.v) / maxMonthAbs) * 50 : 0;
+                    const fill = (s.v && w) ? `<span class="ov-bar-fill ${s.v > 0 ? 'pos' : 'neg'}" style="width:${w.toFixed(2)}%"></span>` : '';
+                    qHtml += `<div class="ov-row">` +
+                        `<span>${monthNameOf(q * 3 + i)}</span>` +
+                        `<span class="ov-val ${pnlTextClass(s.pnl)}">${calSigned(s.pnl, s.base)}<small>${s.winRate === null ? '—' : s.winRate.toFixed(1) + '% win'}</small></span>` +
+                        `<span class="ov-bar">${fill}</span>` +
+                        `<span class="ov-trades">${s.trades}</span></div>`;
+                });
+                qHtml += `</div>`;
+            }
+            document.getElementById('ov-quarters').innerHTML = qHtml;
         }
 
         // ===================== TILT & DAILY LOSS =====================

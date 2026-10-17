@@ -330,19 +330,6 @@
 
         /* ===== Journal cards, reviews, evaluations, history, comparison ===== */
         .cal-day, .cal-week-cell { position: relative; }
-        /* Calendar stats + $/% toggle */
-        .cal-stats { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem; }
-        .cal-stats-gauge { flex: 0 0 200px; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
-        .cal-stats-gauge svg { width: 100%; max-width: 200px; height: auto; }
-        .cal-legend { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--text-secondary); justify-content: center; }
-        .cal-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
-        .cal-legend b { color: var(--text-primary); }
-        .cal-stats-tiles { flex: 1 1 260px; display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
-        .cal-stat-tile { background: var(--bg-base); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 0.85rem; }
-        .cal-stat-label { font-size: 0.72rem; color: var(--text-secondary); }
-        .cal-stat-value { font-size: 1.1rem; font-weight: 800; margin-top: 0.15rem; }
-        @media (max-width: 640px) { .cal-stats-gauge { flex: 1 1 100%; } }
-
         /* Overview page */
         .ov-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
         .ov-year-card { display: flex; flex-direction: column; gap: 1rem; }
@@ -587,7 +574,6 @@
                         </div>
                     </div>
                     <div class="calendar-grid" id="calendar-grid"></div>
-                    <div class="cal-stats" id="cal-stats"></div>
                 </div>
             </div>
 
@@ -4056,7 +4042,6 @@
             const calTrades = calScopeTrades(trades);
             let monthlyAggregatePnl = 0;
             const monthTrades = [];
-            let winDays = 0, lossDays = 0, beDays = 0;
             // Calendar highlight uses the actual calendar date. getCurrentTradingDayEST() rolls over
             // at 5pm New York time (for the Daily Profit Target), which made the highlight jump a day early.
             const _now = new Date();
@@ -4101,7 +4086,6 @@
                         dayCssClass += ' has-trade ' + outcomeClass;
                         weekPnl += dailySumPnl; weekTrades += dailyMatches.length; weekActiveDays++; monthlyTradingDays++;
                         weekMatches.push(...dailyMatches);
-                        if (dailySumPnl > 0) winDays++; else if (dailySumPnl < 0) lossDays++; else beDays++;
                         innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${calSigned(dailySumPnl, calBaseFor(dailyMatches))}</span>
                             <div class="cal-day-meta">${dailyMatches.length} trade${dailyMatches.length > 1 ? 's' : ''}<br>${dayWinRate}%</div></div>
                             <span class="cal-dot ${outcomeClass}"></span>`;
@@ -4128,7 +4112,6 @@
             monthChip.innerText = calSigned(monthlyAggregatePnl, calBaseFor(monthTrades));
             monthChip.className = 'cal-chip ' + (monthlyAggregatePnl > 0 ? 'positive' : (monthlyAggregatePnl < 0 ? 'negative' : 'neutral'));
             document.getElementById('cal-days-chip').innerText = `${monthlyTradingDays} day${monthlyTradingDays !== 1 ? 's' : ''}`;
-            renderCalStats(winDays, lossDays, beDays, monthlyTradingDays);
         }
         function calHideWeekendsEnabled() {
             return localStorage.getItem('tj_cal_hide_weekends') === 'true';
@@ -4203,35 +4186,6 @@
             localStorage.setItem('tj_cal_unit', calUnit);
             renderCalendar();
             renderOverview();
-        }
-
-        function renderCalStats(w, l, b, days) {
-            const host = document.getElementById('cal-stats');
-            if (!host) return;
-            const total = w + l + b;
-            const wf = total ? w / total : 0, lf = total ? l / total : 0, bf = total ? b / total : 0;
-            const winRate = days ? ((w / days) * 100).toFixed(2) : '0.00';
-            const arc = 'M10 60 A50 50 0 0 1 110 60';
-            host.innerHTML = `
-                <div class="cal-stats-gauge">
-                    <svg viewBox="0 0 120 66" aria-hidden="true">
-                        <path d="${arc}" pathLength="100" fill="none" stroke="var(--bg-base)" stroke-width="12"/>
-                        <path d="${arc}" pathLength="100" fill="none" stroke="var(--success)" stroke-width="12" stroke-dasharray="${wf * 100} 100"/>
-                        <path d="${arc}" pathLength="100" fill="none" stroke="var(--danger)" stroke-width="12" stroke-dasharray="${lf * 100} 100" stroke-dashoffset="${-wf * 100}"/>
-                        <path d="${arc}" pathLength="100" fill="none" stroke="var(--warning)" stroke-width="12" stroke-dasharray="${bf * 100} 100" stroke-dashoffset="${-(wf + lf) * 100}"/>
-                    </svg>
-                    <div class="cal-legend">
-                        <span><i class="cal-dot win"></i>Wins <b>${w}</b></span>
-                        <span><i class="cal-dot loss"></i>Loss <b>${l}</b></span>
-                        <span><i class="cal-dot breakeven"></i>Breakeven <b>${b}</b></span>
-                    </div>
-                </div>
-                <div class="cal-stats-tiles">
-                    <div class="cal-stat-tile"><div class="cal-stat-label">Trading Days</div><div class="cal-stat-value">${days}</div></div>
-                    <div class="cal-stat-tile"><div class="cal-stat-label">Day Win Rate</div><div class="cal-stat-value">${winRate}%</div></div>
-                    <div class="cal-stat-tile"><div class="cal-stat-label">Winning Days</div><div class="cal-stat-value text-success">${w}</div></div>
-                    <div class="cal-stat-tile"><div class="cal-stat-label">Losing Days</div><div class="cal-stat-value text-danger">${l}</div></div>
-                </div>`;
         }
 
         function ovChangeYear(delta) {

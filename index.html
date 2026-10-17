@@ -305,8 +305,7 @@
         .view-section > .toggle-section { margin-top: 0; }
         #manage { width: 100%; max-width: 760px; margin: 0 auto; }
         #manage > .toggle-section { width: 100%; max-width: none; }
-        #accounts { width: 100%; max-width: 760px; margin: 0 auto; }
-        #accounts > .toggle-section { width: 100%; max-width: none; }
+        #account-form-toggle { width: 100%; max-width: none; margin-top: 0; }
         .action-btns { display: flex; gap: 0.5rem; }
         
         @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }
@@ -2169,6 +2168,17 @@
             return `${sign}${symbol}${compactMoney(abs)}`;
         }
 
+        function fmtMoneyFull(amount, targetCurrency) {
+            if(amount === null || amount === undefined || isNaN(amount)) amount = 0;
+            const ccy = targetCurrency || currentCurrency;
+            const rate = exchangeRates[ccy] || 1.0;
+            const converted = amount * rate;
+            const sign = converted < 0 ? '-' : '';
+            const abs = Math.abs(converted);
+            const symbol = currencySymbols[ccy] || '$';
+            return `${sign}${symbol}${abs.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        }
+
         // Amounts use K / M / B: 3,000 = 3K, 3,000,000 = 3M, 3,000,000,000 = 3B (all currencies).
         function compactMoney(abs) {
             const units = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
@@ -3782,7 +3792,7 @@
 
             const row = (label, value, cls) => `<div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">${label}</span><span class="${cls || ''}" style="font-weight:600;">${value}</span></div>`;
             const sectionTitle = (t) => `<h4 style="margin:1.25rem 0 0.5rem; color:var(--accent); font-size:0.95rem;">${t}</h4>`;
-            const bwLine = (label, item, unit) => item ? `${label}: <strong>${item.key}</strong> (${fmtMoney(item.pnl)}${unit ? ', ' + item.winRate.toFixed(1) + '% WR' : ''})` : `${label}: N/A`;
+            const bwLine = (label, item, unit) => item ? `${label}: <strong>${item.key}</strong> (${fmtMoneyFull(item.pnl)}${unit ? ', ' + item.winRate.toFixed(1) + '% WR' : ''})` : `${label}: N/A`;
 
             const renderBlock = (s, blockLabel) => {
                 const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
@@ -3790,31 +3800,31 @@
                 html += `<p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.5rem;">${s.totalTrades} trade${s.totalTrades === 1 ? '' : 's'} logged this period</p>`;
 
                 html += sectionTitle('Performance Overview');
-                html += row('Total Wins', fmtMoney(s.totalWinAmt), 'text-success');
-                html += row('Total Losses', fmtMoney(-s.totalLossAmt), 'text-danger');
-                html += row('Net P&amp;L', fmtMoney(s.netPnl), s.netPnl >= 0 ? 'text-success' : 'text-danger');
+                html += row('Total Wins', fmtMoneyFull(s.totalWinAmt), 'text-success');
+                html += row('Total Losses', fmtMoneyFull(-s.totalLossAmt), 'text-danger');
+                html += row('Net P&amp;L', fmtMoneyFull(s.netPnl), s.netPnl >= 0 ? 'text-success' : 'text-danger');
                 html += row('Profit Factor', pf);
                 html += row('Wins / Losses / Breakevens', `${s.wins}W / ${s.losses}L / ${s.breakevens}BE`);
                 html += row('Win Rate', `${s.winRate.toFixed(1)}%`);
-                html += row('Avg Win Value', fmtMoney(s.avgWin), 'text-success');
-                html += row('Avg Loss Value', fmtMoney(-s.avgLoss), 'text-danger');
+                html += row('Avg Win Value', fmtMoneyFull(s.avgWin), 'text-success');
+                html += row('Avg Loss Value', fmtMoneyFull(-s.avgLoss), 'text-danger');
                 html += row('Total R:R Tracked', `${s.totalRR.toFixed(2)}R`);
                 html += row('Avg R:R Performance', `${s.avgRR.toFixed(2)}R`);
 
                 html += sectionTitle('Streaks &amp; Extremes');
                 html += row('Max Win Streak', s.maxWinStreak, 'text-success');
                 html += row('Max Loss Streak', s.maxLossStreak, 'text-danger');
-                html += row('Top Win Execution', fmtMoney(s.topWin), 'text-success');
-                html += row('Top Loss Execution', fmtMoney(s.topLoss), 'text-danger');
+                html += row('Top Win Execution', fmtMoneyFull(s.topWin), 'text-success');
+                html += row('Top Loss Execution', fmtMoneyFull(s.topLoss), 'text-danger');
                 html += row('Winning Days', s.winningDays, 'text-success');
                 html += row('Losing Days', s.losingDays, 'text-danger');
-                html += row('Best Day', s.bestDay ? `${s.bestDay.date} (${fmtMoney(s.bestDay.pnl)})` : 'N/A', 'text-success');
-                html += row('Worst Day', s.worstDay ? `${s.worstDay.date} (${fmtMoney(s.worstDay.pnl)})` : 'N/A', 'text-danger');
-                html += row('Biggest Win', s.biggestWin ? `${s.biggestWin.symbol} on ${s.biggestWin.date} (${fmtMoney(s.biggestWin.pnl)})` : 'N/A', 'text-success');
-                html += row('Biggest Loss', s.biggestLoss ? `${s.biggestLoss.symbol} on ${s.biggestLoss.date} (${fmtMoney(s.biggestLoss.pnl)})` : 'N/A', 'text-danger');
+                html += row('Best Day', s.bestDay ? `${s.bestDay.date} (${fmtMoneyFull(s.bestDay.pnl)})` : 'N/A', 'text-success');
+                html += row('Worst Day', s.worstDay ? `${s.worstDay.date} (${fmtMoneyFull(s.worstDay.pnl)})` : 'N/A', 'text-danger');
+                html += row('Biggest Win', s.biggestWin ? `${s.biggestWin.symbol} on ${s.biggestWin.date} (${fmtMoneyFull(s.biggestWin.pnl)})` : 'N/A', 'text-success');
+                html += row('Biggest Loss', s.biggestLoss ? `${s.biggestLoss.symbol} on ${s.biggestLoss.date} (${fmtMoneyFull(s.biggestLoss.pnl)})` : 'N/A', 'text-danger');
 
                 html += sectionTitle('Consistency');
-                html += row('Risk Consistency Score', s.riskConsistency ? `${s.riskConsistency.pct.toFixed(0)}% (${s.riskConsistency.inRange}/${s.riskConsistency.total} trades in range ${fmtMoney(s.riskConsistency.low)}–${fmtMoney(s.riskConsistency.high)})` : 'Not enough risk data');
+                html += row('Risk Consistency Score', s.riskConsistency ? `${s.riskConsistency.pct.toFixed(0)}% (${s.riskConsistency.inRange}/${s.riskConsistency.total} trades in range ${fmtMoneyFull(s.riskConsistency.low)}–${fmtMoneyFull(s.riskConsistency.high)})` : 'Not enough risk data');
                 html += row('Daily Consistency Score', s.dailyConsistency !== null ? `${Math.round(s.dailyConsistency)}%` : 'Not enough trading days');
 
                 html += sectionTitle('Best &amp; Worst — Symbol / Day / Session');
@@ -3829,7 +3839,7 @@
                 html += `<div class="table-container" style="border:none; border-radius:0; margin-top:0.25rem;"><table><thead><tr><th>Date</th><th>Symbol</th><th>Outcome</th><th>R:R</th><th>P&amp;L</th></tr></thead><tbody>`;
                 s.trades.forEach(t => {
                     const outcomeLabel = t.outcome === 'win' ? 'Win' : (t.outcome === 'loss' ? 'Loss' : 'BE');
-                    html += `<tr><td>${t.date}</td><td style="font-weight:600;">${t.symbol}</td><td>${outcomeLabel}</td><td>${(parseFloat(t.rr) || 0).toFixed(2)}R</td><td class="${t.pnl >= 0 ? 'text-success' : 'text-danger'}">${fmtMoney(t.pnl)}</td></tr>`;
+                    html += `<tr><td>${t.date}</td><td style="font-weight:600;">${t.symbol}</td><td>${outcomeLabel}</td><td>${(parseFloat(t.rr) || 0).toFixed(2)}R</td><td class="${t.pnl >= 0 ? 'text-success' : 'text-danger'}">${fmtMoneyFull(t.pnl)}</td></tr>`;
                 });
                 html += `</tbody></table></div>`;
                 return html;
@@ -3906,14 +3916,14 @@
                 const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
 
                 drawSectionTitle('Performance Overview');
-                drawRow('Total Wins', fmtMoney(s.totalWinAmt), green);
-                drawRow('Total Losses', fmtMoney(-s.totalLossAmt), red);
-                drawRow('Net P&L', fmtMoney(s.netPnl), s.netPnl >= 0 ? green : red);
+                drawRow('Total Wins', fmtMoneyFull(s.totalWinAmt), green);
+                drawRow('Total Losses', fmtMoneyFull(-s.totalLossAmt), red);
+                drawRow('Net P&L', fmtMoneyFull(s.netPnl), s.netPnl >= 0 ? green : red);
                 drawRow('Profit Factor', pf);
                 drawRow('Wins / Losses / Breakevens', `${s.wins}W / ${s.losses}L / ${s.breakevens}BE`);
                 drawRow('Win Rate', `${s.winRate.toFixed(1)}%`);
-                drawRow('Avg Win Value', fmtMoney(s.avgWin), green);
-                drawRow('Avg Loss Value', fmtMoney(-s.avgLoss), red);
+                drawRow('Avg Win Value', fmtMoneyFull(s.avgWin), green);
+                drawRow('Avg Loss Value', fmtMoneyFull(-s.avgLoss), red);
                 drawRow('Total R:R Tracked', `${s.totalRR.toFixed(2)}R`);
                 drawRow('Avg R:R Performance', `${s.avgRR.toFixed(2)}R`);
                 y += 8;
@@ -3921,14 +3931,14 @@
                 drawSectionTitle('Streaks & Extremes');
                 drawRow('Max Win Streak', s.maxWinStreak, green);
                 drawRow('Max Loss Streak', s.maxLossStreak, red);
-                drawRow('Top Win Execution', fmtMoney(s.topWin), green);
-                drawRow('Top Loss Execution', fmtMoney(s.topLoss), red);
+                drawRow('Top Win Execution', fmtMoneyFull(s.topWin), green);
+                drawRow('Top Loss Execution', fmtMoneyFull(s.topLoss), red);
                 drawRow('Winning Days', s.winningDays, green);
                 drawRow('Losing Days', s.losingDays, red);
-                drawRow('Best Day', s.bestDay ? `${s.bestDay.date}  (${fmtMoney(s.bestDay.pnl)})` : 'N/A', green);
-                drawRow('Worst Day', s.worstDay ? `${s.worstDay.date}  (${fmtMoney(s.worstDay.pnl)})` : 'N/A', red);
-                drawRow('Biggest Win', s.biggestWin ? `${s.biggestWin.symbol} on ${s.biggestWin.date}  (${fmtMoney(s.biggestWin.pnl)})` : 'N/A', green);
-                drawRow('Biggest Loss', s.biggestLoss ? `${s.biggestLoss.symbol} on ${s.biggestLoss.date}  (${fmtMoney(s.biggestLoss.pnl)})` : 'N/A', red);
+                drawRow('Best Day', s.bestDay ? `${s.bestDay.date}  (${fmtMoneyFull(s.bestDay.pnl)})` : 'N/A', green);
+                drawRow('Worst Day', s.worstDay ? `${s.worstDay.date}  (${fmtMoneyFull(s.worstDay.pnl)})` : 'N/A', red);
+                drawRow('Biggest Win', s.biggestWin ? `${s.biggestWin.symbol} on ${s.biggestWin.date}  (${fmtMoneyFull(s.biggestWin.pnl)})` : 'N/A', green);
+                drawRow('Biggest Loss', s.biggestLoss ? `${s.biggestLoss.symbol} on ${s.biggestLoss.date}  (${fmtMoneyFull(s.biggestLoss.pnl)})` : 'N/A', red);
                 y += 8;
 
                 drawSectionTitle('Consistency');
@@ -3937,7 +3947,7 @@
                 y += 8;
 
                 drawSectionTitle('Best & Worst — Symbol / Day / Session');
-                const bwText = (label, item) => item ? `${label}: ${item.key} (${fmtMoney(item.pnl)}, ${item.winRate.toFixed(1)}% WR)` : `${label}: N/A`;
+                const bwText = (label, item) => item ? `${label}: ${item.key} (${fmtMoneyFull(item.pnl)}, ${item.winRate.toFixed(1)}% WR)` : `${label}: N/A`;
                 drawRow(bwText('Best Symbol', s.symbolBreakdown.best), '', green);
                 drawRow(bwText('Worst Symbol', s.symbolBreakdown.worst), '', red);
                 drawRow(bwText('Best Day of Week', s.dayBreakdown.best), '', green);
@@ -3961,7 +3971,7 @@
                     doc.text(outcomeLabel, marginX + 200, y);
                     doc.text(`${(parseFloat(t.rr) || 0).toFixed(2)}R`, marginX + 290, y);
                     const c = t.pnl >= 0 ? green : red; doc.setTextColor(c[0], c[1], c[2]);
-                    doc.text(fmtMoney(t.pnl), marginX + 360, y);
+                    doc.text(fmtMoneyFull(t.pnl), marginX + 360, y);
                     y += 15;
                 });
             };
@@ -4007,17 +4017,17 @@
                 const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
                 let text = `=== ${blockLabel} ===\n${s.totalTrades} trade${s.totalTrades === 1 ? '' : 's'} logged this period\n\n`;
                 text += `PERFORMANCE OVERVIEW\n`;
-                text += `Total Wins: ${fmtMoney(s.totalWinAmt)}\nTotal Losses: ${fmtMoney(-s.totalLossAmt)}\nNet P&L: ${fmtMoney(s.netPnl)}\nProfit Factor: ${pf}\n`;
+                text += `Total Wins: ${fmtMoneyFull(s.totalWinAmt)}\nTotal Losses: ${fmtMoneyFull(-s.totalLossAmt)}\nNet P&L: ${fmtMoneyFull(s.netPnl)}\nProfit Factor: ${pf}\n`;
                 text += `Wins/Losses/BE: ${s.wins}W / ${s.losses}L / ${s.breakevens}BE\nWin Rate: ${s.winRate.toFixed(1)}%\n`;
-                text += `Avg Win: ${fmtMoney(s.avgWin)}\nAvg Loss: ${fmtMoney(-s.avgLoss)}\nTotal R:R: ${s.totalRR.toFixed(2)}R\nAvg R:R: ${s.avgRR.toFixed(2)}R\n\n`;
+                text += `Avg Win: ${fmtMoneyFull(s.avgWin)}\nAvg Loss: ${fmtMoneyFull(-s.avgLoss)}\nTotal R:R: ${s.totalRR.toFixed(2)}R\nAvg R:R: ${s.avgRR.toFixed(2)}R\n\n`;
                 text += `STREAKS & EXTREMES\n`;
-                text += `Max Win Streak: ${s.maxWinStreak}\nMax Loss Streak: ${s.maxLossStreak}\nTop Win: ${fmtMoney(s.topWin)}\nTop Loss: ${fmtMoney(s.topLoss)}\n`;
+                text += `Max Win Streak: ${s.maxWinStreak}\nMax Loss Streak: ${s.maxLossStreak}\nTop Win: ${fmtMoneyFull(s.topWin)}\nTop Loss: ${fmtMoneyFull(s.topLoss)}\n`;
                 text += `Winning Days: ${s.winningDays}\nLosing Days: ${s.losingDays}\n`;
-                text += `Best Day: ${s.bestDay ? s.bestDay.date + ' (' + fmtMoney(s.bestDay.pnl) + ')' : 'N/A'}\nWorst Day: ${s.worstDay ? s.worstDay.date + ' (' + fmtMoney(s.worstDay.pnl) + ')' : 'N/A'}\n`;
-                text += `Biggest Win: ${s.biggestWin ? s.biggestWin.symbol + ' on ' + s.biggestWin.date + ' (' + fmtMoney(s.biggestWin.pnl) + ')' : 'N/A'}\nBiggest Loss: ${s.biggestLoss ? s.biggestLoss.symbol + ' on ' + s.biggestLoss.date + ' (' + fmtMoney(s.biggestLoss.pnl) + ')' : 'N/A'}\n\n`;
+                text += `Best Day: ${s.bestDay ? s.bestDay.date + ' (' + fmtMoneyFull(s.bestDay.pnl) + ')' : 'N/A'}\nWorst Day: ${s.worstDay ? s.worstDay.date + ' (' + fmtMoneyFull(s.worstDay.pnl) + ')' : 'N/A'}\n`;
+                text += `Biggest Win: ${s.biggestWin ? s.biggestWin.symbol + ' on ' + s.biggestWin.date + ' (' + fmtMoneyFull(s.biggestWin.pnl) + ')' : 'N/A'}\nBiggest Loss: ${s.biggestLoss ? s.biggestLoss.symbol + ' on ' + s.biggestLoss.date + ' (' + fmtMoneyFull(s.biggestLoss.pnl) + ')' : 'N/A'}\n\n`;
                 text += `CONSISTENCY\n`;
                 text += `Risk Consistency: ${s.riskConsistency ? s.riskConsistency.pct.toFixed(0) + '%' : 'N/A'}\nDaily Consistency: ${s.dailyConsistency !== null ? Math.round(s.dailyConsistency) + '%' : 'N/A'}\n\n`;
-                const bw = (label, item) => `${label}: ${item ? item.key + ' (' + fmtMoney(item.pnl) + ', ' + item.winRate.toFixed(1) + '% WR)' : 'N/A'}\n`;
+                const bw = (label, item) => `${label}: ${item ? item.key + ' (' + fmtMoneyFull(item.pnl) + ', ' + item.winRate.toFixed(1) + '% WR)' : 'N/A'}\n`;
                 text += `BEST & WORST\n`;
                 text += bw('Best Symbol', s.symbolBreakdown.best) + bw('Worst Symbol', s.symbolBreakdown.worst);
                 text += bw('Best Day of Week', s.dayBreakdown.best) + bw('Worst Day of Week', s.dayBreakdown.worst);
@@ -4025,7 +4035,7 @@
                 text += `\nSUMMARIZED TRADE HISTORY\n`;
                 s.trades.forEach(t => {
                     const outcomeLabel = t.outcome === 'win' ? 'Win' : (t.outcome === 'loss' ? 'Loss' : 'BE');
-                    text += `${t.date} | ${t.symbol} | ${outcomeLabel} | ${(parseFloat(t.rr) || 0).toFixed(2)}R | ${fmtMoney(t.pnl)}\n`;
+                    text += `${t.date} | ${t.symbol} | ${outcomeLabel} | ${(parseFloat(t.rr) || 0).toFixed(2)}R | ${fmtMoneyFull(t.pnl)}\n`;
                 });
                 return text;
             };

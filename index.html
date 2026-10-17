@@ -558,7 +558,7 @@
                 <div class="chart-container">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem;">
                         <h3 style="margin:0; color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">Cumulative P&L Curve</h3>
-                        <select id="pnlChartAccount" class="select-toggle" onchange="updateDashboard()" aria-label="Chart account"></select>
+                        <select id="pnlChartAccount" class="select-toggle" onchange="updateUI()" aria-label="Chart account"></select>
                     </div>
                     <div style="position: relative; height: 260px; width: 100%;"><canvas id="pnlChart"></canvas></div>
                 </div>
@@ -4053,6 +4053,7 @@
             const dayColCount = hideWeekends ? 5 : 7;
             grid.style.gridTemplateColumns = isMobileCal ? `repeat(${dayColCount}, 1fr)` : `repeat(${dayColCount}, 1fr) 92px`;
 
+            const calTrades = calScopeTrades(trades);
             let monthlyAggregatePnl = 0;
             const monthTrades = [];
             let winDays = 0, lossDays = 0, beDays = 0;
@@ -4084,7 +4085,7 @@
                     if (hideWeekends && (dowIndex === 0 || dowIndex === 6)) return;
                     if (dayNum === null) { grid.innerHTML += `<div class="cal-empty"></div>`; return; }
                     const dayString = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-                    const dailyMatches = trades.filter(t => t.date === dayString);
+                    const dailyMatches = calTrades.filter(t => t.date === dayString);
                     const dailySumPnl = dailyMatches.reduce((s, t) => s + t.pnl, 0);
                     monthlyAggregatePnl += dailySumPnl;
                     monthTrades.push(...dailyMatches);
@@ -4138,7 +4139,7 @@
         }
 
         function showDayTrades(dateStr) {
-            const dayTrades = trades.filter(t => t.date === dateStr);
+            const dayTrades = calScopeTrades(trades).filter(t => t.date === dateStr);
             if(dayTrades.length === 0) return;
 
             const dayDate = new Date(dateStr + 'T00:00:00').toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -4250,7 +4251,7 @@
             syncUnitSegs();
             document.getElementById('ov-year-label').innerText = ovYear;
 
-            const yearTrades = trades.filter(t => t.date && t.date.slice(0, 4) === String(ovYear));
+            const yearTrades = calScopeTrades(trades).filter(t => t.date && t.date.slice(0, 4) === String(ovYear));
             const byDay = {};
             yearTrades.forEach(t => { (byDay[t.date] = byDay[t.date] || []).push(t); });
             const dayInfo = {};
@@ -4404,9 +4405,20 @@
             };
         }
         // Raw trades in the shared range, pair and trade type. Multi-account legs are kept; callers collapse them.
+        // Account chosen in the cumulative P&L selector scopes calendar, overview and stats.
+        function chartAccountScope() {
+            const el = document.getElementById('pnlChartAccount');
+            return (el && el.value && el.value !== 'all') ? el.value : 'all';
+        }
+        function calScopeTrades(list) {
+            const scope = chartAccountScope();
+            return scope === 'all' ? list : list.filter(t => t.accountId === scope);
+        }
         function applySharedFilter(list) {
             const f = getSharedFilter();
+            const scope = chartAccountScope();
             return list.filter(t =>
+                (scope === 'all' || t.accountId === scope) &&
                 (!f.from || t.date >= f.from) &&
                 (!f.to || t.date <= f.to) &&
                 (f.pair === 'all' || t.symbol === f.pair) &&

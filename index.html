@@ -809,7 +809,7 @@
                     <button type="button" onclick="ovChangeYear(1)">&gt;</button>
                 </div>
             </div>
-            <details class="toggle-section ov-details" open>
+            <details class="toggle-section ov-details">
                 <summary>Year at a Glance</summary>
                 <div class="toggle-body"><div class="ov-year-grid" id="ov-year-grid"></div></div>
             </details>
@@ -819,7 +819,7 @@
         
         <!-- MANAGE DATA VIEW -->
         <section id="manage" class="view-section">
-            <details class="toggle-section" style="max-width:500px;" open>
+            <details class="toggle-section" style="max-width:500px;">
                 <summary>Appearance</summary>
                 <div class="toggle-body">
                     <div class="seg" id="appThemeSeg">
@@ -4142,8 +4142,8 @@
             const dayDate = new Date(dateStr + 'T00:00:00').toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
             const dayPnl = dayTrades.reduce((s, t) => s + t.pnl, 0);
 
-            let html = `<div style="margin-bottom:1rem;"><strong>${dayDate}</strong> - <span class="${dayPnl > 0 ? 'text-success' : (dayPnl < 0 ? 'text-danger' : 'text-warning')}">${dayPnl > 0 ? '+' : ''}${fmtMoney(dayPnl)}</span></div>`;
-            html += `<div style="margin-bottom:1rem;"><button type="button" class="btn btn-outline" onclick="closeModal('detailsModal'); openDayCard('${dateStr}')">${CAL_CARD_ICON} Day card</button></div>`;
+            const dayCardIcon = CAL_CARD_ICON.replace('<svg ', '<svg width="13" height="13" ');
+            let html = `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-bottom:1rem;"><div><strong>${dayDate}</strong> - <span class="${dayPnl > 0 ? 'text-success' : (dayPnl < 0 ? 'text-danger' : 'text-warning')}">${dayPnl > 0 ? '+' : ''}${fmtMoney(dayPnl)}</span></div><button type="button" onclick="closeModal('detailsModal'); openDayCard('${dateStr}')" style="display:inline-flex; align-items:center; gap:5px; background:transparent; border:1px solid var(--border); color:var(--text-secondary); border-radius:6px; padding:0.1rem 0.5rem; font-family:inherit; font-size:inherit; font-weight:400; line-height:1.5; cursor:pointer; white-space:nowrap;">${dayCardIcon} Day card</button></div>`;
             html += `<div class="table-container"><table><thead><tr><th>Account</th><th>Symbol</th><th>Status</th><th>R:R</th><th>P&L</th></tr></thead><tbody>`;
             
             dayTrades.forEach(t => {
@@ -4304,7 +4304,7 @@
                 const qList = slice.flatMap(s => s.list);
                 const qPnl = qList.reduce((s, t) => s + t.pnl, 0);
                 const qBase = calBaseFor(qList);
-                qHtml += `<details class="ov-q-card" open>` +
+                qHtml += `<details class="ov-q-card">` +
                     `<summary class="ov-q-head"><span>Q${q + 1}</span><span><span class="${pnlTextClass(qPnl)}">${calSigned(qPnl, qBase)}</span><span class="ov-q-trades">${qList.length} trade${qList.length !== 1 ? 's' : ''}</span></span></summary>` +
                     `<div class="ov-row ov-row-head"><span>Month</span><span>Net P&amp;L</span><span></span><span class="ov-trades">Trades</span></div>`;
                 slice.forEach((s, i) => {

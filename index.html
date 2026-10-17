@@ -305,6 +305,8 @@
         .view-section > .toggle-section { margin-top: 0; }
         #manage { width: 100%; max-width: 760px; margin: 0 auto; }
         #manage > .toggle-section { width: 100%; max-width: none; }
+        #accounts { width: 100%; max-width: 760px; margin: 0 auto; }
+        #accounts > .toggle-section { width: 100%; max-width: none; }
         .action-btns { display: flex; gap: 0.5rem; }
         
         @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }
@@ -514,8 +516,8 @@
                     <option value="EUR">€ EUR</option>
                     <option value="NGN">₦ NGN</option>
                 </select>
-                <button class="btn btn-outline" style="padding:0.5rem 0.75rem; min-height:40px; font-size:0.85rem; border-radius:20px;" onclick="updateExchangeRates()" title="Refresh live exchange rates">↻</button>
-                <button class="btn" style="border-radius:20px;" onclick="openTradeModal()">
+                <button id="topRefreshBtn" class="btn btn-outline" style="padding:0.5rem 0.75rem; min-height:40px; font-size:0.85rem; border-radius:20px;" onclick="updateExchangeRates()" title="Refresh live exchange rates">↻</button>
+                <button id="topLogTradeBtn" class="btn" style="border-radius:20px;" onclick="openTradeModal()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     <span>Log Trade</span>
                 </button>
@@ -582,7 +584,7 @@
 
         <!-- ACCOUNTS VIEW -->
         <section id="accounts" class="view-section">
-            <details class="toggle-section" style="margin-top:0; max-width: 500px;" id="account-form-toggle">
+            <details class="toggle-section" style="margin-top:0;" id="account-form-toggle">
                 <summary id="account-action-title">Add New Trading Account</summary>
                 <div class="toggle-body">
                     <form id="accountForm" onsubmit="handleAccountSubmit(event)">
@@ -688,8 +690,8 @@
             <div class="stat-row c4">
                 <div class="card kpi-card"><span class="card-title">Avg Win Value</span><span class="card-value text-success" id="stat-avg-win">$0.00</span></div>
                 <div class="card kpi-card"><span class="card-title">Avg Loss Value</span><span class="card-value text-danger" id="stat-avg-loss">$0.00</span></div>
-                <div class="card kpi-card"><span class="card-title">Total Wins ($)</span><span class="card-value text-success" id="stat-total-wins-amt">$0.00</span></div>
-                <div class="card kpi-card"><span class="card-title">Total Losses ($)</span><span class="card-value text-danger" id="stat-total-losses-amt">$0.00</span></div>
+                <div class="card kpi-card"><span class="card-title">Total Wins</span><span class="card-value text-success" id="stat-total-wins-amt">$0.00</span></div>
+                <div class="card kpi-card"><span class="card-title">Total Losses</span><span class="card-value text-danger" id="stat-total-losses-amt">$0.00</span></div>
             </div>
 
             <h3 style="font-size:1.1rem; margin-top:0.5rem;">Streaks &amp; Extremes</h3>
@@ -1379,6 +1381,9 @@
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             document.getElementById('sharedFilters').style.display = (tabId === 'dashboard' || tabId === 'stats') ? '' : 'none';
+            const onDash = tabId === 'dashboard';
+            document.getElementById('topLogTradeBtn').style.display = onDash ? '' : 'none';
+            document.getElementById('topRefreshBtn').style.display = onDash ? '' : 'none';
             const navItem = document.querySelector(`.nav-item[onclick="switchTab('${tabId}')"]`);
             if (navItem) navItem.classList.add('active');
             
@@ -1905,7 +1910,7 @@
                         <div>
                             <span class="ev-pill ${r.status.key}" style="margin-bottom:0.6rem; display:inline-block;">${typeLabel}</span>
                             <div style="font-size:1.15rem; font-weight:700;">${jEsc(acc.name)} target progress</div>
-                            <div class="stat-sub" style="margin-top:0.3rem; max-width:480px;">Trading P&amp;L counts toward the target. Deposits, payouts and reset-excluded trades do not.</div>
+                            <div class="stat-sub" style="margin-top:0.3rem;">Trading P&amp;L counts toward the target. Deposits, payouts and reset-excluded trades do not.</div>
                         </div>
                         
                     </div>
@@ -3774,8 +3779,8 @@
                 html += `<p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.5rem;">${s.totalTrades} trade${s.totalTrades === 1 ? '' : 's'} logged this period</p>`;
 
                 html += sectionTitle('Performance Overview');
-                html += row('Total Wins ($)', fmtMoney(s.totalWinAmt), 'text-success');
-                html += row('Total Losses ($)', fmtMoney(-s.totalLossAmt), 'text-danger');
+                html += row('Total Wins', fmtMoney(s.totalWinAmt), 'text-success');
+                html += row('Total Losses', fmtMoney(-s.totalLossAmt), 'text-danger');
                 html += row('Net P&amp;L', fmtMoney(s.netPnl), s.netPnl >= 0 ? 'text-success' : 'text-danger');
                 html += row('Profit Factor', pf);
                 html += row('Wins / Losses / Breakevens', `${s.wins}W / ${s.losses}L / ${s.breakevens}BE`);
@@ -3890,8 +3895,8 @@
                 const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
 
                 drawSectionTitle('Performance Overview');
-                drawRow('Total Wins ($)', fmtMoney(s.totalWinAmt), green);
-                drawRow('Total Losses ($)', fmtMoney(-s.totalLossAmt), red);
+                drawRow('Total Wins', fmtMoney(s.totalWinAmt), green);
+                drawRow('Total Losses', fmtMoney(-s.totalLossAmt), red);
                 drawRow('Net P&L', fmtMoney(s.netPnl), s.netPnl >= 0 ? green : red);
                 drawRow('Profit Factor', pf);
                 drawRow('Wins / Losses / Breakevens', `${s.wins}W / ${s.losses}L / ${s.breakevens}BE`);
@@ -3991,7 +3996,7 @@
                 const pf = s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
                 let text = `=== ${blockLabel} ===\n${s.totalTrades} trade${s.totalTrades === 1 ? '' : 's'} logged this period\n\n`;
                 text += `PERFORMANCE OVERVIEW\n`;
-                text += `Total Wins ($): ${fmtMoney(s.totalWinAmt)}\nTotal Losses ($): ${fmtMoney(-s.totalLossAmt)}\nNet P&L: ${fmtMoney(s.netPnl)}\nProfit Factor: ${pf}\n`;
+                text += `Total Wins: ${fmtMoney(s.totalWinAmt)}\nTotal Losses: ${fmtMoney(-s.totalLossAmt)}\nNet P&L: ${fmtMoney(s.netPnl)}\nProfit Factor: ${pf}\n`;
                 text += `Wins/Losses/BE: ${s.wins}W / ${s.losses}L / ${s.breakevens}BE\nWin Rate: ${s.winRate.toFixed(1)}%\n`;
                 text += `Avg Win: ${fmtMoney(s.avgWin)}\nAvg Loss: ${fmtMoney(-s.avgLoss)}\nTotal R:R: ${s.totalRR.toFixed(2)}R\nAvg R:R: ${s.avgRR.toFixed(2)}R\n\n`;
                 text += `STREAKS & EXTREMES\n`;

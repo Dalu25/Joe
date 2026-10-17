@@ -4223,8 +4223,12 @@
                 if (v !== null) maxAbs = Math.max(maxAbs, Math.abs(v));
             });
 
+            // Only show months/quarters that have been reached. Past years show all; future years show none.
+            const nowD = new Date();
+            const lastM = ovYear < nowD.getFullYear() ? 11 : (ovYear > nowD.getFullYear() ? -1 : nowD.getMonth());
+
             let yearHtml = '';
-            for (let m = 0; m < 12; m++) {
+            for (let m = 0; m <= lastM; m++) {
                 const firstDow = new Date(ovYear, m, 1).getDay();
                 const dim = new Date(ovYear, m + 1, 0).getDate();
                 const monthName = new Date(ovYear, m, 1).toLocaleString('default', { month: 'short' });
@@ -4260,7 +4264,7 @@
             const monthNameOf = m => new Date(ovYear, m, 1).toLocaleString('default', { month: 'short' });
 
             let qHtml = '';
-            for (let q = 0; q < 4; q++) {
+            for (let q = 0; q * 3 <= lastM; q++) {
                 const slice = monthStats.slice(q * 3, q * 3 + 3);
                 const qList = slice.flatMap(s => s.list);
                 const qPnl = qList.reduce((s, t) => s + t.pnl, 0);

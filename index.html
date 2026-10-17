@@ -2166,12 +2166,11 @@
             const sign = converted < 0 ? '-' : '';
             const abs = Math.abs(converted);
             const symbol = currencySymbols[ccy] || '$';
-            if (ccy === 'NGN') return `${sign}${symbol}${compactNaira(abs)}`;
-            return `${sign}${symbol}${abs.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+            return `${sign}${symbol}${compactMoney(abs)}`;
         }
 
-        // Naira uses K / M / B: 3,000 = 3K, 3,000,000 = 3M, 3,000,000,000 = 3B.
-        function compactNaira(abs) {
+        // Amounts use K / M / B: 3,000 = 3K, 3,000,000 = 3M, 3,000,000,000 = 3B (all currencies).
+        function compactMoney(abs) {
             const units = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
             for (const [div, suffix] of units) {
                 if (abs >= div) {

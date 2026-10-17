@@ -1383,7 +1383,6 @@
             document.getElementById('sharedFilters').style.display = (tabId === 'dashboard' || tabId === 'stats') ? '' : 'none';
             const onDash = tabId === 'dashboard';
             document.getElementById('topLogTradeBtn').style.display = onDash ? '' : 'none';
-            document.getElementById('topRefreshBtn').style.display = onDash ? '' : 'none';
             const navItem = document.querySelector(`.nav-item[onclick="switchTab('${tabId}')"]`);
             if (navItem) navItem.classList.add('active');
             

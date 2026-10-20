@@ -1,6 +1,6 @@
 {
-  "name": "TradeTracker",
-  "short_name": "TradeTracker",
+  "name": "Trading Journal",
+  "short_name": "Journal",
   "description": "Personal ICT-methodology trading journal for multi-account prop firm trading.",
   "start_url": "./index.html",
   "scope": "./",

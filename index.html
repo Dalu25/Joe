@@ -3256,48 +3256,114 @@
             el.textContent = last ? 'Last backup: ' + new Date(Number(last)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'No backup downloaded yet.';
         }
 
-        function exportAccountTradesCSV(accId) {
+        function exportAccountTradesPDF(accId) {
+            if (!window.jspdf) { alert('The PDF library did not load. Check your connection.'); return; }
             const acc = accounts.find(a => a.id === accId);
             if (!acc) return;
-            const headers = ['Date','Account','Symbol','Session','Outcome','RR','Risked Amount','PnL','Cumulative PnL','Signal','Me','Note','Tags','Link','Notion Link','Logged At'];
-            const escapeCell = (v) => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""').replace(/\n/g, ' ')}"`;
-
             const list = trades
                 .filter(t => t.accountId === acc.id)
                 .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.createdAt || 0) - (b.createdAt || 0));
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'landscape' });
+            const pageW = doc.internal.pageSize.getWidth();
+            const pageH = doc.internal.pageSize.getHeight();
+            const m = PDF_STYLE.margin;
+            const green = [16, 150, 90], red = [220, 50, 50];
 
-            let csv = headers.map(escapeCell).join(',') + '\n';
+            let y = pdfStart(doc, 'Trading Journal', `${acc.name} · All trades`);
+
+            const s = summarize(list);
+            const pnlColor = s.pnl >= 0 ? green : red;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...PDF_STYLE.muted);
+            doc.text(`${s.n} trade${s.n === 1 ? '' : 's'}   ·   ${s.wins}W / ${s.n - s.wins - s.be}L / ${s.be}BE   ·   Win rate ${s.wr.toFixed(1)}%   ·   Total R ${s.r.toFixed(2)}R`, m, y);
+            y += 18;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...pnlColor);
+            doc.text(`Net P&L ${fmtMoneyFull(s.pnl)}`, m, y);
+            y += 26;
+
+            const cols = [
+                { h: 'Date', w: 62 },
+                { h: 'Symbol', w: 58 },
+                { h: 'Session', w: 56 },
+                { h: 'Outcome', w: 56 },
+                { h: 'RR', w: 44, r: true },
+                { h: 'Risk', w: 60, r: true },
+                { h: 'P&L', w: 70, r: true },
+                { h: 'Cumulative', w: 74, r: true },
+                { h: 'Signal', w: 42 },
+                { h: 'Me', w: 30 },
+                { h: 'Tags', w: 120 },
+                { h: 'Note', w: 0 }
+            ];
+            const fixed = cols.reduce((sum, c) => sum + c.w, 0);
+            cols[cols.length - 1].w = (pageW - m * 2) - fixed;
+            let x = m;
+            cols.forEach(c => { c.x = x; x += c.w; });
+
+            const drawHeader = () => {
+                doc.setFillColor(240, 240, 244);
+                doc.rect(m, y - 11, pageW - m * 2, 16, 'F');
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...PDF_STYLE.ink);
+                cols.forEach(c => {
+                    if (c.r) doc.text(c.h, c.x + c.w - 6, y, { align: 'right' });
+                    else doc.text(c.h, c.x + 4, y);
+                });
+                y += 18;
+            };
+            const fit = (text, maxW) => {
+                let t = String(text ?? '');
+                if (!t || doc.getTextWidth(t) <= maxW) return t;
+                while (t.length > 1 && doc.getTextWidth(t + '…') > maxW) t = t.slice(0, -1);
+                return t + '…';
+            };
+
+            drawHeader();
             let running = 0;
-            list.forEach(t => {
+            doc.setFontSize(8.5);
+            list.forEach((t, i) => {
                 running += Number(t.pnl) || 0;
-                const row = [
-                    t.date,
-                    acc.name,
-                    t.symbol,
+                if (y > pageH - 50) {
+                    doc.addPage(); y = 60; drawHeader();
+                }
+                if (i % 2 === 1) {
+                    doc.setFillColor(250, 250, 252);
+                    doc.rect(m, y - 11, pageW - m * 2, 15, 'F');
+                }
+                const pnl = Number(t.pnl) || 0;
+                const cells = [
+                    t.date || '',
+                    t.symbol || '',
                     t.session || '',
-                    t.outcome,
-                    t.rr,
-                    (t.riskAmount !== null && t.riskAmount !== undefined) ? t.riskAmount : '',
-                    t.pnl,
-                    running.toFixed(2),
+                    t.outcome || '',
+                    t.rr !== undefined && t.rr !== null && t.rr !== '' ? `${Number(t.rr).toFixed(2)}R` : '',
+                    (t.riskAmount !== null && t.riskAmount !== undefined) ? fmtMoneyFull(t.riskAmount) : '',
+                    fmtMoneyFull(pnl),
+                    fmtMoneyFull(running),
                     t.isSignal ? 'Yes' : '',
                     t.isMe ? 'Yes' : '',
-                    t.note || '',
                     (t.tags || []).join(' '),
-                    t.link || '',
-                    t.notionLink || '',
-                    t.createdAt ? new Date(t.createdAt).toISOString() : ''
+                    t.note || ''
                 ];
-                csv += row.map(escapeCell).join(',') + '\n';
+                cols.forEach((c, ci) => {
+                    const val = cells[ci];
+                    const color = ci === 6 ? (pnl > 0 ? green : pnl < 0 ? red : PDF_STYLE.ink)
+                        : ci === 7 ? (running >= 0 ? green : red) : PDF_STYLE.ink;
+                    doc.setFont('helvetica', (ci === 6 || ci === 7) ? 'bold' : 'normal');
+                    doc.setTextColor(...color);
+                    const txt = fit(val, c.w - 8);
+                    if (c.r) doc.text(txt, c.x + c.w - 6, y, { align: 'right' });
+                    else doc.text(txt, c.x + 4, y);
+                });
+                y += 15;
             });
 
-            const blob = new Blob([csv], {type: 'text/csv'});
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
+            if (!list.length) {
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...PDF_STYLE.faint);
+                doc.text('No trades logged for this account yet.', m, y);
+            }
+
             const safeName = String(acc.name).replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'account';
-            a.download = `${safeName}_all_trades_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            pdfFinish(doc, `${safeName}_all_trades_${new Date().toISOString().split('T')[0]}.pdf`);
         }
 
         function exportCSV() {
@@ -3531,7 +3597,7 @@
                                 <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Account Performance" onclick="openAccountPerformance('${acc.id}')">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
                                 </button>
-                                <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Export all trades (CSV)" onclick="exportAccountTradesCSV('${acc.id}')">
+                                <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Export all trades (PDF)" onclick="exportAccountTradesPDF('${acc.id}')">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                                 </button>
                                 <select class="select-toggle" style="min-height:30px; padding:0.2rem 1.6rem 0.2rem 0.6rem; font-size:0.72rem;" title="Account status" aria-label="Account status" onclick="event.stopPropagation()" onchange="setAccountStatus('${acc.id}', this.value, event)">

@@ -509,6 +509,9 @@
                 </div>
             </div>
             <div class="topbar-right">
+                <span id="syncState" style="font-size:0.8rem; color:var(--text-secondary); white-space:nowrap;"></span>
+                <span id="dashSaveStatus" style="font-size:0.8rem; color:var(--text-secondary); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+                <button class="btn btn-outline" type="button" id="dashSaveBtn" onclick="gsManualSave()" title="Push the latest data to Google Sheets now. Status shows here." style="padding:0.5rem 0.9rem; min-height:40px; font-size:0.85rem; border-radius:20px;">Sync</button>
                 <select id="currencySelector" class="select-toggle" onchange="changeCurrency(this.value)" title="Convert all amounts using live USD exchange rates.">
                     <option value="USD">$ USD</option>
                     <option value="GBP">£ GBP</option>
@@ -528,11 +531,6 @@
             <div id="tiltBanner" style="display:none; margin-bottom:0.75rem; padding:0.9rem 1rem; border:1px solid var(--danger); border-radius:12px; background:rgba(239,68,68,0.12); font-size:0.9rem;"></div>
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
                 <div class="dash-range-note" style="margin-bottom:0;">Stats for: <strong id="dash-range-label" style="color:var(--text-primary);">All Time</strong></div>
-                <div style="display:flex; align-items:center; gap:0.6rem;">
-                    <span id="syncState" style="font-size:0.8rem; color:var(--text-secondary);"></span>
-                    <span id="dashSaveStatus" style="font-size:0.8rem; color:var(--text-secondary);"></span>
-                    <button class="btn btn-outline" type="button" id="dashSaveBtn" onclick="gsManualSave()" title="Push the latest data to Google Sheets now. Status shows here.">Sync</button>
-                </div>
             </div>
 
             <div class="grid-cards">

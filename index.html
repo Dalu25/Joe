@@ -610,12 +610,12 @@
                             <small style="color:var(--text-secondary); font-size: 0.75rem;">Leave empty to auto-calculate from trades. Manually set to override.</small>
                         </div>
                         <div class="form-group">
-                            <label>Max Drawdown ($)</label>
-                            <input type="number" id="accMaxDD" class="form-control" placeholder="e.g. 9200" step="0.01" min="0">
+                            <label>Max Drawdown ($ allowed loss)</label>
+                            <input type="number" id="accMaxDD" class="form-control" placeholder="e.g. 7000" step="0.01" min="0">
                         </div>
                         <div class="form-group">
-                            <label>Profit Target ($)</label>
-                            <input type="number" id="accProfitTarget" class="form-control" placeholder="e.g. 10800" step="0.01" min="0">
+                            <label>Profit Target ($ gain to reach)</label>
+                            <input type="number" id="accProfitTarget" class="form-control" placeholder="e.g. 6000" step="0.01" min="0">
                         </div>
                         <div class="form-group">
                             <label>Daily Profit Target ($)</label>
@@ -1283,6 +1283,19 @@
             return acc.balance + (acc.balanceAdjustment || 0) + getAccountNetPnl(acc.id);
         }
 
+        // Max Drawdown and Profit Target are entered as dollar amounts (ruleMode 'amount').
+        // Older accounts stored absolute levels (floor / ceiling), so those are used as-is.
+        // Returns the floor and ceiling levels every calculation compares against.
+        function getAccountRuleLevels(acc) {
+            if (acc.ruleMode === 'amount') {
+                return {
+                    floor: acc.maxDD ? acc.balance - acc.maxDD : null,
+                    target: acc.profitTarget ? acc.balance + acc.profitTarget : null
+                };
+            }
+            return { floor: acc.maxDD || null, target: acc.profitTarget || null };
+        }
+
         // Corrupt or missing saved data falls back to empty instead of stopping the whole app from starting.
         function readStoredJson(key, fallback) {
             try {
@@ -1830,17 +1843,18 @@
             let bestDay = null;
             Object.entries(byDay).forEach(([d, p]) => { if (!bestDay || p > bestDay.pnl) bestDay = { date: d, pnl: p }; });
 
+            const L = getAccountRuleLevels(acc);
             let progress = null, toGo = null;
-            if (acc.profitTarget && acc.profitTarget > acc.balance) {
-                progress = Math.max(0, Math.min(100, ((bal - acc.balance) / (acc.profitTarget - acc.balance)) * 100));
-                toGo = Math.max(0, acc.profitTarget - bal);
+            if (L.target && L.target > acc.balance) {
+                progress = Math.max(0, Math.min(100, ((bal - acc.balance) / (L.target - acc.balance)) * 100));
+                toGo = Math.max(0, L.target - bal);
             }
             let ddPct = null, ddBuffer = null;
-            if (acc.maxDD && acc.balance - acc.maxDD > 0) {
-                const allowed = acc.balance - acc.maxDD;
+            if (L.floor && acc.balance - L.floor > 0) {
+                const allowed = acc.balance - L.floor;
                 const remain = Math.max(0, allowed - (acc.balance - bal));
                 ddPct = Math.min(100, (remain / allowed) * 100);
-                ddBuffer = bal - acc.maxDD;
+                ddBuffer = bal - L.floor;
             }
             let daily = null;
             if (acc.dailyProfitTarget) {
@@ -1856,8 +1870,8 @@
                 const score = totalProfit > 0 ? (bestUnit / totalProfit) * 100 : 0;
                 cons = { score, limit: acc.consistencyPct, breached: score > acc.consistencyPct };
             }
-            const breached = !!(acc.maxDD && bal <= acc.maxDD);
-            const reached = !!(acc.profitTarget && bal >= acc.profitTarget);
+            const breached = !!(L.floor && bal <= L.floor);
+            const reached = !!(L.target && bal >= L.target);
             let status = { key: 'idle', text: 'No rules' };
             if (breached) status = { key: 'breached', text: 'Breached' };
             else if (reached && cons && cons.breached) status = { key: 'risk', text: 'Consistency' };
@@ -1912,7 +1926,7 @@
                         </div>
                         
                     </div>
-                    ${pct !== null ? `<div style="margin-top:1rem;">${evalMeter('Profit', `${fmtMoney(r.bal - acc.balance)} / ${fmtMoney(acc.profitTarget - acc.balance)} · ${pct.toFixed(0)}%`, Math.max(0, Math.min(100, pct)), pct >= 0 ? 'var(--success)' : 'var(--danger)')}</div>` : ''}
+                    ${pct !== null ? `<div style="margin-top:1rem;">${evalMeter('Profit', `${fmtMoney(r.bal - acc.balance)} / ${fmtMoney(getAccountRuleLevels(acc).target - acc.balance)} · ${pct.toFixed(0)}%`, Math.max(0, Math.min(100, pct)), pct >= 0 ? 'var(--success)' : 'var(--danger)')}</div>` : ''}
                     <div class="stat-row c3" style="margin-top:1.1rem;">
                         ${r.ddPct !== null ? evalMeter('Drawdown buffer', `${r.ddPct.toFixed(1)}% · ${fmtMoney(r.ddBuffer)} above floor`, r.ddPct, r.ddPct >= 40 ? 'var(--accent)' : (r.ddPct >= 15 ? 'var(--warning)' : 'var(--danger)')) : ''}
                         ${r.daily ? evalMeter('Daily target', `${fmtMoney(r.daily.pnl)} / ${fmtMoney(r.daily.target)}`, r.daily.pct, r.daily.pnl >= r.daily.target ? 'var(--success)' : (r.daily.pnl < 0 ? 'var(--danger)' : 'var(--accent)')) : ''}
@@ -2482,6 +2496,7 @@
                     accounts[idx].balance = balance;
                     accounts[idx].maxDD = maxDD;
                     accounts[idx].profitTarget = profitTarget;
+                    accounts[idx].ruleMode = 'amount';
                     accounts[idx].dailyProfitTarget = dailyProfitTarget;
                     accounts[idx].dailyLossLimit = dailyLossLimit;
                     accounts[idx].consistencyBasis = consistencyBasis;
@@ -2500,7 +2515,7 @@
             } else {
                 const newId = Date.now().toString();
                 const balanceAdjustment = currentBalanceVal === '' ? 0 : (parseFloat(currentBalanceVal) - balance);
-                accounts.push({ id: newId, name, balance, balanceAdjustment, maxDD, profitTarget, dailyProfitTarget, dailyLossLimit, consistencyBasis, consistencyPct, accountType });
+                accounts.push({ id: newId, name, balance, balanceAdjustment, maxDD, profitTarget, ruleMode: 'amount', dailyProfitTarget, dailyLossLimit, consistencyBasis, consistencyPct, accountType });
             }
             saveData();
             resetAccountForm();
@@ -2515,8 +2530,12 @@
             document.getElementById('accName').value = acc.name;
             document.getElementById('accBalance').value = acc.balance;
             document.getElementById('accCurrentBalance').value = getAccountCurrentBalance(acc);
-            document.getElementById('accMaxDD').value = (acc.maxDD !== null && acc.maxDD !== undefined) ? acc.maxDD : '';
-            document.getElementById('accProfitTarget').value = (acc.profitTarget !== null && acc.profitTarget !== undefined) ? acc.profitTarget : '';
+            // Show dollar amounts. Legacy accounts stored levels, so convert them back; leave blank if they make no sense.
+            const legacyLevels = acc.ruleMode !== 'amount';
+            const ddAmount = (acc.maxDD) ? (legacyLevels ? acc.balance - acc.maxDD : acc.maxDD) : null;
+            const targetAmount = (acc.profitTarget) ? (legacyLevels ? acc.profitTarget - acc.balance : acc.profitTarget) : null;
+            document.getElementById('accMaxDD').value = (ddAmount !== null && ddAmount > 0) ? ddAmount : '';
+            document.getElementById('accProfitTarget').value = (targetAmount !== null && targetAmount > 0) ? targetAmount : '';
             document.getElementById('accDailyProfitTarget').value = (acc.dailyProfitTarget !== null && acc.dailyProfitTarget !== undefined) ? acc.dailyProfitTarget : '';
             document.getElementById('accDailyLossLimit').value = (acc.dailyLossLimit !== null && acc.dailyLossLimit !== undefined) ? acc.dailyLossLimit : '';
             document.getElementById('accConsistencyBasis').value = acc.consistencyBasis || '';
@@ -3342,7 +3361,7 @@
                 const netAccountPnl = accTrades.reduce((s, t) => s + t.pnl, 0);
                 const currentBalance = getAccountCurrentBalance(acc);
 
-                const limit = acc.maxDD;
+                const limit = getAccountRuleLevels(acc).floor;
                 let ratio = 0;
                 let barColor = 'var(--accent)';
                 let statusText = 'No limit set';
@@ -3359,7 +3378,7 @@
                     statusText = 'No limit set';
                 }
 
-                const target = acc.profitTarget;
+                const target = getAccountRuleLevels(acc).target;
                 let targetRatio = 0;
                 let targetBarColor = 'var(--success)';
                 let targetStatusText = 'No target set';

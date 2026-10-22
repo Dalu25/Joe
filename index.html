@@ -949,7 +949,6 @@
                 </div>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                     <button class="btn btn-outline" type="button" onclick="openPerfTrades()">View trades</button>
-                    <button class="btn btn-outline" type="button" onclick="exportAccountTradesCSV()">Export CSV</button>
                     <button class="btn btn-outline" type="button" onclick="openCompare()">Compare accounts</button>
                 </div>
             </div>
@@ -3257,9 +3256,8 @@
             el.textContent = last ? 'Last backup: ' + new Date(Number(last)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'No backup downloaded yet.';
         }
 
-        function exportAccountTradesCSV() {
-            if (!perfAccountId) return;
-            const acc = accounts.find(a => a.id === perfAccountId);
+        function exportAccountTradesCSV(accId) {
+            const acc = accounts.find(a => a.id === accId);
             if (!acc) return;
             const headers = ['Date','Account','Symbol','Session','Outcome','RR','Risked Amount','PnL','Cumulative PnL','Signal','Me','Note','Tags','Link','Notion Link','Logged At'];
             const escapeCell = (v) => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""').replace(/\n/g, ' ')}"`;
@@ -3532,6 +3530,9 @@
                             <div style="display:flex; justify-content:flex-end; gap:0.25rem; margin-bottom:0.5rem;">
                                 <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Account Performance" onclick="openAccountPerformance('${acc.id}')">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
+                                </button>
+                                <button class="btn-outline" style="border:none; cursor:pointer; background:none; padding:4px;" title="Export all trades (CSV)" onclick="exportAccountTradesCSV('${acc.id}')">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                                 </button>
                                 <select class="select-toggle" style="min-height:30px; padding:0.2rem 1.6rem 0.2rem 0.6rem; font-size:0.72rem;" title="Account status" aria-label="Account status" onclick="event.stopPropagation()" onchange="setAccountStatus('${acc.id}', this.value, event)">
                                     <option value="active" ${!acc.isClosed ? 'selected' : ''}>Active</option>

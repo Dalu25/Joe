@@ -663,8 +663,9 @@
             <details class="toggle-section" style="margin-top:0; border-color: var(--accent);">
                 <summary style="color: var(--accent);">📊 Portfolio Overview</summary>
                 <div class="toggle-body">
-                    <div class="grid-cards" style="grid-template-columns: 1fr;">
+                    <div class="grid-cards" style="grid-template-columns: 1fr 1fr;">
                         <div class="card" style="background:transparent; border:1px solid var(--border);"><span class="card-title">Total Capital</span><span class="card-value text-success" id="port-total-capital">$0.00</span></div>
+                        <div class="card" style="background:transparent; border:1px solid var(--border);"><span class="card-title">Effective Capital</span><span class="card-value" id="port-effective-capital">$0.00</span></div>
                     </div>
                     <div class="grid-cards" style="grid-template-columns: 1fr 1fr; margin-top:0.75rem;">
                         <div class="card" style="background:transparent; border:1px solid var(--border);"><span class="card-title">Win Rate</span><span class="card-value" id="port-win-rate">0%</span></div>
@@ -3827,6 +3828,7 @@
             const openAccountIds = new Set(openAccounts.map(a => a.id));
 
             let totalCapital = 0;
+            let effectiveCapital = 0;
             let combinedPnl = 0;
 
             openAccounts.forEach(acc => {
@@ -3834,6 +3836,7 @@
                 const accPnl = accTrades.reduce((s, t) => s + t.pnl, 0);
                 
                 totalCapital += acc.balance;
+                effectiveCapital += Number(acc.maxDD) || 0;
                 combinedPnl += accPnl;
             });
 
@@ -3849,6 +3852,7 @@
             const portWinRate = validDenom > 0 ? ((totalWins / validDenom) * 100).toFixed(1) : 0;
 
             document.getElementById('port-total-capital').innerText = fmtMoney(totalCapital);
+            document.getElementById('port-effective-capital').innerText = fmtMoney(effectiveCapital);
             document.getElementById('port-win-rate').innerText = `${portWinRate}%`;
             document.getElementById('port-total-trades').innerText = totalTradeCount;
         }
@@ -4437,10 +4441,13 @@
         }
 
         // ===================== $ / % DISPLAY, CALENDAR STATS, OVERVIEW =====================
-        // Percentage base = starting balance (balance + manual adjustment) of the accounts that traded in the period.
+        // Percentage base = max drawdown of the accounts that traded in the period (the real account size).
+        // Falls back to starting balance (balance + manual adjustment) for accounts with no max drawdown set.
         function calAccountBase(accountId) {
             const a = accounts.find(x => x.id === accountId);
-            return a ? (a.balance || 0) + (a.balanceAdjustment || 0) : 0;
+            if (!a) return 0;
+            if (Number(a.maxDD) > 0) return Number(a.maxDD);
+            return (a.balance || 0) + (a.balanceAdjustment || 0);
         }
         function calBaseFor(list) {
             const ids = [...new Set(list.map(t => t.accountId))];

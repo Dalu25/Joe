@@ -1950,7 +1950,7 @@
             const mRange = periodRange('thisMonth');
             const monthPnl = trades.filter(t => t.accountId === acc.id && t.date >= mRange.from && t.date <= mRange.to).reduce((s, t) => s + t.pnl, 0);
             const overallPnl = r.s.pnl;
-            const startBal = acc.balance || 1;
+            const startBal = (Number(acc.maxDD) > 0 ? Number(acc.maxDD) : acc.balance) || 1;
             const perfLegs = trades.filter(t => t.accountId === acc.id);
             const perfWins = perfLegs.filter(t => t.outcome === 'win').length;
             const perfBE = perfLegs.filter(t => t.outcome === 'breakeven').length;

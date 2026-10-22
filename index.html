@@ -949,6 +949,7 @@
                 </div>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                     <button class="btn btn-outline" type="button" onclick="openPerfTrades()">View trades</button>
+                    <button class="btn btn-outline" type="button" onclick="exportAccountTradesCSV()">Export CSV</button>
                     <button class="btn btn-outline" type="button" onclick="openCompare()">Compare accounts</button>
                 </div>
             </div>
@@ -3254,6 +3255,51 @@
             let last = null;
             try { last = localStorage.getItem('tj_last_backup'); } catch (e) { /* ignore */ }
             el.textContent = last ? 'Last backup: ' + new Date(Number(last)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'No backup downloaded yet.';
+        }
+
+        function exportAccountTradesCSV() {
+            if (!perfAccountId) return;
+            const acc = accounts.find(a => a.id === perfAccountId);
+            if (!acc) return;
+            const headers = ['Date','Account','Symbol','Session','Outcome','RR','Risked Amount','PnL','Cumulative PnL','Signal','Me','Note','Tags','Link','Notion Link','Logged At'];
+            const escapeCell = (v) => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""').replace(/\n/g, ' ')}"`;
+
+            const list = trades
+                .filter(t => t.accountId === acc.id)
+                .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.createdAt || 0) - (b.createdAt || 0));
+
+            let csv = headers.map(escapeCell).join(',') + '\n';
+            let running = 0;
+            list.forEach(t => {
+                running += Number(t.pnl) || 0;
+                const row = [
+                    t.date,
+                    acc.name,
+                    t.symbol,
+                    t.session || '',
+                    t.outcome,
+                    t.rr,
+                    (t.riskAmount !== null && t.riskAmount !== undefined) ? t.riskAmount : '',
+                    t.pnl,
+                    running.toFixed(2),
+                    t.isSignal ? 'Yes' : '',
+                    t.isMe ? 'Yes' : '',
+                    t.note || '',
+                    (t.tags || []).join(' '),
+                    t.link || '',
+                    t.notionLink || '',
+                    t.createdAt ? new Date(t.createdAt).toISOString() : ''
+                ];
+                csv += row.map(escapeCell).join(',') + '\n';
+            });
+
+            const blob = new Blob([csv], {type: 'text/csv'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            const safeName = String(acc.name).replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'account';
+            a.download = `${safeName}_all_trades_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
         }
 
         function exportCSV() {

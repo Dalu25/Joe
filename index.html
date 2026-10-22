@@ -1888,7 +1888,7 @@
         // ---- Account Performance page ----
         let perfAccountId = null;
         function perfSetAccount(id) { perfAccountId = id; renderPerformancePage(); }
-        function openPerfTrades() { hist.accountId = perfAccountId; switchTab('history'); }
+        function openPerfTrades() { hist.accountId = perfAccountId; document.getElementById('histFrom').value = ''; document.getElementById('histTo').value = ''; switchTab('history'); }
         function perfEnsureAccount() {
             const active = accounts.filter(a => !a.isClosed);
             if (!perfAccountId || !accounts.some(a => a.id === perfAccountId)) perfAccountId = (active[0] || accounts[0] || {}).id || null;
@@ -2012,7 +2012,7 @@
             const sym = document.getElementById('histSymbol').value.trim().toUpperCase();
             const from = document.getElementById('histFrom').value;
             const to = document.getElementById('histTo').value;
-            const archivedIds = hist.hideArchived ? new Set(accounts.filter(a => a.isClosed).map(a => a.id)) : null;
+            const archivedIds = hist.hideArchived ? new Set(accounts.filter(a => a.isClosed && a.id !== acc).map(a => a.id)) : null;
             return trades.filter(t =>
                 (!archivedIds || !archivedIds.has(t.accountId)) &&
                 (acc === 'all' || t.accountId === acc) &&
@@ -2034,7 +2034,7 @@
             const accSel = document.getElementById('histAccount');
             const prev = hist.accountId || accSel.value || 'all';
             hist.accountId = null;
-            const accPool = hist.hideArchived ? accounts.filter(a => !a.isClosed) : accounts;
+            const accPool = hist.hideArchived ? accounts.filter(a => !a.isClosed || a.id === prev) : accounts;
             accSel.innerHTML = '<option value="all">All Accounts</option>' + accPool.map(a => `<option value="${jEsc(a.id)}">${jEsc(a.name)}${a.isClosed ? ' (archived)' : ''}</option>`).join('');
             accSel.value = accPool.some(a => a.id === prev) ? prev : 'all';
 

@@ -3393,7 +3393,7 @@
                 ['Average loss', money(-avgLoss), red],
                 ['Total R tracked', `${s.r.toFixed(2)}R`, colorFor(s.r)],
                 ['Average R per trade', `${(s.n ? s.r / s.n : 0).toFixed(2)}R`],
-                ['Max drawdown (closed trades)', money(-maxDD), maxDD > 0 ? red : null],
+                ['Max drawdown', money(-maxDD), maxDD > 0 ? red : null],
                 ['Longest win / loss streak', `${maxWinStreak} / ${maxLossStreak}`],
                 ['Best trade', bestTrade ? `${money(bestTrade.pnl)} (${bestTrade.date})` : '—', green],
                 ['Worst trade', worstTrade ? `${money(worstTrade.pnl)} (${worstTrade.date})` : '—', red]
@@ -3451,17 +3451,17 @@
                 ];
             });
             const hCols = [
-                { h: 'Date', w: 62 },
-                { h: 'Symbol', w: 58 },
-                { h: 'Session', w: 56 },
-                { h: 'Outcome', w: 56 },
-                { h: 'RR', w: 44, r: true },
-                { h: 'Risk', w: 60, r: true },
-                { h: 'P&L', w: 70, r: true },
-                { h: 'Cumulative', w: 74, r: true },
-                { h: 'Signal', w: 42 },
-                { h: 'Me', w: 30 },
-                { h: 'Tags', w: 120 },
+                { h: 'Date', w: 60 },
+                { h: 'Symbol', w: 52 },
+                { h: 'Session', w: 50 },
+                { h: 'Outcome', w: 50 },
+                { h: 'RR', w: 40, r: true },
+                { h: 'Risk', w: 56, r: true },
+                { h: 'P&L', w: 66, r: true },
+                { h: 'Cumulative', w: 70, r: true },
+                { h: 'Signal', w: 40 },
+                { h: 'Me', w: 26 },
+                { h: 'Tags', w: 70 },
                 { h: 'Note', w: 0 }
             ];
             table(hCols, rows, 'No trades logged for this account yet.');

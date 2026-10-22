@@ -1919,21 +1919,50 @@
             const hasRules = !!(acc.profitTarget || acc.maxDD || acc.dailyProfitTarget || acc.consistencyPct);
             let progressHtml;
             if (hasRules) {
-                const pct = r.progress;
+                const L = getAccountRuleLevels(acc);
+                const curBal = getAccountCurrentBalance(acc);
+                const meter = (label, status, ratio, color, sub) => `<div class="meter-row" style="margin-top:0;">
+                        <div class="meter-labels"><span>${label}</span><span>${status}</span></div>
+                        <div class="meter-track"><div class="meter-fill" style="width:${Math.max(0, Math.min(100, ratio))}%; background:${color};"></div></div>
+                        <small style="font-size:0.7rem; color:var(--text-secondary);">${sub}</small>
+                    </div>`;
+                const rows = [];
+                // Same logic as Accounts Management: drawdown counts DOWN toward the floor
+                if (L.floor) {
+                    const allowedDD = acc.balance - L.floor;
+                    const currentDD = acc.balance - curBal;
+                    const remainingLoss = Math.max(0, allowedDD - currentDD);
+                    const ratio = allowedDD > 0 ? (remainingLoss / allowedDD) * 100 : 0;
+                    const color = ratio >= 40 ? 'var(--accent)' : (ratio >= 15 ? 'var(--warning)' : 'var(--danger)');
+                    rows.push(meter('Max Drawdown (decreasing toward floor)', `${fmtMoney(curBal)} → ${fmtMoney(L.floor)}`, ratio, color,
+                        `${fmtMoney(Math.max(0, curBal - L.floor))} buffer remaining before margin call`));
+                }
+                // Profit target counts UP from current balance toward the goal
+                if (L.target) {
+                    const targetGain = L.target - acc.balance;
+                    const currentGain = curBal - acc.balance;
+                    const ratio = targetGain > 0 ? (currentGain / targetGain) * 100 : 0;
+                    rows.push(meter('Profit Target (increasing toward goal)', `${fmtMoney(curBal)} → ${fmtMoney(L.target)}`, ratio, 'var(--success)',
+                        `${fmtMoney(Math.max(0, L.target - curBal))} to go until target`));
+                }
+                if (r.daily) {
+                    const d = r.daily;
+                    const color = d.pnl >= d.target ? 'var(--success)' : (d.pnl < 0 ? 'var(--danger)' : 'var(--accent)');
+                    rows.push(meter('Daily Profit Target (today)', `${fmtMoney(d.pnl)} → ${fmtMoney(d.target)}`, (d.pnl / d.target) * 100, color,
+                        `${fmtMoney(Math.max(0, d.target - d.pnl))} to go today`));
+                }
+                if (r.cons) {
+                    const c = r.cons;
+                    const color = c.breached ? 'var(--danger)' : (c.score > c.limit * 0.8 ? 'var(--warning)' : 'var(--success)');
+                    rows.push(meter('Consistency (best day / total profit)', `${c.score.toFixed(1)}% → ${c.limit}% max`, (c.score / c.limit) * 100, color,
+                        c.breached ? 'Over the consistency limit' : 'Within the consistency limit'));
+                }
                 progressHtml = `<div class="card" style="padding:1.25rem 1.5rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
-                        <div>
-                            <span class="ev-pill ${r.status.key}" style="margin-bottom:0.6rem; display:inline-block;">${typeLabel}</span>
-                            <div style="font-size:1.15rem; font-weight:700;">${jEsc(acc.name)} target progress</div>
-                            <div class="stat-sub" style="margin-top:0.3rem;">Trading P&amp;L counts toward the target. Deposits, payouts and reset-excluded trades do not.</div>
-                        </div>
-                        
-                    </div>
-                    ${pct !== null ? `<div style="margin-top:1rem;">${evalMeter('Profit', `${fmtMoney(r.bal - acc.balance)} / ${fmtMoney(getAccountRuleLevels(acc).target - acc.balance)} · ${pct.toFixed(0)}%`, Math.max(0, Math.min(100, pct)), pct >= 0 ? 'var(--success)' : 'var(--danger)')}</div>` : ''}
-                    <div class="stat-row c3" style="margin-top:1.1rem;">
-                        ${r.ddPct !== null ? evalMeter('Drawdown buffer', `${r.ddPct.toFixed(1)}% · ${fmtMoney(r.ddBuffer)} above floor`, r.ddPct, r.ddPct >= 40 ? 'var(--accent)' : (r.ddPct >= 15 ? 'var(--warning)' : 'var(--danger)')) : ''}
-                        ${r.daily ? evalMeter('Daily target', `${fmtMoney(r.daily.pnl)} / ${fmtMoney(r.daily.target)}`, r.daily.pct, r.daily.pnl >= r.daily.target ? 'var(--success)' : (r.daily.pnl < 0 ? 'var(--danger)' : 'var(--accent)')) : ''}
-                        ${r.cons ? evalMeter('Consistency', `${r.cons.score.toFixed(1)}% / ${r.cons.limit}% max`, Math.min(100, (r.cons.score / r.cons.limit) * 100), r.cons.breached ? 'var(--danger)' : (r.cons.score > r.cons.limit * 0.8 ? 'var(--warning)' : 'var(--success)')) : ''}
+                    <span class="ev-pill ${r.status.key}" style="margin-bottom:0.6rem; display:inline-block;">${typeLabel}</span>
+                    <div style="font-size:1.15rem; font-weight:700;">${jEsc(acc.name)} target progress</div>
+                    <div class="stat-sub" style="margin-top:0.3rem;">Trading P&amp;L counts toward the target. Deposits, payouts and reset-excluded trades do not.</div>
+                    <div style="margin-top:1.1rem; display:flex; flex-direction:column; gap:1rem; width:100%;">
+                        ${rows.join('')}
                     </div>
                     ${(r.status.key === 'passed' && !acc.isClosed) ? `<button class="btn" style="margin-top:1.1rem; background:var(--success);" type="button" onclick="markAccountPassed('${acc.id}')">Mark Passed &amp; Archive</button>` : ''}
                 </div>`;

@@ -3268,20 +3268,189 @@
             const pageW = doc.internal.pageSize.getWidth();
             const pageH = doc.internal.pageSize.getHeight();
             const m = PDF_STYLE.margin;
-            const green = [16, 150, 90], red = [220, 50, 50];
+            const contentW = pageW - m * 2;
+            const green = [16, 150, 90], red = [220, 50, 50], ink = PDF_STYLE.ink, muted = PDF_STYLE.muted, faint = PDF_STYLE.faint;
+            const colorFor = (v) => v > 0 ? green : v < 0 ? red : ink;
+            const money = (v) => fmtMoneyFull(v);
+            const pageBreakIfNeeded = (needed) => { if (y + needed > pageH - 50) { doc.addPage(); y = 60; } };
 
-            let y = pdfStart(doc, 'Trading Journal', `${acc.name} · All trades`);
+            let y = pdfStart(doc, 'Trading Journal', `${acc.name} · Full trade history report`);
 
+            // ---- Section helpers ----
+            const sectionTitle = (title) => {
+                pageBreakIfNeeded(40);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...ink);
+                doc.text(title, m, y); y += 18;
+            };
+            const kvGrid = (pairs) => {
+                const half = Math.ceil(pairs.length / 2);
+                const colX = [m, m + contentW / 2];
+                for (let i = 0; i < half; i++) {
+                    pageBreakIfNeeded(18);
+                    [pairs[i], pairs[i + half]].forEach((p, ci) => {
+                        if (!p) return;
+                        const [label, value, color] = p;
+                        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...muted);
+                        doc.text(String(label), colX[ci], y);
+                        doc.setFont('helvetica', 'bold'); doc.setTextColor(...(color || ink));
+                        doc.text(String(value), colX[ci] + 190, y);
+                    });
+                    y += 16;
+                }
+                y += 10;
+            };
+            const table = (cols, rows, emptyText) => {
+                let x = m;
+                const avail = contentW;
+                const fixed = cols.filter(c => c.w).reduce((s, c) => s + c.w, 0);
+                const flex = cols.filter(c => !c.w);
+                cols.forEach(c => { c.px = c.w || (avail - fixed) / flex.length; });
+                cols.forEach(c => { c.x = x; x += c.px; });
+                const drawHeader = () => {
+                    doc.setFillColor(240, 240, 244);
+                    doc.rect(m, y - 11, contentW, 16, 'F');
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...ink);
+                    cols.forEach(c => c.r ? doc.text(c.h, c.x + c.px - 6, y, { align: 'right' }) : doc.text(c.h, c.x + 4, y));
+                    y += 18;
+                };
+                const fit = (text, maxW) => {
+                    let t = String(text ?? '');
+                    if (!t || doc.getTextWidth(t) <= maxW) return t;
+                    while (t.length > 1 && doc.getTextWidth(t + '…') > maxW) t = t.slice(0, -1);
+                    return t + '…';
+                };
+                pageBreakIfNeeded(40);
+                drawHeader();
+                doc.setFontSize(8.5);
+                if (!rows.length) {
+                    doc.setFont('helvetica', 'normal'); doc.setTextColor(...faint);
+                    doc.text(emptyText, m + 4, y); y += 18;
+                }
+                rows.forEach((row, i) => {
+                    if (y > pageH - 50) { doc.addPage(); y = 60; drawHeader(); doc.setFontSize(8.5); }
+                    if (i % 2 === 1) { doc.setFillColor(250, 250, 252); doc.rect(m, y - 11, contentW, 15, 'F'); }
+                    cols.forEach((c, ci) => {
+                        const cell = row[ci] || {};
+                        doc.setFont('helvetica', cell.bold ? 'bold' : 'normal');
+                        doc.setTextColor(...(cell.color || ink));
+                        const txt = fit(cell.text, c.px - 8);
+                        c.r ? doc.text(txt, c.x + c.px - 6, y, { align: 'right' }) : doc.text(txt, c.x + 4, y);
+                    });
+                    y += 15;
+                });
+                y += 12;
+            };
+
+            // ---- Account details ----
+            const typeLabel = { evaluation: 'Evaluation', funded: 'Funded', live: 'Live' }[acc.accountType] || 'Evaluation';
+            const L = getAccountRuleLevels(acc);
+            const currentBal = getAccountCurrentBalance(acc);
+            const dates = list.map(t => t.date).filter(Boolean);
+            const firstDate = dates.length ? dates[0] : '—';
+            const lastDate = dates.length ? dates[dates.length - 1] : '—';
+            sectionTitle('Account Details');
+            kvGrid([
+                ['Account type', typeLabel],
+                ['Status', acc.isClosed ? (acc.closedReason === 'passed' ? 'Passed' : 'Closed') : 'Active'],
+                ['Starting balance', money(acc.balance)],
+                ['Current balance', money(currentBal), colorFor(currentBal - acc.balance)],
+                ['Profit target', L.target ? money(L.target) : 'Not set'],
+                ['Drawdown floor', L.floor ? money(L.floor) : 'Not set'],
+                ['First trade', firstDate],
+                ['Last trade', lastDate]
+            ]);
+
+            // ---- Performance overview ----
             const s = summarize(list);
-            const pnlColor = s.pnl >= 0 ? green : red;
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...PDF_STYLE.muted);
-            doc.text(`${s.n} trade${s.n === 1 ? '' : 's'}   ·   ${s.wins}W / ${s.n - s.wins - s.be}L / ${s.be}BE   ·   Win rate ${s.wr.toFixed(1)}%   ·   Total R ${s.r.toFixed(2)}R`, m, y);
-            y += 18;
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...pnlColor);
-            doc.text(`Net P&L ${fmtMoneyFull(s.pnl)}`, m, y);
-            y += 26;
+            const losses = list.filter(t => t.outcome === 'loss').length;
+            const bestTrade = list.reduce((b, t) => (!b || t.pnl > b.pnl) ? t : b, null);
+            const worstTrade = list.reduce((w, t) => (!w || t.pnl < w.pnl) ? t : w, null);
+            const avgWin = s.wins ? s.gp / list.filter(t => t.pnl > 0).length : 0;
+            const avgLoss = list.filter(t => t.pnl < 0).length ? s.gl / list.filter(t => t.pnl < 0).length : 0;
+            let peak = 0, cum = 0, maxDD = 0;
+            let curWin = 0, curLoss = 0, maxWinStreak = 0, maxLossStreak = 0;
+            list.forEach(t => {
+                cum += Number(t.pnl) || 0;
+                peak = Math.max(peak, cum);
+                maxDD = Math.max(maxDD, peak - cum);
+                if (t.outcome === 'win') { curWin++; curLoss = 0; } else if (t.outcome === 'loss') { curLoss++; curWin = 0; } else { curWin = 0; curLoss = 0; }
+                maxWinStreak = Math.max(maxWinStreak, curWin);
+                maxLossStreak = Math.max(maxLossStreak, curLoss);
+            });
+            const pfText = s.pf === Infinity ? '∞' : (s.pf === null ? '—' : s.pf.toFixed(2));
+            sectionTitle('Performance Overview');
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...muted);
+            pageBreakIfNeeded(16);
+            doc.text(`${s.n} trade${s.n === 1 ? '' : 's'} logged · ${s.wins}W / ${losses}L / ${s.be}BE`, m, y); y += 18;
+            kvGrid([
+                ['Net P&L', money(s.pnl), colorFor(s.pnl)],
+                ['Gross profit', money(s.gp), green],
+                ['Gross loss', money(-s.gl), red],
+                ['Profit factor', pfText],
+                ['Win rate', `${s.wr.toFixed(1)}%`],
+                ['Expectancy per trade', money(s.exp), colorFor(s.exp)],
+                ['Average win', money(avgWin), green],
+                ['Average loss', money(-avgLoss), red],
+                ['Total R tracked', `${s.r.toFixed(2)}R`, colorFor(s.r)],
+                ['Average R per trade', `${(s.n ? s.r / s.n : 0).toFixed(2)}R`],
+                ['Max drawdown (closed trades)', money(-maxDD), maxDD > 0 ? red : null],
+                ['Longest win / loss streak', `${maxWinStreak} / ${maxLossStreak}`],
+                ['Best trade', bestTrade ? `${money(bestTrade.pnl)} (${bestTrade.date})` : '—', green],
+                ['Worst trade', worstTrade ? `${money(worstTrade.pnl)} (${worstTrade.date})` : '—', red]
+            ]);
 
-            const cols = [
+            // ---- Breakdowns ----
+            const breakdown = (keyFn, label) => {
+                const groups = {};
+                list.forEach(t => {
+                    const k = keyFn(t) || 'Unassigned';
+                    (groups[k] = groups[k] || []).push(t);
+                });
+                return Object.entries(groups)
+                    .map(([k, ts]) => ({ k, s: summarize(ts) }))
+                    .sort((a, b) => b.s.n - a.s.n)
+                    .map(({ k, s: g }) => [
+                        { text: k, bold: true },
+                        { text: String(g.n) },
+                        { text: `${g.wr.toFixed(1)}%` },
+                        { text: money(g.pnl), color: colorFor(g.pnl), bold: true },
+                        { text: `${g.r.toFixed(2)}R`, color: colorFor(g.r) }
+                    ]);
+            };
+            const bCols = () => [
+                { h: label, w: 0 },
+                { h: 'Trades', w: 80, r: true },
+                { h: 'Win rate', w: 90, r: true },
+                { h: 'Net P&L', w: 110, r: true },
+                { h: 'Total R', w: 90, r: true }
+            ];
+            sectionTitle('Performance by Session');
+            table(bCols(), breakdown(t => t.session, 'Session'), 'No trades');
+            sectionTitle('Performance by Symbol');
+            table(bCols(), breakdown(t => t.symbol, 'Symbol'), 'No trades');
+
+            // ---- Trade history ----
+            sectionTitle(`Trade History (${list.length})`);
+            let running = 0;
+            const rows = list.map(t => {
+                const pnl = Number(t.pnl) || 0;
+                running += pnl;
+                return [
+                    { text: t.date || '' },
+                    { text: t.symbol || '' },
+                    { text: t.session || '' },
+                    { text: t.outcome || '', color: t.outcome === 'win' ? green : t.outcome === 'loss' ? red : null },
+                    { text: (t.rr !== undefined && t.rr !== null && t.rr !== '') ? `${Number(t.rr).toFixed(2)}R` : '' },
+                    { text: (t.riskAmount !== null && t.riskAmount !== undefined) ? money(t.riskAmount) : '' },
+                    { text: money(pnl), color: colorFor(pnl), bold: true },
+                    { text: money(running), color: colorFor(running) },
+                    { text: t.isSignal ? 'Yes' : '' },
+                    { text: t.isMe ? 'Yes' : '' },
+                    { text: (t.tags || []).join(' ') },
+                    { text: t.note || '' }
+                ];
+            });
+            const hCols = [
                 { h: 'Date', w: 62 },
                 { h: 'Symbol', w: 58 },
                 { h: 'Session', w: 56 },
@@ -3295,75 +3464,10 @@
                 { h: 'Tags', w: 120 },
                 { h: 'Note', w: 0 }
             ];
-            const fixed = cols.reduce((sum, c) => sum + c.w, 0);
-            cols[cols.length - 1].w = (pageW - m * 2) - fixed;
-            let x = m;
-            cols.forEach(c => { c.x = x; x += c.w; });
-
-            const drawHeader = () => {
-                doc.setFillColor(240, 240, 244);
-                doc.rect(m, y - 11, pageW - m * 2, 16, 'F');
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...PDF_STYLE.ink);
-                cols.forEach(c => {
-                    if (c.r) doc.text(c.h, c.x + c.w - 6, y, { align: 'right' });
-                    else doc.text(c.h, c.x + 4, y);
-                });
-                y += 18;
-            };
-            const fit = (text, maxW) => {
-                let t = String(text ?? '');
-                if (!t || doc.getTextWidth(t) <= maxW) return t;
-                while (t.length > 1 && doc.getTextWidth(t + '…') > maxW) t = t.slice(0, -1);
-                return t + '…';
-            };
-
-            drawHeader();
-            let running = 0;
-            doc.setFontSize(8.5);
-            list.forEach((t, i) => {
-                running += Number(t.pnl) || 0;
-                if (y > pageH - 50) {
-                    doc.addPage(); y = 60; drawHeader();
-                }
-                if (i % 2 === 1) {
-                    doc.setFillColor(250, 250, 252);
-                    doc.rect(m, y - 11, pageW - m * 2, 15, 'F');
-                }
-                const pnl = Number(t.pnl) || 0;
-                const cells = [
-                    t.date || '',
-                    t.symbol || '',
-                    t.session || '',
-                    t.outcome || '',
-                    t.rr !== undefined && t.rr !== null && t.rr !== '' ? `${Number(t.rr).toFixed(2)}R` : '',
-                    (t.riskAmount !== null && t.riskAmount !== undefined) ? fmtMoneyFull(t.riskAmount) : '',
-                    fmtMoneyFull(pnl),
-                    fmtMoneyFull(running),
-                    t.isSignal ? 'Yes' : '',
-                    t.isMe ? 'Yes' : '',
-                    (t.tags || []).join(' '),
-                    t.note || ''
-                ];
-                cols.forEach((c, ci) => {
-                    const val = cells[ci];
-                    const color = ci === 6 ? (pnl > 0 ? green : pnl < 0 ? red : PDF_STYLE.ink)
-                        : ci === 7 ? (running >= 0 ? green : red) : PDF_STYLE.ink;
-                    doc.setFont('helvetica', (ci === 6 || ci === 7) ? 'bold' : 'normal');
-                    doc.setTextColor(...color);
-                    const txt = fit(val, c.w - 8);
-                    if (c.r) doc.text(txt, c.x + c.w - 6, y, { align: 'right' });
-                    else doc.text(txt, c.x + 4, y);
-                });
-                y += 15;
-            });
-
-            if (!list.length) {
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...PDF_STYLE.faint);
-                doc.text('No trades logged for this account yet.', m, y);
-            }
+            table(hCols, rows, 'No trades logged for this account yet.');
 
             const safeName = String(acc.name).replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'account';
-            pdfFinish(doc, `${safeName}_all_trades_${new Date().toISOString().split('T')[0]}.pdf`);
+            pdfFinish(doc, `${safeName}_full_report_${new Date().toISOString().split('T')[0]}.pdf`);
         }
 
         function exportCSV() {

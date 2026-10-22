@@ -1891,16 +1891,18 @@
         function openPerfTrades() { hist.accountId = perfAccountId; switchTab('history'); }
         function perfEnsureAccount() {
             const active = accounts.filter(a => !a.isClosed);
-            if (!perfAccountId || !active.some(a => a.id === perfAccountId)) perfAccountId = active[0] ? active[0].id : null;
+            if (!perfAccountId || !accounts.some(a => a.id === perfAccountId)) perfAccountId = (active[0] || accounts[0] || {}).id || null;
         }
         function markAccountPassed(id) { setAccountStatus(id, 'passed'); }
         function renderPerformancePage() {
             perfEnsureAccount();
             const active = accounts.filter(a => !a.isClosed);
+            const archived = accounts.filter(a => a.isClosed);
             const sel = document.getElementById('perfAccountSelect');
-            sel.innerHTML = active.length
-                ? active.map(a => `<option value="${jEsc(a.id)}" ${a.id === perfAccountId ? 'selected' : ''}>${jEsc(a.name)}</option>`).join('')
-                : '<option value="">No active accounts</option>';
+            const opt = a => `<option value="${jEsc(a.id)}" ${a.id === perfAccountId ? 'selected' : ''}>${jEsc(a.name)}${a.isClosed ? ' (archived)' : ''}</option>`;
+            let optionsHtml = active.map(opt).join('');
+            if (archived.length) optionsHtml += `<optgroup label="Archived">${archived.map(opt).join('')}</optgroup>`;
+            sel.innerHTML = accounts.length ? (optionsHtml || '<option value="">No active accounts</option>') : '<option value="">No accounts</option>';
 
             if (!perfAccountId) {
                 document.getElementById('perfTradeCount').innerText = '';
@@ -1933,7 +1935,7 @@
                         ${r.daily ? evalMeter('Daily target', `${fmtMoney(r.daily.pnl)} / ${fmtMoney(r.daily.target)}`, r.daily.pct, r.daily.pnl >= r.daily.target ? 'var(--success)' : (r.daily.pnl < 0 ? 'var(--danger)' : 'var(--accent)')) : ''}
                         ${r.cons ? evalMeter('Consistency', `${r.cons.score.toFixed(1)}% / ${r.cons.limit}% max`, Math.min(100, (r.cons.score / r.cons.limit) * 100), r.cons.breached ? 'var(--danger)' : (r.cons.score > r.cons.limit * 0.8 ? 'var(--warning)' : 'var(--success)')) : ''}
                     </div>
-                    ${(r.status.key === 'passed') ? `<button class="btn" style="margin-top:1.1rem; background:var(--success);" type="button" onclick="markAccountPassed('${acc.id}')">Mark Passed &amp; Archive</button>` : ''}
+                    ${(r.status.key === 'passed' && !acc.isClosed) ? `<button class="btn" style="margin-top:1.1rem; background:var(--success);" type="button" onclick="markAccountPassed('${acc.id}')">Mark Passed &amp; Archive</button>` : ''}
                 </div>`;
             } else {
                 progressHtml = `<div class="card" style="padding:1.25rem 1.5rem;">

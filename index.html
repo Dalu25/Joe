@@ -3417,7 +3417,7 @@
                         { text: `${g.r.toFixed(2)}R`, color: colorFor(g.r) }
                     ]);
             };
-            const bCols = () => [
+            const bCols = (label) => [
                 { h: label, w: 0 },
                 { h: 'Trades', w: 80, r: true },
                 { h: 'Win rate', w: 90, r: true },
@@ -3425,9 +3425,9 @@
                 { h: 'Total R', w: 90, r: true }
             ];
             sectionTitle('Performance by Session');
-            table(bCols(), breakdown(t => t.session, 'Session'), 'No trades');
+            table(bCols('Session'), breakdown(t => t.session, 'Session'), 'No trades');
             sectionTitle('Performance by Symbol');
-            table(bCols(), breakdown(t => t.symbol, 'Symbol'), 'No trades');
+            table(bCols('Symbol'), breakdown(t => t.symbol, 'Symbol'), 'No trades');
 
             // ---- Trade history ----
             sectionTitle(`Trade History (${list.length})`);

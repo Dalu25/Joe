@@ -3333,8 +3333,9 @@
                         const cell = row[ci] || {};
                         doc.setFont('helvetica', cell.bold ? 'bold' : 'normal');
                         doc.setTextColor(...(cell.color || ink));
-                        const txt = fit(cell.text, c.px - 8);
+                        const txt = cell.link ? String(cell.text) : fit(cell.text, c.px - 8);
                         c.r ? doc.text(txt, c.x + c.px - 6, y, { align: 'right' }) : doc.text(txt, c.x + 4, y);
+                        if (cell.link) doc.link(c.x + 4, y - 8, doc.getTextWidth(txt), 10, { url: cell.link });
                     });
                     y += 15;
                 });
@@ -3447,6 +3448,7 @@
                     { text: t.isSignal ? 'Yes' : '' },
                     { text: t.isMe ? 'Yes' : '' },
                     { text: (t.tags || []).join(' ') },
+                    t.link ? { text: 'Open', link: t.link, color: [60, 90, 200] } : { text: '' },
                     { text: t.note || '' }
                 ];
             });
@@ -3461,10 +3463,27 @@
                 { h: 'Cumulative', w: 70, r: true },
                 { h: 'Signal', w: 40 },
                 { h: 'Me', w: 26 },
-                { h: 'Tags', w: 70 },
+                { h: 'Tags', w: 60 },
+                { h: 'Chart', w: 36 },
                 { h: 'Note', w: 0 }
             ];
             table(hCols, rows, 'No trades logged for this account yet.');
+
+            const withLinks = list.filter(t => t.link);
+            if (withLinks.length) {
+                sectionTitle(`Chart Links (${withLinks.length})`);
+                table([
+                    { h: 'Date', w: 70 },
+                    { h: 'Symbol', w: 60 },
+                    { h: 'Outcome', w: 60 },
+                    { h: 'Chart link (click to open)', w: 0 }
+                ], withLinks.map(t => [
+                    { text: t.date || '' },
+                    { text: t.symbol || '' },
+                    { text: t.outcome || '' },
+                    { text: t.link, link: t.link, color: [60, 90, 200] }
+                ]), '');
+            }
 
             const safeName = String(acc.name).replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'account';
             pdfFinish(doc, `${safeName}_full_report_${new Date().toISOString().split('T')[0]}.pdf`);

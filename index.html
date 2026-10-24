@@ -627,9 +627,9 @@
                             <label>Consistency Rule</label>
                             <select id="accConsistencyBasis" class="form-control" style="margin-bottom:0.5rem;">
                                 <option value="">No consistency rule</option>
-                                <option value="day">No single day's profit exceeds X% of total profit</option>
-                                <option value="trade">No single trade's profit exceeds X% of total profit</option>
-                                <option value="bestday">Best day can't exceed X% of total profit (evaluation-specific)</option>
+                                <option value="day">No single day's profit exceeds X% of total winning-day profit</option>
+                                <option value="trade">No single trade's profit exceeds X% of total winning-trade profit</option>
+                                <option value="bestday">Best day can't exceed X% of total net profit (evaluation-specific)</option>
                             </select>
                             <input type="number" id="accConsistencyPct" class="form-control" placeholder="e.g. 35 (for 35%)" step="0.01" min="0" max="100">
                         </div>
@@ -1865,21 +1865,34 @@
                     st.dl = { limit, pnl: todayPnl, remain, ratio: remain / limit * 100, breached: todayPnl <= -limit };
                 }
             }
-            // Consistency: best day (or trade) as a share of total NET profit. Net loss scores 0%.
+            // Consistency: each option has its own profit pool and unit (see the form labels)
+            //   day     : best single day (net)      / total winning-day profit  (sum of positive daily P&L)
+            //   trade   : best single trade           / total winning-trade profit (sum of positive trade P&L)
+            //   bestday : best single day (net)      / total net profit           (evaluation-style, losing days count)
             if (acc.consistencyBasis && acc.consistencyPct) {
+                const basis = acc.consistencyBasis;
                 const limit = acc.consistencyPct;
-                const pool = Math.max(0, netPnl);
-                let best = 0, bestLabel = '';
-                if (acc.consistencyBasis === 'trade') {
+                const byDay = {};
+                trs.forEach(t => { byDay[t.date] = (byDay[t.date] || 0) + t.pnl; });
+                let best = 0, bestLabel = '', pool = 0, poolLabel = '';
+                if (basis === 'trade') {
                     trs.forEach(t => { if (t.pnl > best) { best = t.pnl; bestLabel = `${t.symbol} on ${t.date}`; } });
+                    pool = trs.reduce((x, t) => x + Math.max(0, t.pnl), 0);
+                    poolLabel = 'winning-trade profit';
                 } else {
-                    const byDay = {};
-                    trs.forEach(t => { byDay[t.date] = (byDay[t.date] || 0) + t.pnl; });
                     Object.entries(byDay).forEach(([d, p]) => { if (p > best) { best = p; bestLabel = d; } });
+                    if (basis === 'day') {
+                        pool = Object.values(byDay).reduce((x, p) => x + Math.max(0, p), 0);
+                        poolLabel = 'winning-day profit';
+                    } else {
+                        pool = Math.max(0, netPnl);
+                        poolLabel = 'net profit';
+                    }
                 }
+                best = Math.max(0, best);
                 const score = pool > 0 ? best / pool * 100 : 0;
-                const required = best * 100 / limit; // total net profit needed for the best unit to sit at the limit
-                st.cons = { basis: acc.consistencyBasis, limit, pool, best, bestLabel, score, breached: score > limit, ratio: limit > 0 ? clampPct(score / limit * 100) : 0, safeToAdd: Math.max(0, required - pool) };
+                const required = best * 100 / limit; // pool needed for the best unit to sit exactly at the limit
+                st.cons = { basis, limit, pool, poolLabel, best, bestLabel, score, breached: score > limit, ratio: limit > 0 ? clampPct(score / limit * 100) : 0, safeToAdd: Math.max(0, required - pool) };
             }
             return st;
         }
@@ -1887,7 +1900,7 @@
             const w = c.basis === 'trade' ? 'trade' : 'day';
             if (c.score > c.limit) return `Rule already breached — best ${w}'s profit is too concentrated. Spread future profit across other ${w}s to dilute it.`;
             if (c.pool === 0 && c.best === 0) return `No profit booked yet — score will be based on your first winning ${w}.`;
-            if (c.pool === 0) return `Net P&L is zero or negative — the score stays at 0% until net profit is positive.`;
+            if (c.pool === 0) return `No ${c.poolLabel} yet — the score stays at 0% until it is positive.`;
             return `You can add ${fmtMoney(c.safeToAdd)} more in OTHER ${w}s (not your best one) before this rule gets tight — keep any single ${w} under ${fmtMoney(c.pool * c.limit / 100)} for now.`;
         }
 
@@ -1983,7 +1996,7 @@
                 if (st.cons) {
                     const c = st.cons;
                     const color = c.breached ? 'var(--danger)' : (c.score > c.limit * 0.8 ? 'var(--warning)' : 'var(--success)');
-                    rows.push(meter(`Consistency (best ${c.basis === 'trade' ? 'trade' : 'day'} / total net profit)`, `${c.score.toFixed(1)}% → ${c.limit}% max`, c.ratio, color,
+                    rows.push(meter(`Consistency (best ${c.basis === 'trade' ? 'trade' : 'day'} / ${c.poolLabel})`, `${c.score.toFixed(1)}% → ${c.limit}% max`, c.ratio, color,
                         c.breached ? 'Over the consistency limit' : 'Within the consistency limit'));
                 }
                 progressHtml = `<div class="card" style="padding:1.25rem 1.5rem; gap:1rem;">
@@ -3714,11 +3727,11 @@
                 if (st.cons) {
                     const c = st.cons;
                     const scoreColor = c.breached ? 'var(--danger)' : (c.score > c.limit * 0.8 ? 'var(--warning)' : 'var(--success)');
-                    const basisLabelMap = { day: "No single day's profit", trade: "No single trade's profit", bestday: "Best day (evaluation)" };
+                    const basisLabelMap = { day: "Best day", trade: "Best trade", bestday: "Best day (evaluation)" };
                     consistencyHtml = `
                         <div class="meter-row">
                             <div class="meter-labels">
-                                <span>Consistency Rule — ${basisLabelMap[c.basis]} &gt; ${c.limit}%</span>
+                                <span>Consistency Rule — ${basisLabelMap[c.basis]} &gt; ${c.limit}% of ${c.poolLabel}</span>
                                 <span style="color:${scoreColor}; font-weight:700;">${c.score.toFixed(1)}% score</span>
                             </div>
                             <div class="meter-track"><div class="meter-fill" style="width:${Math.min(100, c.score)}%; background:${scoreColor};"></div></div>

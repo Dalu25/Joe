@@ -1469,15 +1469,7 @@
         function daySummary(dateStr) {
             const list = trades.filter(t => t.date === dateStr);
             const s = summarize(list);
-            const ids = [...new Set(list.map(t => t.accountId))];
-            let base = 0;
-            ids.forEach(id => {
-                const acc = accounts.find(a => a.id === id);
-                if (!acc) return;
-                const before = trades.filter(t => t.accountId === id && t.date < dateStr).reduce((x, t) => x + t.pnl, 0);
-                base += acc.balance + (acc.balanceAdjustment || 0) + before;
-            });
-            const perf = base > 0 ? (s.pnl / base) * 100 : null;
+            const perf = calPctFor(list); // % of each account's starting balance, same as the calendar
             const sessions = [...new Set(list.map(t => t.session).filter(Boolean))];
             const pairMap = {};
             list.forEach(t => { const k = t.symbol || '-'; pairMap[k] = (pairMap[k] || 0) + t.pnl; });
@@ -1991,7 +1983,7 @@
             const mRange = periodRange('thisMonth');
             const monthPnl = trades.filter(t => t.accountId === acc.id && t.date >= mRange.from && t.date <= mRange.to).reduce((s, t) => s + t.pnl, 0);
             const overallPnl = r.s.pnl;
-            const startBal = (Number(acc.maxDD) > 0 ? Number(acc.maxDD) : acc.balance) || 1;
+            const startBal = Number(acc.balance) || 1; // starting balance, not max drawdown
             const perfLegs = trades.filter(t => t.accountId === acc.id);
             const perfWins = perfLegs.filter(t => t.outcome === 'win').length;
             const perfBE = perfLegs.filter(t => t.outcome === 'breakeven').length;

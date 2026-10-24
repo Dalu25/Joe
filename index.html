@@ -1108,7 +1108,10 @@
         <div class="modal">
             <div class="modal-header">
                 <h2>Execution Matrix Log</h2>
-                <button class="close-btn" onclick="closeModal('detailsModal')">&times;</button>
+                <div style="display:flex; align-items:center;">
+                    <button class="close-btn" type="button" title="Edit trade" aria-label="Edit trade" onclick="openEditFromDetails()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                    <button class="close-btn" onclick="closeModal('detailsModal')">&times;</button>
+                </div>
             </div>
             <div id="detailsContent" style="display: flex; flex-direction: column; gap: 1rem;"></div>
         </div>
@@ -2703,9 +2706,17 @@
             }
         }
 
+        let detailsGroupId = null;
+        function openEditFromDetails() {
+            if(!detailsGroupId) return;
+            closeModal('detailsModal');
+            openEditModal(detailsGroupId);
+        }
+
         function showTradeDetails(groupId) {
             const groupTrades = trades.filter(t => (t.groupId || t.id) === groupId);
             if(groupTrades.length === 0) return;
+            detailsGroupId = groupId;
             const trade = groupTrades[0];
             let badge = (trade.outcome==='win') ? '<span class="badge badge-win">Win</span>' : ((trade.outcome==='loss') ? '<span class="badge badge-loss">Loss</span>' : '<span class="badge badge-breakeven">BE</span>');
 
@@ -5082,6 +5093,7 @@
             if (!clientId || !sheetId) { alert('Please enter both a Client ID and a Sheet ID.'); return; }
             localStorage.setItem('tj_gs_client_id', clientId);
             localStorage.setItem('tj_gs_sheet_id', sheetId);
+            gsStructureReady = false; gsLastSyncedKey = null; gsSheetRowCount = null; // may be pointing at a different Sheet
             gsInit();
             if (!gsTokenClient) { alert('Google sign-in library is still loading — please try again in a moment.'); return; }
             gsState.authIntent = 'manual';
@@ -5160,6 +5172,30 @@
             if (chunks.length === 0) chunks.push('');
             return chunks;
         }
+        // In-memory sync bookkeeping: whether the JournalData tab is known to exist this session,
+        // the fingerprint of the last state written to or read from the Sheet (identical saves
+        // skip the network), and how many rows the Sheet holds (stale tail rows are cleared only when needed).
+        let gsStructureReady = false;
+        let gsLastSyncedKey = null;
+        let gsSheetRowCount = null;
+        function gsHash(str) {
+            let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+            for (let i = 0; i < str.length; i++) {
+                const ch = str.charCodeAt(i);
+                h1 = Math.imul(h1 ^ ch, 2654435761);
+                h2 = Math.imul(h2 ^ ch, 1597334677);
+            }
+            h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+            h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+            return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+        }
+        // Serializes the journal once; the same strings feed both the chunked write and the fingerprint.
+        function gsPayload() {
+            const t = JSON.stringify(compactTrades(trades));
+            const a = JSON.stringify(accounts);
+            const j = JSON.stringify(journal);
+            return { t, a, j, key: gsHash(t + '\u0001' + a + '\u0001' + j) + ':' + (t.length + a.length + j.length) };
+        }
         // Pushes run one at a time, so overlapping saves can't interleave their writes.
         let gsPushChain = Promise.resolve();
         function gsPush() {
@@ -5172,24 +5208,38 @@
             const version = gsLocalVersion; // any edit after this point keeps the device dirty
             gsSetStatus('Pushing…', null);
             try {
-                await gsEnsureStructure();
-                const tradeChunks = gsChunkString(JSON.stringify(compactTrades(trades)));
-                const acctChunks = gsChunkString(JSON.stringify(accounts));
-                const journalChunks = gsChunkString(JSON.stringify(journal));
+                const payload = gsPayload();
+                // Nothing has changed since the last successful push or pull, so there is nothing to send.
+                if (payload.key === gsLastSyncedKey) {
+                    gsClearDirty(version);
+                    gsRefreshSyncState();
+                    gsSetStatus('Synced just now', true);
+                    return;
+                }
+                if (!gsStructureReady) { await gsEnsureStructure(); gsStructureReady = true; }
+                const tradeChunks = gsChunkString(payload.t);
+                const acctChunks = gsChunkString(payload.a);
+                const journalChunks = gsChunkString(payload.j);
                 const rowCount = Math.max(tradeChunks.length, acctChunks.length, journalChunks.length);
                 const grid = [
                     ['trades', 'accounts', 'journal'],
                     [tradeChunks.length, acctChunks.length, journalChunks.length],
                 ];
                 for (let i = 0; i < rowCount; i++) grid.push([tradeChunks[i] || '', acctChunks[i] || '', journalChunks[i] || '']);
-                // Clear a generous range first so a shorter push never leaves stale chunk rows behind.
-                await gsClearValues('JournalData!A1:C5000');
+                // Write the new rows first, then clear any leftover rows below them. The Sheet is never
+                // left empty mid-save, and stale tail rows are ignored on pull anyway (the header counts them).
                 await gsUpdateValues('JournalData!A1:C' + grid.length, grid);
+                if (grid.length < 5000 && (gsSheetRowCount === null || gsSheetRowCount > grid.length)) {
+                    await gsClearValues('JournalData!A' + (grid.length + 1) + ':C5000');
+                }
+                gsSheetRowCount = grid.length;
+                gsLastSyncedKey = payload.key;
                 try { localStorage.setItem('tj_gs_last_sync', String(Date.now())); } catch (e) { /* ignore */ }
                 gsClearDirty(version);
                 gsRefreshSyncState();
                 gsSetStatus('Synced just now', true);
             } catch (err) {
+                gsStructureReady = false; // re-check the tab on the next attempt in case it was removed in the Sheet
                 gsSetStatus('Push failed: ' + err.message, false);
             }
         }
@@ -5205,8 +5255,9 @@
             }
             gsSetStatus('Pulling…', null);
             try {
-                await gsEnsureStructure();
+                if (!gsStructureReady) { await gsEnsureStructure(); gsStructureReady = true; }
                 const rows = await gsGetValues('JournalData!A1:C5000');
+                gsSheetRowCount = rows.length;
                 if (rows.length < 2) { gsSetStatus('Nothing to pull yet', null); return; }
                 const tradeCount = parseInt(rows[1][0], 10) || 0;
                 const acctCount = parseInt(rows[1][1], 10) || 0;
@@ -5223,6 +5274,7 @@
                 localStorage.setItem('tj_journal', JSON.stringify(journal));
                 localStorage.setItem('tj_accounts', JSON.stringify(accounts));
                 localStorage.setItem('tj_trades', JSON.stringify(compactTrades(trades)));
+                gsLastSyncedKey = gsPayload().key; // local now matches the Sheet, so the next identical save can skip
                 try { localStorage.removeItem('tj_gs_dirty'); localStorage.setItem('tj_gs_last_sync', String(Date.now())); } catch (e) { /* ignore */ }
                 gsRefreshSyncState();
                 resetAccountForm();

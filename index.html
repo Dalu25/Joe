@@ -4421,7 +4421,7 @@
                         dayCssClass += ' has-trade ' + outcomeClass;
                         weekPnl += dailySumPnl; weekTrades += dailyMatches.length; weekActiveDays++; monthlyTradingDays++;
                         weekMatches.push(...dailyMatches);
-                        innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${calSigned(dailySumPnl, calBaseFor(dailyMatches))}</span>
+                        innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${calSigned(dailySumPnl, calPctFor(dailyMatches))}</span>
                             <div class="cal-day-meta">${dailyMatches.length} trade${dailyMatches.length > 1 ? 's' : ''}<br>${dayWinRate}%</div></div>
                             <span class="cal-dot ${outcomeClass}"></span>`;
                         clickHandler = `onclick="showDayTrades('${dayString}')" style="cursor:pointer;"`;
@@ -4436,7 +4436,7 @@
                 grid.innerHTML += `<div class="cal-week-cell">
                     ${calWeekBtn(weekStartStr)}
                     <span class="cal-week-label">Week ${weekNum}</span>
-                    <span class="cal-week-pnl ${weekTrades ? weekPnlClass : ''}">${weekTrades ? calSigned(weekPnl, calBaseFor(weekMatches)) : calSigned(0, 1)}</span>
+                    <span class="cal-week-pnl ${weekTrades ? weekPnlClass : ''}">${weekTrades ? calSigned(weekPnl, calPctFor(weekMatches)) : calSigned(0, 0)}</span>
                     <span class="cal-week-meta">${weekTrades} trade${weekTrades !== 1 ? 's' : ''}</span>
                     <span class="cal-week-days-badge">${weekActiveDays} day${weekActiveDays !== 1 ? 's' : ''}</span>
                 </div>`;
@@ -4444,7 +4444,7 @@
             }
 
             const monthChip = document.getElementById('cal-month-chip');
-            monthChip.innerText = calSigned(monthlyAggregatePnl, calBaseFor(monthTrades));
+            monthChip.innerText = calSigned(monthlyAggregatePnl, calPctFor(monthTrades));
             monthChip.className = 'cal-chip ' + (monthlyAggregatePnl > 0 ? 'positive' : (monthlyAggregatePnl < 0 ? 'negative' : 'neutral'));
             document.getElementById('cal-days-chip').innerText = `${monthlyTradingDays} day${monthlyTradingDays !== 1 ? 's' : ''}`;
         }
@@ -4492,27 +4492,31 @@
         }
 
         // ===================== $ / % DISPLAY, CALENDAR STATS, OVERVIEW =====================
-        // Percentage base = max drawdown of the accounts that traded in the period (the real account size).
-        // Falls back to starting balance (balance + manual adjustment) for accounts with no max drawdown set.
+        // Percentage is relative to each account's own starting balance: $1,000 on a 100k account is 1%,
+        // $60 on a 6k account is 1%. A period spanning several accounts sums each account's percentage.
         function calAccountBase(accountId) {
             const a = accounts.find(x => x.id === accountId);
-            if (!a) return 0;
-            if (Number(a.maxDD) > 0) return Number(a.maxDD);
-            return (a.balance || 0) + (a.balanceAdjustment || 0);
+            return a ? (Number(a.balance) || 0) : 0;
         }
-        function calBaseFor(list) {
-            const ids = [...new Set(list.map(t => t.accountId))];
-            return ids.reduce((s, id) => s + calAccountBase(id), 0);
+        function calPctFor(list) {
+            const pnlByAcc = {};
+            list.forEach(t => { pnlByAcc[t.accountId] = (pnlByAcc[t.accountId] || 0) + t.pnl; });
+            let pct = null;
+            Object.keys(pnlByAcc).forEach(id => {
+                const b = calAccountBase(id);
+                if (b > 0) pct = (pct || 0) + (pnlByAcc[id] / b) * 100;
+            });
+            return pct;
         }
-        function calValue(pnl, base) {
+        function calValue(pnl, pct) {
             if (calUnit !== 'pct') return pnl;
-            return base ? (pnl / base) * 100 : null;
+            return pct;
         }
-        function calSigned(pnl, base) {
+        function calSigned(pnl, pct) {
             const sign = pnl > 0 ? '+' : (pnl < 0 ? '-' : '');
             if (calUnit === 'pct') {
-                if (!base) return '—';
-                return sign + Math.abs((pnl / base) * 100).toFixed(2) + '%';
+                if (pct === null || pct === undefined) return '—';
+                return sign + Math.abs(pct).toFixed(2) + '%';
             }
             return sign + fmtMoney(Math.abs(pnl));
         }
@@ -4552,9 +4556,9 @@
             Object.keys(byDay).forEach(d => {
                 const list = byDay[d];
                 const pnl = list.reduce((s, t) => s + t.pnl, 0);
-                const base = calBaseFor(list);
-                const v = calValue(pnl, base);
-                dayInfo[d] = { pnl, base, v, outcome: pnl > 0 ? 'win' : (pnl < 0 ? 'loss' : 'breakeven') };
+                const pct = calPctFor(list);
+                const v = calValue(pnl, pct);
+                dayInfo[d] = { pnl, pct, v, outcome: pnl > 0 ? 'win' : (pnl < 0 ? 'loss' : 'breakeven') };
                 if (v !== null) maxAbs = Math.max(maxAbs, Math.abs(v));
             });
 
@@ -4575,7 +4579,7 @@
                     if (!info) { days += `<div class="ov-day">${d}</div>`; continue; }
                     const alpha = (info.v === null || !maxAbs) ? 0.6 : 0.3 + 0.7 * Math.min(1, Math.abs(info.v) / maxAbs);
                     const rgb = info.outcome === 'win' ? '34,197,94' : (info.outcome === 'loss' ? '239,68,68' : '245,158,11');
-                    days += `<div class="ov-day has-trade" style="background:rgba(${rgb},${alpha.toFixed(2)})" title="${ds}: ${calSigned(info.pnl, info.base)}" onclick="showDayTrades('${ds}')">${d}</div>`;
+                    days += `<div class="ov-day has-trade" style="background:rgba(${rgb},${alpha.toFixed(2)})" title="${ds}: ${calSigned(info.pnl, info.pct)}" onclick="showDayTrades('${ds}')">${d}</div>`;
                 }
                 yearHtml += `<div class="ov-month"><button type="button" class="ov-month-title" onclick="ovOpenMonth(${m})">${monthName}</button>` +
                     `<div class="ov-dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>` +
@@ -4589,11 +4593,11 @@
                 const mKey = String(m + 1).padStart(2, '0');
                 const list = yearTrades.filter(t => t.date.slice(5, 7) === mKey);
                 const pnl = list.reduce((s, t) => s + t.pnl, 0);
-                const base = calBaseFor(list);
+                const pct = calPctFor(list);
                 const wins = list.filter(t => t.outcome === 'win').length;
                 const be = list.filter(t => t.outcome === 'breakeven').length;
                 const denom = list.length - be;
-                monthStats.push({ list, pnl, base, v: calValue(pnl, base), trades: list.length, winRate: denom > 0 ? (wins / denom) * 100 : null });
+                monthStats.push({ list, pnl, pct, v: calValue(pnl, pct), trades: list.length, winRate: denom > 0 ? (wins / denom) * 100 : null });
             }
             const maxMonthAbs = Math.max(0, ...monthStats.map(s => s.v === null ? 0 : Math.abs(s.v)));
             const monthNameOf = m => new Date(ovYear, m, 1).toLocaleString('default', { month: 'short' });
@@ -4603,16 +4607,16 @@
                 const slice = monthStats.slice(q * 3, q * 3 + 3);
                 const qList = slice.flatMap(s => s.list);
                 const qPnl = qList.reduce((s, t) => s + t.pnl, 0);
-                const qBase = calBaseFor(qList);
+                const qPct = calPctFor(qList);
                 qHtml += `<details class="ov-q-card">` +
-                    `<summary class="ov-q-head"><span>Q${q + 1}</span><span><span class="${pnlTextClass(qPnl)}">${calSigned(qPnl, qBase)}</span><span class="ov-q-trades">${qList.length} trade${qList.length !== 1 ? 's' : ''}</span></span></summary>` +
+                    `<summary class="ov-q-head"><span>Q${q + 1}</span><span><span class="${pnlTextClass(qPnl)}">${calSigned(qPnl, qPct)}</span><span class="ov-q-trades">${qList.length} trade${qList.length !== 1 ? 's' : ''}</span></span></summary>` +
                     `<div class="ov-row ov-row-head"><span>Month</span><span>Net P&amp;L</span><span></span><span class="ov-trades">Trades</span></div>`;
                 slice.forEach((s, i) => {
                     const w = (s.v !== null && maxMonthAbs) ? (Math.abs(s.v) / maxMonthAbs) * 50 : 0;
                     const fill = (s.v && w) ? `<span class="ov-bar-fill ${s.v > 0 ? 'pos' : 'neg'}" style="width:${w.toFixed(2)}%"></span>` : '';
                     qHtml += `<div class="ov-row">` +
                         `<span>${monthNameOf(q * 3 + i)}</span>` +
-                        `<span class="ov-val ${pnlTextClass(s.pnl)}">${calSigned(s.pnl, s.base)}<small>${s.winRate === null ? '—' : s.winRate.toFixed(1) + '% win'}</small></span>` +
+                        `<span class="ov-val ${pnlTextClass(s.pnl)}">${calSigned(s.pnl, s.pct)}<small>${s.winRate === null ? '—' : s.winRate.toFixed(1) + '% win'}</small></span>` +
                         `<span class="ov-bar">${fill}</span>` +
                         `<span class="ov-trades">${s.trades}</span></div>`;
                 });

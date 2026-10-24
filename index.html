@@ -1896,6 +1896,14 @@
             }
             return st;
         }
+        // One line for the account's rule range: max loss (negative), start balance at the origin, target (positive)
+        function ruleLineHtml(st) {
+            const parts = [];
+            if (st.dd && st.dd.allowed > 0) parts.push(`<span class="text-danger">Max loss -${fmtMoney(st.dd.allowed)}</span>`);
+            parts.push(`<span>Start ${fmtMoney(st.acc.balance)}</span>`);
+            if (st.tg && st.tg.goal > 0) parts.push(`<span class="text-success">Target +${fmtMoney(st.tg.goal)}</span>`);
+            return `<div style="font-size:0.85rem; font-weight:600; white-space:nowrap; overflow-x:auto; padding-bottom:0.2rem;">${parts.join(' <span style="color:var(--text-secondary);">·</span> ')}</div>`;
+        }
         function consistencyAdviceText(c) {
             const w = c.basis === 'trade' ? 'trade' : 'day';
             if (c.score > c.limit) return `Rule already breached — best ${w}'s profit is too concentrated. Spread future profit across other ${w}s to dilute it.`;
@@ -1984,6 +1992,7 @@
                         <div style="font-size:0.78rem; color:var(--text-secondary);">${sub}</div>
                     </div>`;
                 const rows = [];
+                const ruleLine = ruleLineHtml(st);
                 if (st.dd) rows.push(meter('Max Drawdown (decreasing toward floor)', `${fmtMoney(curBal)} → ${fmtMoney(st.floor)}`, st.dd.ratio, ruleRatioColor(st.dd.ratio),
                     `${fmtMoney(st.dd.buffer)} buffer remaining before margin call · ${fmtAccountSpct(acc, -st.dd.lost)} of starting balance`));
                 if (st.tg && st.tg.valid) rows.push(meter('Profit Target (increasing toward goal)', `${fmtMoney(curBal)} → ${fmtMoney(st.target)}`, st.tg.ratio, 'var(--success)',
@@ -2013,7 +2022,7 @@
                         </div>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:1.1rem; width:100%; border-top:1px solid var(--border); padding-top:1rem;">
-                        ${rows.join('')}
+                        ${ruleLine}${rows.join('')}
                     </div>
                     ${(r.status.key === 'passed' && !acc.isClosed) ? `<button class="btn" style="margin-top:1.1rem; background:var(--success);" type="button" onclick="markAccountPassed('${acc.id}')">Mark Passed &amp; Archive</button>` : ''}
                 </div>`;
@@ -3776,6 +3785,7 @@
                                 <span>Total Period P&L: <strong class="${netAccountPnl >= 0 ? 'text-success' : 'text-danger'}">${netAccountPnl >= 0 ? '+' : ''}${fmtMoney(netAccountPnl)}</strong></span>
                                 ${acc.dailyLossLimit ? `<span>Daily loss limit: <strong>${fmtMoney(acc.dailyLossLimit)}</strong> · today <strong class="${accountTodayPnl(acc) <= -acc.dailyLossLimit ? 'text-danger' : ''}">${fmtMoney(accountTodayPnl(acc))}</strong></span>` : ''}
                             </div>
+                            ${ruleLineHtml(st)}
                             <div class="meter-row">
                                 <div class="meter-labels">
                                     <span>Max Drawdown (decreasing toward floor)</span>

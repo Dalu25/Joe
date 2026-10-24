@@ -4374,6 +4374,7 @@
 
             const calTrades = calScopeTrades(trades);
             let monthlyAggregatePnl = 0;
+            let monthlyPct = null; // month % = sum of the daily % shown in the cells
             const monthTrades = [];
             // Calendar highlight uses the actual calendar date. getCurrentTradingDayEST() rolls over
             // at 5pm New York time (for the Daily Profit Target), which made the highlight jump a day early.
@@ -4396,6 +4397,7 @@
             for (let w = 0; w < cells.length; w += 7) {
                 const weekCells = cells.slice(w, w + 7);
                 let weekPnl = 0, weekTrades = 0, weekActiveDays = 0;
+                let weekPct = null; // week % = sum of the daily % shown in that week's cells
                 const weekMatches = [];
 
                 weekCells.forEach((dayNum, dowIndex) => {
@@ -4405,7 +4407,9 @@
                     const dayString = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
                     const dailyMatches = calTrades.filter(t => t.date === dayString);
                     const dailySumPnl = dailyMatches.reduce((s, t) => s + t.pnl, 0);
+                    const dailyPct = calPctFor(dailyMatches);
                     monthlyAggregatePnl += dailySumPnl;
+                    if (dailyPct !== null) monthlyPct = (monthlyPct || 0) + dailyPct;
                     monthTrades.push(...dailyMatches);
 
                     let dayCssClass = 'cal-day' + (dayString === calTodayStr ? ' is-today' : ''), innerHtml = `<span class="cal-date">${dayNum}</span>`;
@@ -4418,6 +4422,7 @@
                         const outcomeClass = dailySumPnl > 0 ? 'win' : (dailySumPnl < 0 ? 'loss' : 'breakeven');
                         dayCssClass += ' has-trade ' + outcomeClass;
                         weekPnl += dailySumPnl; weekTrades += dailyMatches.length; weekActiveDays++; monthlyTradingDays++;
+                        if (dailyPct !== null) weekPct = (weekPct || 0) + dailyPct;
                         weekMatches.push(...dailyMatches);
                         innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${calSigned(dailySumPnl, calPctFor(dailyMatches))}</span>
                             <div class="cal-day-meta">${dailyMatches.length} trade${dailyMatches.length > 1 ? 's' : ''}<br>${dayWinRate}%</div></div>
@@ -4434,7 +4439,7 @@
                 grid.innerHTML += `<div class="cal-week-cell">
                     ${calWeekBtn(weekStartStr)}
                     <span class="cal-week-label">Week ${weekNum}</span>
-                    <span class="cal-week-pnl ${weekTrades ? weekPnlClass : ''}">${weekTrades ? calSigned(weekPnl, calPctFor(weekMatches)) : calSigned(0, 0)}</span>
+                    <span class="cal-week-pnl ${weekTrades ? weekPnlClass : ''}">${weekTrades ? calSigned(weekPnl, weekPct) : calSigned(0, 0)}</span>
                     <span class="cal-week-meta">${weekTrades} trade${weekTrades !== 1 ? 's' : ''}</span>
                     <span class="cal-week-days-badge">${weekActiveDays} day${weekActiveDays !== 1 ? 's' : ''}</span>
                 </div>`;
@@ -4442,7 +4447,7 @@
             }
 
             const monthChip = document.getElementById('cal-month-chip');
-            monthChip.innerText = calSigned(monthlyAggregatePnl, calPctFor(monthTrades));
+            monthChip.innerText = calSigned(monthlyAggregatePnl, monthlyPct);
             monthChip.className = 'cal-chip ' + (monthlyAggregatePnl > 0 ? 'positive' : (monthlyAggregatePnl < 0 ? 'negative' : 'neutral'));
             document.getElementById('cal-days-chip').innerText = `${monthlyTradingDays} day${monthlyTradingDays !== 1 ? 's' : ''}`;
         }

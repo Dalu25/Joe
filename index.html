@@ -1108,7 +1108,10 @@
         <div class="modal">
             <div class="modal-header">
                 <h2>Execution Matrix Log</h2>
-                <button class="close-btn" onclick="closeModal('detailsModal')">&times;</button>
+                <div style="display:flex; align-items:center;">
+                    <span id="detailsEditSlot" style="display:inline-flex;"></span>
+                    <button class="close-btn" onclick="closeModal('detailsModal')">&times;</button>
+                </div>
             </div>
             <div id="detailsContent" style="display: flex; flex-direction: column; gap: 1rem;"></div>
         </div>
@@ -2765,7 +2768,8 @@
                 allImages.forEach(img => html += `<img src="${img}" style="max-height:220px; border-radius:4px; border:1px solid var(--border);">`);
                 html += `</div></div>`;
             }
-            html += `<div style="display:flex; justify-content:flex-end;"><button type="button" class="btn btn-outline" style="font-size:0.85rem;" onclick="editTradeFromDetails('${groupId}')">Edit trade</button></div>`;
+            // Pencil lives in the header for this single trade only; the day view clears it.
+            document.getElementById('detailsEditSlot').innerHTML = `<button type="button" class="close-btn" title="Edit trade" aria-label="Edit trade" onclick="editTradeFromDetails('${groupId}')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`;
             document.getElementById('detailsContent').innerHTML = html;
             openModal('detailsModal');
         }
@@ -4453,6 +4457,7 @@
         }
 
         function showDayTrades(dateStr) {
+            document.getElementById('detailsEditSlot').innerHTML = ''; // no header pencil in the day view
             const dayTrades = calScopeTrades(trades).filter(t => t.date === dateStr);
             if(dayTrades.length === 0) return;
 
@@ -4466,7 +4471,7 @@
             dayTrades.forEach(t => {
                 const acc = accounts.find(a => a.id === t.accountId);
                 let badge = (t.outcome==='win') ? '<span class="badge badge-win">Win</span>' : ((t.outcome==='loss') ? '<span class="badge badge-loss">Loss</span>' : '<span class="badge badge-breakeven">BE</span>');
-                html += `<tr style="cursor:pointer;" onclick="showTradeDetails('${t.groupId || t.id}')"><td>${acc ? acc.name : 'Unknown'}</td><td style="font-weight:600; white-space:nowrap;">${t.symbol} <button type="button" title="Edit this trade" aria-label="Edit this trade" style="background:none; border:none; padding:0 0 0 0.4rem; margin:0; color:var(--text-secondary); cursor:pointer; vertical-align:middle; display:inline-flex;" onclick="event.stopPropagation(); editTradeFromDetails('${t.groupId || t.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></td><td>${badge}</td><td>${t.rr}R</td><td class="${t.pnl > 0 ? 'text-success' : (t.pnl < 0 ? 'text-danger' : 'text-warning')}">${fmtMoney(t.pnl)}</td></tr>`;
+                html += `<tr style="cursor:pointer;" onclick="showTradeDetails('${t.groupId || t.id}')"><td>${acc ? acc.name : 'Unknown'}</td><td style="font-weight:600; white-space:nowrap;">${t.symbol} </td><td>${badge}</td><td>${t.rr}R</td><td class="${t.pnl > 0 ? 'text-success' : (t.pnl < 0 ? 'text-danger' : 'text-warning')}">${fmtMoney(t.pnl)}</td></tr>`;
             });
 
             html += `</tbody></table></div>`;

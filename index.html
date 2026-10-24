@@ -4419,12 +4419,13 @@
                         const be = dailyMatches.filter(t => t.outcome === 'breakeven').length;
                         const denom = dailyMatches.length - be;
                         const dayWinRate = denom > 0 ? Math.round((wins / denom) * 100) : 0;
-                        const outcomeClass = dailySumPnl > 0 ? 'win' : (dailySumPnl < 0 ? 'loss' : 'breakeven');
+                        const dayTone = calTone(dailySumPnl, dailyPct);
+                        const outcomeClass = dayTone > 0 ? 'win' : (dayTone < 0 ? 'loss' : 'breakeven');
                         dayCssClass += ' has-trade ' + outcomeClass;
                         weekPnl += dailySumPnl; weekTrades += dailyMatches.length; weekActiveDays++; monthlyTradingDays++;
                         if (dailyPct !== null) weekPct = (weekPct || 0) + dailyPct;
                         weekMatches.push(...dailyMatches);
-                        innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dailySumPnl > 0 ? 'success' : (dailySumPnl < 0 ? 'danger' : 'warning'))}">${calSigned(dailySumPnl, calPctFor(dailyMatches))}</span>
+                        innerHtml += `<div class="cal-day-stats"><span class="cal-day-pnl ${'text-' + (dayTone > 0 ? 'success' : (dayTone < 0 ? 'danger' : 'warning'))}">${calSigned(dailySumPnl, dailyPct)}</span>
                             <div class="cal-day-meta">${dailyMatches.length} trade${dailyMatches.length > 1 ? 's' : ''}<br>${dayWinRate}%</div></div>
                             <span class="cal-dot ${outcomeClass}"></span>`;
                         clickHandler = `onclick="showDayTrades('${dayString}')" style="cursor:pointer;"`;
@@ -4434,7 +4435,8 @@
                     grid.innerHTML += `<div class="${dayCssClass}" ${clickHandler}>${innerHtml}</div>`;
                 });
 
-                const weekPnlClass = weekPnl > 0 ? 'text-success' : (weekPnl < 0 ? 'text-danger' : 'text-warning');
+                const weekTone = calTone(weekPnl, weekPct);
+                const weekPnlClass = weekTone > 0 ? 'text-success' : (weekTone < 0 ? 'text-danger' : 'text-warning');
                 const weekStartStr = ymd(new Date(calYear, calMonth, 1 - firstDay + w));
                 grid.innerHTML += `<div class="cal-week-cell">
                     ${calWeekBtn(weekStartStr)}
@@ -4448,7 +4450,8 @@
 
             const monthChip = document.getElementById('cal-month-chip');
             monthChip.innerText = calSigned(monthlyAggregatePnl, monthlyPct);
-            monthChip.className = 'cal-chip ' + (monthlyAggregatePnl > 0 ? 'positive' : (monthlyAggregatePnl < 0 ? 'negative' : 'neutral'));
+            const monthTone = calTone(monthlyAggregatePnl, monthlyPct);
+            monthChip.className = 'cal-chip ' + (monthTone > 0 ? 'positive' : (monthTone < 0 ? 'negative' : 'neutral'));
             document.getElementById('cal-days-chip').innerText = `${monthlyTradingDays} day${monthlyTradingDays !== 1 ? 's' : ''}`;
         }
         function calHideWeekendsEnabled() {
@@ -4515,8 +4518,12 @@
             if (calUnit !== 'pct') return pnl;
             return pct;
         }
+        function calTone(pnl, pct) {
+            return calUnit === 'pct' ? (pct === null || pct === undefined ? 0 : pct) : pnl;
+        }
         function calSigned(pnl, pct) {
-            const sign = pnl > 0 ? '+' : (pnl < 0 ? '-' : '');
+            const tone = calTone(pnl, pct);
+            const sign = tone > 0 ? '+' : (tone < 0 ? '-' : '');
             if (calUnit === 'pct') {
                 if (pct === null || pct === undefined) return '—';
                 return sign + Math.abs(pct).toFixed(2) + '%';

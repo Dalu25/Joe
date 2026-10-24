@@ -1896,13 +1896,32 @@
             }
             return st;
         }
-        // One line for the account's rule range: max loss (negative), start balance at the origin, target (positive)
+        // Range bar: loss side (red) | origin at the boundary | gain side (green). Words sit on the bar.
+        // markerValue is the current value measured from the origin (negative = loss side).
+        function rangeBarHtml(A, G, originLabel, markerValue, leftLabel, rightLabel) {
+            const total = A + G;
+            if (!total) return '';
+            const originPct = A / total * 100;
+            const markerPct = clampPct((markerValue + A) / total * 100);
+            const left = A ? `<div style="flex:${A}; display:flex; align-items:center; justify-content:flex-start; padding-left:0.6rem; background:rgba(239,68,68,0.22); color:var(--danger); white-space:nowrap; overflow:hidden;">${leftLabel}</div>` : '';
+            const right = G ? `<div style="flex:${G}; display:flex; align-items:center; justify-content:flex-end; padding-right:0.6rem; background:rgba(16,185,129,0.22); color:var(--success); white-space:nowrap; overflow:hidden;">${rightLabel}</div>` : '';
+            const originChip = `<div style="position:absolute; left:${originPct}%; top:50%; transform:translate(-50%,-50%); background:var(--bg-base, #000); color:var(--text-primary); border:1px solid var(--border); border-radius:6px; padding:0.05rem 0.4rem; white-space:nowrap; z-index:1;">${originLabel}</div>`;
+            const marker = `<div style="position:absolute; left:${markerPct}%; top:0; bottom:0; width:3px; background:var(--accent); transform:translateX(-50%); z-index:2;"></div>`;
+            return `<div style="position:relative; display:flex; height:34px; border-radius:8px; overflow:hidden; border:1px solid var(--border); font-size:0.78rem; font-weight:700; margin-bottom:0.6rem;">${left}${right}${originChip}${marker}</div>`;
+        }
+        // Account range: max loss | start balance | target, marker = current balance
         function ruleLineHtml(st) {
-            const parts = [];
-            if (st.dd && st.dd.allowed > 0) parts.push(`<span class="text-danger">Max loss -${fmtMoney(st.dd.allowed)}</span>`);
-            parts.push(`<span>Start ${fmtMoney(st.acc.balance)}</span>`);
-            if (st.tg && st.tg.goal > 0) parts.push(`<span class="text-success">Target +${fmtMoney(st.tg.goal)}</span>`);
-            return `<div style="font-size:0.85rem; font-weight:600; white-space:nowrap; overflow-x:auto; padding-bottom:0.2rem;">${parts.join(' <span style="color:var(--text-secondary);">·</span> ')}</div>`;
+            const A = st.dd && st.dd.allowed > 0 ? st.dd.allowed : 0;
+            const G = st.tg && st.tg.goal > 0 ? st.tg.goal : 0;
+            return rangeBarHtml(A, G, `Start ${fmtMoney(st.acc.balance)}`, st.bal - st.acc.balance,
+                `Max loss -${fmtMoney(A)}`, `Target +${fmtMoney(G)}`);
+        }
+        // Today's range: daily loss | today at zero | daily target, marker = today's P&L
+        function dailyBarHtml(st) {
+            const A = st.dl ? st.dl.limit : 0;
+            const G = st.dp ? st.dp.target : 0;
+            return rangeBarHtml(A, G, 'Today $0', st.todayPnl,
+                `Daily loss -${fmtMoney(A)}`, `Daily target +${fmtMoney(G)}`);
         }
         function consistencyAdviceText(c) {
             const w = c.basis === 'trade' ? 'trade' : 'day';
@@ -1992,22 +2011,14 @@
                         <div style="font-size:0.78rem; color:var(--text-secondary);">${sub}</div>
                     </div>`;
                 const rows = [];
-                const ruleLine = ruleLineHtml(st);
-                if (st.dd) rows.push(meter('Max Drawdown (decreasing toward floor)', `${fmtMoney(curBal)} → ${fmtMoney(st.floor)}`, st.dd.ratio, ruleRatioColor(st.dd.ratio),
-                    `${fmtMoney(st.dd.buffer)} buffer remaining before margin call · ${fmtAccountSpct(acc, -st.dd.lost)} of starting balance`));
-                if (st.tg && st.tg.valid) rows.push(meter('Profit Target (increasing toward goal)', `${fmtMoney(curBal)} → ${fmtMoney(st.target)}`, st.tg.ratio, 'var(--success)',
-                    `${fmtMoney(st.tg.toGo)} to go until target · ${fmtAccountSpct(acc, st.tg.gain)} of starting balance (target ${fmtAccountSpct(acc, st.tg.goal)})`));
-                if (st.dp) rows.push(meter('Daily Profit Target (today)', `${fmtMoney(st.dp.pnl)} → ${fmtMoney(st.dp.target)}`, st.dp.ratio,
-                    st.dp.pnl >= st.dp.target ? 'var(--success)' : (st.dp.pnl < 0 ? 'var(--danger)' : 'var(--accent)'),
-                    `${fmtMoney(st.dp.toGo)} to go today · ${fmtAccountSpct(acc, st.dp.pnl)} of starting balance (target ${fmtAccountSpct(acc, st.dp.target)})`));
-                if (st.dl) rows.push(meter('Daily Loss Limit (remaining today)', `${fmtMoney(st.dl.remain)} left of ${fmtMoney(st.dl.limit)}`, st.dl.ratio, ruleRatioColor(st.dl.ratio),
-                    `${fmtMoney(st.dl.pnl)} today · ${fmtAccountSpct(acc, st.dl.pnl)} of starting balance${st.dl.breached ? ' · daily loss limit hit' : ''}`));
                 if (st.cons) {
                     const c = st.cons;
                     const color = c.breached ? 'var(--danger)' : (c.score > c.limit * 0.8 ? 'var(--warning)' : 'var(--success)');
                     rows.push(meter(`Consistency (best ${c.basis === 'trade' ? 'trade' : 'day'} / ${c.poolLabel})`, `${c.score.toFixed(1)}% → ${c.limit}% max`, c.ratio, color,
                         c.breached ? 'Over the consistency limit' : 'Within the consistency limit'));
                 }
+                const ruleBar = ruleLineHtml(st);
+                const dayBar = dailyBarHtml(st);
                 progressHtml = `<div class="card" style="padding:1.25rem 1.5rem; gap:1rem;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
                         <div>
@@ -2022,7 +2033,7 @@
                         </div>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:1.1rem; width:100%; border-top:1px solid var(--border); padding-top:1rem;">
-                        ${ruleLine}${rows.join('')}
+                        ${ruleBar}${dayBar}${rows.join('')}
                     </div>
                     ${(r.status.key === 'passed' && !acc.isClosed) ? `<button class="btn" style="margin-top:1.1rem; background:var(--success);" type="button" onclick="markAccountPassed('${acc.id}')">Mark Passed &amp; Archive</button>` : ''}
                 </div>`;

@@ -1827,9 +1827,73 @@
         }
 
         // ---- Evaluation progress ----
+        // ---- Shared rule maths: the single source for drawdown, targets, daily limits and consistency ----
+        function ruleRatioColor(ratio) { return ratio >= 40 ? 'var(--accent)' : (ratio >= 15 ? 'var(--warning)' : 'var(--danger)'); }
+        function clampPct(v) { return Math.max(0, Math.min(100, v)); }
+        function accountRuleStats(acc) {
+            const trs = trades.filter(t => t.accountId === acc.id);
+            const bal = getAccountCurrentBalance(acc);
+            const netPnl = trs.reduce((x, t) => x + t.pnl, 0);
+            const todayStr = getCurrentTradingDayEST();
+            const todayPnl = trs.filter(t => t.date === todayStr).reduce((x, t) => x + t.pnl, 0);
+            const L = getAccountRuleLevels(acc);
+            const st = { acc, bal, netPnl, todayPnl, floor: L.floor, target: L.target, dd: null, tg: null, dp: null, dl: null, cons: null };
+
+            // Max drawdown: counts DOWN from the balance toward the floor, measured against starting balance
+            if (L.floor) {
+                const allowed = acc.balance - L.floor;
+                const lost = acc.balance - bal;
+                const remain = Math.max(0, allowed - lost);
+                st.dd = { allowed, lost, remain, ratio: allowed > 0 ? clampPct(remain / allowed * 100) : 0, buffer: Math.max(0, bal - L.floor), breached: bal <= L.floor };
+            }
+            // Profit target: counts UP from the balance toward the goal
+            if (L.target) {
+                const goal = L.target - acc.balance;
+                const gain = bal - acc.balance;
+                st.tg = { goal, gain, valid: goal > 0, ratio: goal > 0 ? clampPct(gain / goal * 100) : 0, toGo: Math.max(0, L.target - bal), reached: bal >= L.target };
+            }
+            // Daily profit target: today's P&L against the daily goal
+            if (acc.dailyProfitTarget) {
+                const target = acc.dailyProfitTarget;
+                st.dp = { target, pnl: todayPnl, ratio: clampPct(todayPnl / target * 100), toGo: Math.max(0, target - todayPnl), reached: todayPnl >= target };
+            }
+            // Daily loss limit: counts DOWN from the limit as today's losses build
+            if (acc.dailyLossLimit) {
+                const limit = Math.abs(Number(acc.dailyLossLimit)) || 0;
+                if (limit > 0) {
+                    const remain = Math.max(0, limit - Math.max(0, -todayPnl));
+                    st.dl = { limit, pnl: todayPnl, remain, ratio: remain / limit * 100, breached: todayPnl <= -limit };
+                }
+            }
+            // Consistency: best day (or trade) as a share of total NET profit. Net loss scores 0%.
+            if (acc.consistencyBasis && acc.consistencyPct) {
+                const limit = acc.consistencyPct;
+                const pool = Math.max(0, netPnl);
+                let best = 0, bestLabel = '';
+                if (acc.consistencyBasis === 'trade') {
+                    trs.forEach(t => { if (t.pnl > best) { best = t.pnl; bestLabel = `${t.symbol} on ${t.date}`; } });
+                } else {
+                    const byDay = {};
+                    trs.forEach(t => { byDay[t.date] = (byDay[t.date] || 0) + t.pnl; });
+                    Object.entries(byDay).forEach(([d, p]) => { if (p > best) { best = p; bestLabel = d; } });
+                }
+                const score = pool > 0 ? best / pool * 100 : 0;
+                const required = best * 100 / limit; // total net profit needed for the best unit to sit at the limit
+                st.cons = { basis: acc.consistencyBasis, limit, pool, best, bestLabel, score, breached: score > limit, ratio: limit > 0 ? clampPct(score / limit * 100) : 0, safeToAdd: Math.max(0, required - pool) };
+            }
+            return st;
+        }
+        function consistencyAdviceText(c) {
+            const w = c.basis === 'trade' ? 'trade' : 'day';
+            if (c.score > c.limit) return `Rule already breached — best ${w}'s profit is too concentrated. Spread future profit across other ${w}s to dilute it.`;
+            if (c.pool === 0 && c.best === 0) return `No profit booked yet — score will be based on your first winning ${w}.`;
+            if (c.pool === 0) return `Net P&L is zero or negative — the score stays at 0% until net profit is positive.`;
+            return `You can add ${fmtMoney(c.safeToAdd)} more in OTHER ${w}s (not your best one) before this rule gets tight — keep any single ${w} under ${fmtMoney(c.pool * c.limit / 100)} for now.`;
+        }
+
         function evalAccount(acc) {
             const at = trades.filter(t => t.accountId === acc.id);
-            const bal = getAccountCurrentBalance(acc);
+            const st = accountRuleStats(acc);
             const s = summarize(at);
             const byDay = {};
             at.forEach(t => { byDay[t.date] = (byDay[t.date] || 0) + t.pnl; });
@@ -1837,42 +1901,24 @@
             let bestDay = null;
             Object.entries(byDay).forEach(([d, p]) => { if (!bestDay || p > bestDay.pnl) bestDay = { date: d, pnl: p }; });
 
-            const L = getAccountRuleLevels(acc);
-            let progress = null, toGo = null;
-            if (L.target && L.target > acc.balance) {
-                progress = Math.max(0, Math.min(100, ((bal - acc.balance) / (L.target - acc.balance)) * 100));
-                toGo = Math.max(0, L.target - bal);
-            }
-            let ddPct = null, ddBuffer = null;
-            if (L.floor && acc.balance - L.floor > 0) {
-                const allowed = acc.balance - L.floor;
-                const remain = Math.max(0, allowed - (acc.balance - bal));
-                ddPct = Math.min(100, (remain / allowed) * 100);
-                ddBuffer = bal - L.floor;
-            }
-            let daily = null;
-            if (acc.dailyProfitTarget) {
-                const todayPnl = trades.filter(t => t.accountId === acc.id && t.date === getCurrentTradingDayEST()).reduce((x, t) => x + t.pnl, 0);
-                daily = { pnl: todayPnl, target: acc.dailyProfitTarget, pct: Math.max(0, Math.min(100, (todayPnl / acc.dailyProfitTarget) * 100)) };
-            }
-            let cons = null;
-            if (acc.consistencyBasis && acc.consistencyPct) {
-                const totalProfit = at.reduce((x, t) => x + Math.max(0, t.pnl), 0);
-                let bestUnit = 0;
-                if (acc.consistencyBasis === 'trade') at.forEach(t => { if (t.pnl > bestUnit) bestUnit = t.pnl; });
-                else Object.values(byDay).forEach(p => { if (p > bestUnit) bestUnit = p; });
-                const score = totalProfit > 0 ? (bestUnit / totalProfit) * 100 : 0;
-                cons = { score, limit: acc.consistencyPct, breached: score > acc.consistencyPct };
-            }
-            const breached = !!(L.floor && bal <= L.floor);
-            const reached = !!(L.target && bal >= L.target);
+            const hasTg = !!(st.tg && st.tg.valid);
+            const hasDd = !!(st.dd && st.dd.allowed > 0);
+            const progress = hasTg ? st.tg.ratio : null;
+            const toGo = hasTg ? st.tg.toGo : null;
+            const ddPct = hasDd ? st.dd.ratio : null;
+            const ddBuffer = hasDd ? st.dd.buffer : null;
+            const daily = st.dp ? { pnl: st.dp.pnl, target: st.dp.target, pct: st.dp.ratio } : null;
+            const cons = st.cons;
+            const breached = !!(st.dd && st.dd.breached);
+            const reached = !!(st.tg && st.tg.reached);
             let status = { key: 'idle', text: 'No rules' };
             if (breached) status = { key: 'breached', text: 'Breached' };
+            else if (st.dl && st.dl.breached) status = { key: 'risk', text: 'Daily loss hit' };
             else if (reached && cons && cons.breached) status = { key: 'risk', text: 'Consistency' };
             else if (reached) status = { key: 'passed', text: 'Passed' };
             else if (ddPct !== null && ddPct < 15) status = { key: 'risk', text: 'At risk' };
             else if (progress !== null || ddPct !== null || daily || cons) status = { key: 'track', text: 'On track' };
-            return { acc, bal, s, days, bestDay, progress, toGo, ddPct, ddBuffer, daily, cons, status };
+            return { acc, bal: st.bal, s, days, bestDay, progress, toGo, ddPct, ddBuffer, daily, cons, dailyLoss: st.dl, st, status };
         }
         // Signed % of an account's starting balance, e.g. -1.20%, +0.84%
         function fmtAccountSpct(acc, amount) {
@@ -1914,46 +1960,30 @@
             document.getElementById('perfTradeCount').innerText = `${r.s.n} trade${r.s.n === 1 ? '' : 's'}`;
 
             const typeLabel = { evaluation: 'Evaluation', funded: 'Funded', live: 'Live' }[acc.accountType] || 'Evaluation';
-            const hasRules = !!(acc.profitTarget || acc.maxDD || acc.dailyProfitTarget || acc.consistencyPct);
+            const hasRules = !!(acc.profitTarget || acc.maxDD || acc.dailyProfitTarget || acc.dailyLossLimit || acc.consistencyPct);
             let progressHtml;
             if (hasRules) {
-                const L = getAccountRuleLevels(acc);
-                const curBal = getAccountCurrentBalance(acc);
+                const st = r.st;
+                const curBal = st.bal;
                 const meter = (label, status, ratio, color, sub) => `<div style="display:flex; flex-direction:column; gap:0.4rem; width:100%;">
                         <div style="display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap;"><span style="font-size:0.9rem; color:var(--text-secondary);">${label}</span><strong style="font-size:0.95rem;">${status}</strong></div>
                         <div class="meter-track" style="height:10px;"><div class="meter-fill" style="width:${Math.max(0, Math.min(100, ratio))}%; background:${color};"></div></div>
                         <div style="font-size:0.78rem; color:var(--text-secondary);">${sub}</div>
                     </div>`;
                 const rows = [];
-                // Second figure on each meter: move as a % of the account's starting balance
-                // Same logic as Accounts Management: drawdown counts DOWN toward the floor
-                if (L.floor) {
-                    const allowedDD = acc.balance - L.floor;
-                    const currentDD = acc.balance - curBal;
-                    const remainingLoss = Math.max(0, allowedDD - currentDD);
-                    const ratio = allowedDD > 0 ? (remainingLoss / allowedDD) * 100 : 0;
-                    const color = ratio >= 40 ? 'var(--accent)' : (ratio >= 15 ? 'var(--warning)' : 'var(--danger)');
-                    rows.push(meter('Max Drawdown (decreasing toward floor)', `${fmtMoney(curBal)} → ${fmtMoney(L.floor)}`, ratio, color,
-                        `${fmtMoney(Math.max(0, curBal - L.floor))} buffer remaining before margin call · ${fmtAccountSpct(acc, -currentDD)} of starting balance`));
-                }
-                // Profit target counts UP from current balance toward the goal
-                if (L.target) {
-                    const targetGain = L.target - acc.balance;
-                    const currentGain = curBal - acc.balance;
-                    const ratio = targetGain > 0 ? (currentGain / targetGain) * 100 : 0;
-                    rows.push(meter('Profit Target (increasing toward goal)', `${fmtMoney(curBal)} → ${fmtMoney(L.target)}`, ratio, 'var(--success)',
-                        `${fmtMoney(Math.max(0, L.target - curBal))} to go until target · ${fmtAccountSpct(acc, currentGain)} of starting balance (target ${fmtAccountSpct(acc, targetGain)})`));
-                }
-                if (r.daily) {
-                    const d = r.daily;
-                    const color = d.pnl >= d.target ? 'var(--success)' : (d.pnl < 0 ? 'var(--danger)' : 'var(--accent)');
-                    rows.push(meter('Daily Profit Target (today)', `${fmtMoney(d.pnl)} → ${fmtMoney(d.target)}`, (d.pnl / d.target) * 100, color,
-                        `${fmtMoney(Math.max(0, d.target - d.pnl))} to go today · ${fmtAccountSpct(acc, d.pnl)} of starting balance (target ${fmtAccountSpct(acc, d.target)})`));
-                }
-                if (r.cons) {
-                    const c = r.cons;
+                if (st.dd) rows.push(meter('Max Drawdown (decreasing toward floor)', `${fmtMoney(curBal)} → ${fmtMoney(st.floor)}`, st.dd.ratio, ruleRatioColor(st.dd.ratio),
+                    `${fmtMoney(st.dd.buffer)} buffer remaining before margin call · ${fmtAccountSpct(acc, -st.dd.lost)} of starting balance`));
+                if (st.tg && st.tg.valid) rows.push(meter('Profit Target (increasing toward goal)', `${fmtMoney(curBal)} → ${fmtMoney(st.target)}`, st.tg.ratio, 'var(--success)',
+                    `${fmtMoney(st.tg.toGo)} to go until target · ${fmtAccountSpct(acc, st.tg.gain)} of starting balance (target ${fmtAccountSpct(acc, st.tg.goal)})`));
+                if (st.dp) rows.push(meter('Daily Profit Target (today)', `${fmtMoney(st.dp.pnl)} → ${fmtMoney(st.dp.target)}`, st.dp.ratio,
+                    st.dp.pnl >= st.dp.target ? 'var(--success)' : (st.dp.pnl < 0 ? 'var(--danger)' : 'var(--accent)'),
+                    `${fmtMoney(st.dp.toGo)} to go today · ${fmtAccountSpct(acc, st.dp.pnl)} of starting balance (target ${fmtAccountSpct(acc, st.dp.target)})`));
+                if (st.dl) rows.push(meter('Daily Loss Limit (remaining today)', `${fmtMoney(st.dl.remain)} left of ${fmtMoney(st.dl.limit)}`, st.dl.ratio, ruleRatioColor(st.dl.ratio),
+                    `${fmtMoney(st.dl.pnl)} today · ${fmtAccountSpct(acc, st.dl.pnl)} of starting balance${st.dl.breached ? ' · daily loss limit hit' : ''}`));
+                if (st.cons) {
+                    const c = st.cons;
                     const color = c.breached ? 'var(--danger)' : (c.score > c.limit * 0.8 ? 'var(--warning)' : 'var(--success)');
-                    rows.push(meter('Consistency (best day / total profit)', `${c.score.toFixed(1)}% → ${c.limit}% max`, (c.score / c.limit) * 100, color,
+                    rows.push(meter(`Consistency (best ${c.basis === 'trade' ? 'trade' : 'day'} / total net profit)`, `${c.score.toFixed(1)}% → ${c.limit}% max`, c.ratio, color,
                         c.breached ? 'Over the consistency limit' : 'Within the consistency limit'));
                 }
                 progressHtml = `<div class="card" style="padding:1.25rem 1.5rem; gap:1rem;">
@@ -3639,119 +3669,63 @@
             }
 
             shownAccounts.forEach(acc => {
-                const accTrades = trades.filter(t => t.accountId === acc.id);
-                const netAccountPnl = accTrades.reduce((s, t) => s + t.pnl, 0);
-                const currentBalance = getAccountCurrentBalance(acc);
+                const st = accountRuleStats(acc);
+                const currentBalance = st.bal;
+                const netAccountPnl = st.netPnl;
+                const todayPnlForAcc = st.todayPnl;
 
-                const limit = getAccountRuleLevels(acc).floor;
-                let ratio = 0;
-                let barColor = 'var(--accent)';
-                let statusText = 'No limit set';
-                
-                if(limit) {
-                    const allowedDD = acc.balance - limit; // Total allowed to lose
-                    const currentDD = acc.balance - currentBalance; // Already lost
-                    const remainingLoss = Math.max(0, allowedDD - currentDD); // Remaining allowed loss
-                    ratio = Math.min(100, (remainingLoss / allowedDD) * 100);
-                    barColor = ratio >= 40 ? 'var(--accent)' : (ratio >= 15 ? 'var(--warning)' : 'var(--danger)');
-                    // Counts DOWN from current balance toward the drawdown floor
-                    statusText = `${fmtMoney(currentBalance)} → ${fmtMoney(limit)}`;
-                } else {
-                    statusText = 'No limit set';
-                }
+                // Max drawdown: counts DOWN from current balance toward the floor
+                const limit = st.floor;
+                const ratio = st.dd ? st.dd.ratio : 0;
+                const barColor = st.dd ? ruleRatioColor(st.dd.ratio) : 'var(--accent)';
+                const statusText = st.dd ? `${fmtMoney(currentBalance)} → ${fmtMoney(limit)}` : 'No limit set';
+                const limitReached = !!(st.dd && st.dd.breached);
 
-                const target = getAccountRuleLevels(acc).target;
-                let targetRatio = 0;
-                let targetBarColor = 'var(--success)';
-                let targetStatusText = 'No target set';
+                // Profit target: counts UP from current balance toward the goal
+                const target = st.target;
+                const targetRatio = st.tg ? st.tg.ratio : 0;
+                const targetBarColor = 'var(--success)';
+                const targetStatusText = !st.tg ? 'No target set' : (st.tg.valid ? `${fmtMoney(currentBalance)} → ${fmtMoney(target)}` : 'Invalid target');
+                const targetReached = !!(st.tg && st.tg.reached);
 
-                if(target) {
-                    const targetGain = target - acc.balance; // Total gain needed to hit target
-                    const currentGain = currentBalance - acc.balance; // Gain so far
-                    if(targetGain > 0) {
-                        targetRatio = Math.min(100, Math.max(0, (currentGain / targetGain) * 100));
-                        // Counts UP from current balance toward the profit ceiling
-                        targetStatusText = `${fmtMoney(currentBalance)} → ${fmtMoney(target)}`;
-                    } else {
-                        targetStatusText = 'Invalid target';
-                    }
-                } else {
-                    targetStatusText = 'No target set';
-                }
-                
-                const targetReached = target && currentBalance >= target;
-                const limitReached = limit && currentBalance <= limit;
-
-                // Daily Profit Target: today's realized P&L on this account vs. the daily goal.
+                // Daily profit target
                 const dailyTarget = acc.dailyProfitTarget;
-                let dailyTargetRatio = 0;
-                let dailyTargetBarColor = 'var(--success)';
-                let dailyTargetStatusText = 'No daily target set';
-                let todayPnlForAcc = 0;
-                if(dailyTarget) {
-                    const todayStr = getCurrentTradingDayEST();
-                    todayPnlForAcc = trades.filter(t => t.accountId === acc.id && t.date === todayStr).reduce((s, t) => s + t.pnl, 0);
-                    dailyTargetRatio = Math.min(100, Math.max(0, (todayPnlForAcc / dailyTarget) * 100));
-                    dailyTargetBarColor = todayPnlForAcc >= dailyTarget ? 'var(--success)' : (todayPnlForAcc < 0 ? 'var(--danger)' : 'var(--accent)');
-                    dailyTargetStatusText = `${fmtMoney(todayPnlForAcc)} → ${fmtMoney(dailyTarget)}`;
+                const dailyTargetRatio = st.dp ? st.dp.ratio : 0;
+                const dailyTargetBarColor = !st.dp ? 'var(--success)' : (todayPnlForAcc >= dailyTarget ? 'var(--success)' : (todayPnlForAcc < 0 ? 'var(--danger)' : 'var(--accent)'));
+                const dailyTargetStatusText = st.dp ? `${fmtMoney(todayPnlForAcc)} → ${fmtMoney(dailyTarget)}` : 'No daily target set';
+                const dailyTargetReached = !!(st.dp && st.dp.reached);
+
+                // Daily loss limit: counts DOWN from the limit
+                let dailyLossHtml = '';
+                if (st.dl) {
+                    dailyLossHtml = `
+                        <div class="meter-row">
+                            <div class="meter-labels">
+                                <span>Daily Loss Limit (remaining today)</span>
+                                <span>${fmtMoney(st.dl.remain)} left of ${fmtMoney(st.dl.limit)}</span>
+                            </div>
+                            <div class="meter-track"><div class="meter-fill" style="width:${st.dl.ratio}%; background:${ruleRatioColor(st.dl.ratio)};"></div></div>
+                            <small style="font-size:0.7rem; color:var(--text-secondary);">${fmtMoney(st.dl.pnl)} today · ${fmtAccountSpct(acc, st.dl.pnl)} of starting balance${st.dl.breached ? ' · limit hit' : ''}</small>
+                        </div>`;
                 }
-                const dailyTargetReached = dailyTarget && todayPnlForAcc >= dailyTarget;
 
-                // Consistency rule: no single day/trade's profit may exceed X% of total profit.
-                // Score = (best unit's profit / total profit) x 100, per the prop firm's formula.
+                // Consistency: best day/trade as a share of total net profit
                 let consistencyHtml = '';
-                if(acc.consistencyBasis && acc.consistencyPct) {
-                    const accTrades = trades.filter(t => t.accountId === acc.id);
-                    const totalProfit = accTrades.reduce((s, t) => s + Math.max(0, t.pnl), 0); // Only winning P&L counts toward the profit pool
-
-                    let bestUnitProfit = 0;
-                    let bestUnitLabel = '';
-                    if(acc.consistencyBasis === 'trade') {
-                        accTrades.forEach(t => {
-                            if(t.pnl > bestUnitProfit) { bestUnitProfit = t.pnl; bestUnitLabel = `${t.symbol} on ${t.date}`; }
-                        });
-                    } else {
-                        // 'day' and 'bestday' both group by calendar day
-                        const byDay = {};
-                        accTrades.forEach(t => { byDay[t.date] = (byDay[t.date] || 0) + t.pnl; });
-                        Object.entries(byDay).forEach(([date, pnl]) => {
-                            if(pnl > bestUnitProfit) { bestUnitProfit = pnl; bestUnitLabel = date; }
-                        });
-                    }
-
-                    const score = totalProfit > 0 ? (bestUnitProfit / totalProfit) * 100 : 0;
-                    const limitPct = acc.consistencyPct;
-                    const basisWord = acc.consistencyBasis === 'trade' ? 'trade' : 'day';
-
-                    // Max additional profit that could be added elsewhere (spread across OTHER
-                    // days/trades, not the best one) while keeping the score at or below the limit:
-                    // score stays <= limitPct  =>  bestUnitProfit / (totalProfit + extra) <= limitPct/100
-                    // => extra >= bestUnitProfit*100/limitPct - totalProfit
-                    let safeToAddText = '';
-                    if(score > limitPct) {
-                        safeToAddText = `Rule already breached — best ${basisWord}'s profit is too concentrated. Spread future profit across other ${basisWord}s to dilute it.`;
-                    } else if(totalProfit === 0) {
-                        safeToAddText = `No profit booked yet — score will be based on your first winning ${basisWord}.`;
-                    } else {
-                        const requiredTotal = (bestUnitProfit * 100) / limitPct;
-                        const safeToAdd = Math.max(0, requiredTotal - totalProfit);
-                        safeToAddText = `You can add ${fmtMoney(safeToAdd)} more in OTHER ${basisWord}s (not your best one) before this rule gets tight — keep any single ${basisWord} under ${fmtMoney(totalProfit * limitPct / 100)} for now.`;
-                    }
-
-                    const scoreColor = score > limitPct ? 'var(--danger)' : (score > limitPct * 0.8 ? 'var(--warning)' : 'var(--success)');
+                if (st.cons) {
+                    const c = st.cons;
+                    const scoreColor = c.breached ? 'var(--danger)' : (c.score > c.limit * 0.8 ? 'var(--warning)' : 'var(--success)');
                     const basisLabelMap = { day: "No single day's profit", trade: "No single trade's profit", bestday: "Best day (evaluation)" };
-
                     consistencyHtml = `
                         <div class="meter-row">
                             <div class="meter-labels">
-                                <span>Consistency Rule — ${basisLabelMap[acc.consistencyBasis]} &gt; ${limitPct}%</span>
-                                <span style="color:${scoreColor}; font-weight:700;">${score.toFixed(1)}% score</span>
+                                <span>Consistency Rule — ${basisLabelMap[c.basis]} &gt; ${c.limit}%</span>
+                                <span style="color:${scoreColor}; font-weight:700;">${c.score.toFixed(1)}% score</span>
                             </div>
-                            <div class="meter-track"><div class="meter-fill" style="width:${Math.min(100, score)}%; background:${scoreColor};"></div></div>
-                            <small style="font-size:0.7rem; color:var(--text-secondary);">${safeToAddText}</small>
+                            <div class="meter-track"><div class="meter-fill" style="width:${Math.min(100, c.score)}%; background:${scoreColor};"></div></div>
+                            <small style="font-size:0.7rem; color:var(--text-secondary);">${consistencyAdviceText(c)}</small>
                         </div>`;
                 }
-                
+
                 container.innerHTML += `
                     <details class="toggle-section" style="margin-top:0;">
                         <summary>
@@ -3813,6 +3787,7 @@
                                 <div class="meter-track"><div class="meter-fill" style="width:${dailyTargetRatio}%; background:${dailyTargetBarColor};"></div></div>
                                 <small style="font-size:0.7rem; color:var(--text-secondary);">${dailyTarget ? `${fmtMoney(Math.max(0, dailyTarget - todayPnlForAcc))} to go today · ${fmtAccountSpct(acc, todayPnlForAcc)} of starting balance` : 'No daily target set'}</small>
                             </div>
+                            ${dailyLossHtml}
                             ${consistencyHtml}
                         </div>
                     </details>`;
@@ -4375,7 +4350,6 @@
             const calTrades = calScopeTrades(trades);
             let monthlyAggregatePnl = 0;
             let monthlyPct = null; // month % = sum of the daily % shown in the cells
-            const monthTrades = [];
             // Calendar highlight uses the actual calendar date. getCurrentTradingDayEST() rolls over
             // at 5pm New York time (for the Daily Profit Target), which made the highlight jump a day early.
             const _now = new Date();
@@ -4410,7 +4384,6 @@
                     const dailyPct = calPctFor(dailyMatches);
                     monthlyAggregatePnl += dailySumPnl;
                     if (dailyPct !== null) monthlyPct = (monthlyPct || 0) + dailyPct;
-                    monthTrades.push(...dailyMatches);
 
                     let dayCssClass = 'cal-day' + (dayString === calTodayStr ? ' is-today' : ''), innerHtml = `<span class="cal-date">${dayNum}</span>`;
                     let clickHandler = '';

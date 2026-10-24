@@ -1874,6 +1874,11 @@
             else if (progress !== null || ddPct !== null || daily || cons) status = { key: 'track', text: 'On track' };
             return { acc, bal, s, days, bestDay, progress, toGo, ddPct, ddBuffer, daily, cons, status };
         }
+        // Signed % of an account's starting balance, e.g. -1.20%, +0.84%
+        function fmtAccountSpct(acc, amount) {
+            const p = acc && acc.balance ? (amount / acc.balance) * 100 : 0;
+            return (p > 0 ? '+' : (p < 0 ? '-' : '')) + Math.abs(p).toFixed(2) + '%';
+        }
         function evalMeter(label, rightText, pct, color) {
             return `<div><div class="ev-meter-top"><span>${label}</span><strong>${rightText}</strong></div><div class="ev-bar"><span style="width:${pct}%; background:${color};"></span></div></div>`;
         }
@@ -1920,6 +1925,7 @@
                         <div style="font-size:0.78rem; color:var(--text-secondary);">${sub}</div>
                     </div>`;
                 const rows = [];
+                // Second figure on each meter: move as a % of the account's starting balance
                 // Same logic as Accounts Management: drawdown counts DOWN toward the floor
                 if (L.floor) {
                     const allowedDD = acc.balance - L.floor;
@@ -1928,7 +1934,7 @@
                     const ratio = allowedDD > 0 ? (remainingLoss / allowedDD) * 100 : 0;
                     const color = ratio >= 40 ? 'var(--accent)' : (ratio >= 15 ? 'var(--warning)' : 'var(--danger)');
                     rows.push(meter('Max Drawdown (decreasing toward floor)', `${fmtMoney(curBal)} → ${fmtMoney(L.floor)}`, ratio, color,
-                        `${fmtMoney(Math.max(0, curBal - L.floor))} buffer remaining before margin call`));
+                        `${fmtMoney(Math.max(0, curBal - L.floor))} buffer remaining before margin call · ${fmtAccountSpct(acc, -currentDD)} of starting balance`));
                 }
                 // Profit target counts UP from current balance toward the goal
                 if (L.target) {
@@ -1936,13 +1942,13 @@
                     const currentGain = curBal - acc.balance;
                     const ratio = targetGain > 0 ? (currentGain / targetGain) * 100 : 0;
                     rows.push(meter('Profit Target (increasing toward goal)', `${fmtMoney(curBal)} → ${fmtMoney(L.target)}`, ratio, 'var(--success)',
-                        `${fmtMoney(Math.max(0, L.target - curBal))} to go until target`));
+                        `${fmtMoney(Math.max(0, L.target - curBal))} to go until target · ${fmtAccountSpct(acc, currentGain)} of starting balance (target ${fmtAccountSpct(acc, targetGain)})`));
                 }
                 if (r.daily) {
                     const d = r.daily;
                     const color = d.pnl >= d.target ? 'var(--success)' : (d.pnl < 0 ? 'var(--danger)' : 'var(--accent)');
                     rows.push(meter('Daily Profit Target (today)', `${fmtMoney(d.pnl)} → ${fmtMoney(d.target)}`, (d.pnl / d.target) * 100, color,
-                        `${fmtMoney(Math.max(0, d.target - d.pnl))} to go today`));
+                        `${fmtMoney(Math.max(0, d.target - d.pnl))} to go today · ${fmtAccountSpct(acc, d.pnl)} of starting balance (target ${fmtAccountSpct(acc, d.target)})`));
                 }
                 if (r.cons) {
                     const c = r.cons;
@@ -3789,7 +3795,7 @@
                                     <span>${statusText}</span>
                                 </div>
                                 <div class="meter-track"><div class="meter-fill" style="width:${ratio}%; background:${barColor};"></div></div>
-                                <small style="font-size:0.7rem; color:var(--text-secondary);">${limit ? `${fmtMoney(Math.max(0, currentBalance - limit))} buffer remaining before margin call` : 'No limit set'}</small>
+                                <small style="font-size:0.7rem; color:var(--text-secondary);">${limit ? `${fmtMoney(Math.max(0, currentBalance - limit))} buffer remaining before margin call · ${fmtAccountSpct(acc, -(acc.balance - currentBalance))} of starting balance` : 'No limit set'}</small>
                             </div>
                             <div class="meter-row">
                                 <div class="meter-labels">
@@ -3797,7 +3803,7 @@
                                     <span>${targetStatusText}</span>
                                 </div>
                                 <div class="meter-track"><div class="meter-fill" style="width:${targetRatio}%; background:${targetBarColor};"></div></div>
-                                <small style="font-size:0.7rem; color:var(--text-secondary);">${target ? `${fmtMoney(Math.max(0, target - currentBalance))} to go until target` : 'No target set'}</small>
+                                <small style="font-size:0.7rem; color:var(--text-secondary);">${target ? `${fmtMoney(Math.max(0, target - currentBalance))} to go until target · ${fmtAccountSpct(acc, currentBalance - acc.balance)} of starting balance` : 'No target set'}</small>
                             </div>
                             <div class="meter-row">
                                 <div class="meter-labels">
@@ -3805,7 +3811,7 @@
                                     <span>${dailyTargetStatusText}</span>
                                 </div>
                                 <div class="meter-track"><div class="meter-fill" style="width:${dailyTargetRatio}%; background:${dailyTargetBarColor};"></div></div>
-                                <small style="font-size:0.7rem; color:var(--text-secondary);">${dailyTarget ? `${fmtMoney(Math.max(0, dailyTarget - todayPnlForAcc))} to go today` : 'No daily target set'}</small>
+                                <small style="font-size:0.7rem; color:var(--text-secondary);">${dailyTarget ? `${fmtMoney(Math.max(0, dailyTarget - todayPnlForAcc))} to go today · ${fmtAccountSpct(acc, todayPnlForAcc)} of starting balance` : 'No daily target set'}</small>
                             </div>
                             ${consistencyHtml}
                         </div>

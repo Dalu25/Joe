@@ -3861,20 +3861,45 @@
             });
             let run = 0; const labels = [], data = [];
             sorted.forEach(t => { run += t.pnl; labels.push(t.date); data.push(run); });
+            const values = data.length ? data : [0];
+            const up = 'rgb(58, 173, 100)', down = 'rgb(213, 94, 94)';
+            const lineColor = (c) => {
+                const a = c.p0.parsed.y, b = c.p1.parsed.y;
+                return ((a + b) / 2) < 0 ? down : up;
+            };
+            const areaBase = {
+                tension: 0.35, cubicInterpolationMode: 'monotone', borderWidth: 0, pointRadius: 0, pointHitRadius: 0, fill: 'origin'
+            };
             pnlChartInstance = new Chart(ctx, {
                 type: 'line',
-                data: { labels: labels.length ? labels : ['No Matrix Data'], datasets: [{
-                    label: 'Net Accumulation', data: data.length ? data : [0],
-                    borderColor: cssVar('--success'), backgroundColor: 'rgba(58, 173, 100, 0.08)',
-                    segment: {
-                        borderColor: (ctx) => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) < 0 ? cssVar('--danger') : cssVar('--success'),
-                        backgroundColor: (ctx) => ((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) < 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(34, 197, 94, 0.08)'
+                data: { labels: labels.length ? labels : ['No Matrix Data'], datasets: [
+                    { ...areaBase, label: 'Gains', data: values.map(v => Math.max(v, 0)), backgroundColor: 'rgba(58, 173, 100, 0.16)' },
+                    { ...areaBase, label: 'Losses', data: values.map(v => Math.min(v, 0)), backgroundColor: 'rgba(213, 94, 94, 0.16)' },
+                    {
+                        label: 'Net P&L', data: values, fill: false, tension: 0.35, cubicInterpolationMode: 'monotone',
+                        borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointHoverBorderWidth: 0,
+                        borderColor: up, segment: { borderColor: lineColor },
+                        pointHoverBackgroundColor: (c) => (c.parsed && c.parsed.y < 0) ? down : up
+                    }
+                ] },
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: { duration: 400 },
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: { border: { display: false }, grid: { color: (c) => c.tick.value === 0 ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.06)' },
+                             ticks: { callback: (v) => fmtMoney(v), maxTicksLimit: 6, padding: 8 } },
+                        x: { border: { display: false }, grid: { display: false }, ticks: { maxTicksLimit: 6, maxRotation: 0, autoSkipPadding: 16 } }
                     },
-                    fill: true, tension: 0.35, borderWidth: 2, cubicInterpolationMode: 'monotone', pointRadius: 0, pointHoverRadius: 4,
-                    pointBackgroundColor: cssVar('--bg-base'),
-                    pointHoverBorderColor: (ctx) => (ctx.parsed && ctx.parsed.y < 0) ? cssVar('--danger') : cssVar('--success')
-                }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: cssVar('--grid') } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } }
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            filter: (item) => item.datasetIndex === 2,
+                            displayColors: false, backgroundColor: 'rgba(0, 0, 0, 0.9)', borderColor: 'rgba(255, 255, 255, 0.12)', borderWidth: 1,
+                            callbacks: { label: (c) => fmtMoney(c.parsed.y), title: (items) => items[0] ? items[0].label : '' },
+                            titleColor: 'rgba(255, 255, 255, 0.6)', bodyFont: { weight: '600' }
+                        }
+                    }
+                }
             });
         }
 

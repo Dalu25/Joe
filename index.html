@@ -1830,6 +1830,11 @@
         // ---- Shared rule maths: the single source for drawdown, targets, daily limits and consistency ----
         function ruleRatioColor(ratio) { return ratio >= 40 ? 'var(--accent)' : (ratio >= 15 ? 'var(--warning)' : 'var(--danger)'); }
         function clampPct(v) { return Math.max(0, Math.min(100, v)); }
+        // Centre-zero bar: red grows left as losses build, green grows right as gains build. lossPct/gainPct are 0-100 of their own limit.
+        function signedBarHtml(lossPct, gainPct) {
+            const L = clampPct(lossPct) / 2, R = clampPct(gainPct) / 2;
+            return `<div class="meter-track" style="position:relative; height:10px;"><div style="position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--text-secondary); opacity:0.7;"></div><div style="position:absolute; right:50%; top:0; bottom:0; width:${L}%; background:var(--danger); border-radius:5px 0 0 5px;"></div><div style="position:absolute; left:50%; top:0; bottom:0; width:${R}%; background:var(--success); border-radius:0 5px 5px 0;"></div></div>`;
+        }
         function accountRuleStats(acc) {
             const trs = trades.filter(t => t.accountId === acc.id);
             const bal = getAccountCurrentBalance(acc);
@@ -3737,7 +3742,7 @@
                                 <span>Daily Loss Limit (remaining today)</span>
                                 <span>${fmtMoney(st.dl.remain)} left of ${fmtMoney(st.dl.limit)}</span>
                             </div>
-                            <div class="meter-track"><div class="meter-fill" style="width:${st.dl.ratio}%; background:${ruleRatioColor(st.dl.ratio)};"></div></div>
+                            ${signedBarHtml(100 - st.dl.ratio, 0)}
                             <small style="font-size:0.7rem; color:var(--text-secondary);">${fmtMoney(st.dl.pnl)} today · ${fmtAccountSpct(acc, st.dl.pnl)} of starting balance${st.dl.breached ? ' · limit hit' : ''}</small>
                         </div>`;
                 }
@@ -3799,18 +3804,18 @@
                             ${ruleLineHtml(st)}
                             <div class="meter-row">
                                 <div class="meter-labels">
-                                    <span>Max Drawdown (decreasing toward floor)</span>
+                                    <span>Max Drawdown</span>
                                     <span>${statusText}</span>
                                 </div>
-                                <div class="meter-track"><div class="meter-fill" style="width:${ratio}%; background:${barColor};"></div></div>
+                                ${signedBarHtml(st.dd && st.dd.allowed > 0 ? st.dd.lost / st.dd.allowed * 100 : 0, 0)}
                                 <small style="font-size:0.7rem; color:var(--text-secondary);">${limit ? `${fmtMoney(Math.max(0, currentBalance - limit))} buffer remaining before margin call · ${fmtAccountSpct(acc, -(acc.balance - currentBalance))} of starting balance` : 'No limit set'}</small>
                             </div>
                             <div class="meter-row">
                                 <div class="meter-labels">
-                                    <span>Profit Target (increasing toward goal)</span>
+                                    <span>Profit Target</span>
                                     <span>${targetStatusText}</span>
                                 </div>
-                                <div class="meter-track"><div class="meter-fill" style="width:${targetRatio}%; background:${targetBarColor};"></div></div>
+                                ${signedBarHtml(0, targetRatio)}
                                 <small style="font-size:0.7rem; color:var(--text-secondary);">${target ? `${fmtMoney(Math.max(0, target - currentBalance))} to go until target · ${fmtAccountSpct(acc, currentBalance - acc.balance)} of starting balance` : 'No target set'}</small>
                             </div>
                             <div class="meter-row">
@@ -3818,7 +3823,7 @@
                                     <span>Daily Profit Target (today)</span>
                                     <span>${dailyTargetStatusText}</span>
                                 </div>
-                                <div class="meter-track"><div class="meter-fill" style="width:${dailyTargetRatio}%; background:${dailyTargetBarColor};"></div></div>
+                                ${signedBarHtml(st.dl ? 100 - st.dl.ratio : 0, dailyTargetRatio)}
                                 <small style="font-size:0.7rem; color:var(--text-secondary);">${dailyTarget ? `${fmtMoney(Math.max(0, dailyTarget - todayPnlForAcc))} to go today · ${fmtAccountSpct(acc, todayPnlForAcc)} of starting balance` : 'No daily target set'}</small>
                             </div>
                             ${dailyLossHtml}

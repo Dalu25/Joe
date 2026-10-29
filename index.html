@@ -1830,6 +1830,45 @@
         // ---- Shared rule maths: the single source for drawdown, targets, daily limits and consistency ----
         function ruleRatioColor(ratio) { return ratio >= 40 ? 'var(--accent)' : (ratio >= 15 ? 'var(--warning)' : 'var(--danger)'); }
         function clampPct(v) { return Math.max(0, Math.min(100, v)); }
+        // Total meter row: max drawdown (red, left) and profit target (green, right), shared by Accounts and Performance
+        function totalMeterRow(acc, st) {
+            const hasDd = !!st.dd, hasTg = !!st.tg;
+            const leftLabel = hasDd ? `Max loss ${fmtMoney(st.dd.allowed)}` : 'No drawdown limit';
+            const rightLabel = hasTg && st.tg.valid ? `Target ${fmtMoney(st.tg.goal)}` : (hasTg ? 'Invalid target' : 'No target set');
+            const parts = [
+                hasDd ? `${fmtMoney(st.dd.buffer)} buffer before margin call` : '',
+                hasTg && st.tg.valid ? `${fmtMoney(st.tg.toGo)} to go until target` : ''
+            ].filter(Boolean);
+            const small = parts.length ? `${parts.join(' · ')} · ${fmtAccountSpct(acc, st.bal - acc.balance)} of starting balance` : '';
+            return `
+                        <div class="meter-row">
+                            <div class="meter-labels">
+                                <span>${leftLabel}</span>
+                                <span>${rightLabel}</span>
+                            </div>
+                            ${signedBarHtml(hasDd && st.dd.allowed > 0 ? st.dd.lost / st.dd.allowed * 100 : 0, hasTg ? st.tg.ratio : 0)}
+                            <small style="font-size:0.7rem; color:var(--text-secondary);">${small}</small>
+                        </div>`;
+        }
+        // Daily meter row: daily loss limit (red, left) and daily profit target (green, right), shared by Accounts and Performance
+        function dailyMeterRow(acc, st) {
+            const dl = st.dl, dp = st.dp;
+            const leftLabel = dl ? `Daily loss ${fmtMoney(dl.limit)}` : 'No daily loss limit';
+            const rightLabel = dp ? `Daily target ${fmtMoney(dp.target)}` : 'No daily target set';
+            const parts = [
+                dl ? `${fmtMoney(dl.remain)} loss left today${dl.breached ? ' · limit hit' : ''}` : '',
+                dp ? `${fmtMoney(dp.toGo)} to go today` : ''
+            ].filter(Boolean);
+            return `
+                        <div class="meter-row">
+                            <div class="meter-labels">
+                                <span>${leftLabel}</span>
+                                <span>${rightLabel}</span>
+                            </div>
+                            ${signedBarHtml(dl ? 100 - dl.ratio : 0, dp ? dp.ratio : 0)}
+                            <small style="font-size:0.7rem; color:var(--text-secondary);">${parts.join(' · ')}</small>
+                        </div>`;
+        }
         // Centre-zero bar: red grows left as losses build, green grows right as gains build. lossPct/gainPct are 0-100 of their own limit.
         function signedBarHtml(lossPct, gainPct) {
             const L = clampPct(lossPct) / 2, R = clampPct(gainPct) / 2;
@@ -2022,8 +2061,8 @@
                     rows.push(meter(`Consistency (best ${c.basis === 'trade' ? 'trade' : 'day'} / ${c.poolLabel})`, `${c.score.toFixed(1)}% → ${c.limit}% max`, c.ratio, color,
                         c.breached ? 'Over the consistency limit' : 'Within the consistency limit'));
                 }
-                const ruleBar = ruleLineHtml(st);
-                const dayBar = dailyBarHtml(st);
+                const ruleBar = totalMeterRow(acc, st);
+                const dayBar = dailyMeterRow(acc, st);
                 progressHtml = `<div class="card" style="padding:1.25rem 1.5rem; gap:1rem;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
                         <div>
@@ -3733,42 +3772,6 @@
                 const dailyTargetStatusText = st.dp ? `${fmtMoney(todayPnlForAcc)} → ${fmtMoney(dailyTarget)}` : 'No daily target set';
                 const dailyTargetReached = !!(st.dp && st.dp.reached);
 
-                // Total meter: max drawdown (red, left) and profit target (green, right) on one centre line
-                const ddLossPct = st.dd && st.dd.allowed > 0 ? st.dd.lost / st.dd.allowed * 100 : 0;
-                const totalLeftLabel = limit ? `Max loss ${fmtMoney(limit)}` : 'No drawdown limit';
-                const totalRightLabel = target ? `Target ${fmtMoney(target)}` : 'No target set';
-                const totalSmall = [
-                    limit ? `${fmtMoney(Math.max(0, currentBalance - limit))} buffer before margin call` : '',
-                    target ? `${fmtMoney(Math.max(0, target - currentBalance))} to go until target` : ''
-                ].filter(Boolean).join(' · ');
-                const totalMeterHtml = `
-                        <div class="meter-row">
-                            <div class="meter-labels">
-                                <span>${totalLeftLabel}</span>
-                                <span>${totalRightLabel}</span>
-                            </div>
-                            ${signedBarHtml(ddLossPct, targetRatio)}
-                            <small style="font-size:0.7rem; color:var(--text-secondary);">${totalSmall ? `${totalSmall} · ${fmtAccountSpct(acc, currentBalance - acc.balance)} of starting balance` : ''}</small>
-                        </div>`;
-
-                // Daily meter: daily loss limit (red, left) and daily profit target (green, right) on one centre line
-                const dailyLossPct = st.dl ? 100 - st.dl.ratio : 0;
-                const dailyLeftLabel = st.dl ? `Daily loss ${fmtMoney(st.dl.limit)}` : 'No daily loss limit';
-                const dailyRightLabel = dailyTarget ? `Daily target ${fmtMoney(dailyTarget)}` : 'No daily target set';
-                const dailySmall = [
-                    st.dl ? `${fmtMoney(st.dl.remain)} loss left today${st.dl.breached ? ' · limit hit' : ''}` : '',
-                    dailyTarget ? `${fmtMoney(Math.max(0, dailyTarget - todayPnlForAcc))} to go today` : ''
-                ].filter(Boolean).join(' · ');
-                const dailyMeterHtml = `
-                        <div class="meter-row">
-                            <div class="meter-labels">
-                                <span>${dailyLeftLabel}</span>
-                                <span>${dailyRightLabel}</span>
-                            </div>
-                            ${signedBarHtml(dailyLossPct, dailyTargetRatio)}
-                            <small style="font-size:0.7rem; color:var(--text-secondary);">${dailySmall}</small>
-                        </div>`;
-
                 // Consistency: best day/trade as a share of total net profit
                 let consistencyHtml = '';
                 if (st.cons) {
@@ -3824,8 +3827,8 @@
                                 ${acc.dailyLossLimit ? `<span>Daily loss limit: <strong>${fmtMoney(acc.dailyLossLimit)}</strong> · today <strong class="${accountTodayPnl(acc) <= -acc.dailyLossLimit ? 'text-danger' : ''}">${fmtMoney(accountTodayPnl(acc))}</strong></span>` : ''}
                             </div>
                             ${ruleLineHtml(st)}
-                            ${totalMeterHtml}
-                            ${dailyMeterHtml}
+                            ${totalMeterRow(acc, st)}
+                            ${dailyMeterRow(acc, st)}
                             ${consistencyHtml}
                         </div>
                     </details>`;

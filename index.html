@@ -3219,42 +3219,25 @@
 
         function exportReviewPDF() {
             if (!window.jspdf) { alert('The PDF library did not load. Check your connection.'); return; }
-            const canvas = weekCardCanvas(reviewCtx.start, 'light');
-            const doc = newPdfDoc();
-            const pageW = doc.internal.pageSize.getWidth();
-            const pageH = doc.internal.pageSize.getHeight();
-            const margin = PDF_STYLE.margin;
-            const top = pdfStart(doc, 'Trading Journal', weekLabel(reviewCtx.start));
-            const ratio = canvas.width / canvas.height;
-            let w = pageW - margin * 2;
-            let h = w / ratio;
-            if (h > pageH - top - margin) { h = pageH - top - margin; w = h * ratio; }
-            doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, top, w, h);
-
-            // Journal notes go in the PDF only, below the card
-            const j = journal.weeks[reviewCtx.start] || {};
+            if (!reviewCtx) return;
+            // Same report as the Stats period report (My Trades / Signal Trades), scoped to the review's week
+            const start = reviewCtx.start;
+            const end = weekEndOf(start);
+            const weekTrades = trades.filter(t => t.date >= start && t.date <= end);
+            const myTrades = weekTrades.filter(t => !t.isSignal);
+            const signalTrades = weekTrades.filter(t => t.isSignal);
+            const label = `Week of ${new Date(start + 'T00:00:00').toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+            const data = {
+                heading: `WEEKLY REPORT — ${label}`, typeLabel: 'WEEKLY', periodLabel: label,
+                myStats: myTrades.length ? computePeriodStats(myTrades) : null,
+                sigStats: signalTrades.length ? computePeriodStats(signalTrades) : null
+            };
+            // Journal notes are appended to the PDF only
+            const j = journal.weeks[start] || {};
             const notes = [['What worked', j.worked], ['What needs work', j.needs], ["Next week's focus", j.focus]]
                 .filter(([, v]) => v && String(v).trim());
-            if (notes.length) {
-                let y = top + h + 24;
-                if (pageH - margin - y < 90) { doc.addPage(); y = margin; }
-                const textW = pageW - margin * 2;
-                notes.forEach(([label, text]) => {
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(12);
-                    if (y > pageH - margin) { doc.addPage(); y = margin; }
-                    doc.text(label, margin, y);
-                    y += 16;
-                    doc.setFont('helvetica', 'normal');
-                    doc.setFontSize(11);
-                    doc.splitTextToSize(String(text), textW).forEach(line => {
-                        if (y > pageH - margin) { doc.addPage(); y = margin; }
-                        doc.text(line, margin, y);
-                        y += 15;
-                    });
-                    y += 10;
-                });
-            }
+            const doc = newPdfDoc();
+            drawPeriodReportPdf(doc, data, notes);
             pdfFinish(doc, reviewFileStem() + '.pdf');
         }
 
@@ -4230,6 +4213,13 @@
         function exportPeriodReportPDF() {
             if(!lastReportData) { alert('Generate a report first'); return; }
             const doc = newPdfDoc();
+            drawPeriodReportPdf(doc, lastReportData);
+            const fileLabel = `${lastReportData.typeLabel}_${lastReportData.periodLabel}`.replace(/[^a-z0-9]+/gi, '_');
+            pdfFinish(doc, `TradeReport_${fileLabel}.pdf`);
+        }
+
+        // Shared by the Stats period report export and the weekly review export
+        function drawPeriodReportPdf(doc, data, notes) {
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
             const marginX = PDF_STYLE.margin;
@@ -4237,7 +4227,7 @@
             const checkPageBreak = (needed) => { if(y + needed > pageHeight - 50) { doc.addPage(); y = 60; } };
             const green = [16, 150, 90], red = [220, 50, 50];
 
-            y = pdfStart(doc, 'Trading Journal', lastReportData.heading, y);
+            y = pdfStart(doc, 'Trading Journal', data.heading, y);
 
             const drawSectionTitle = (title) => {
                 checkPageBreak(30);
@@ -4324,8 +4314,8 @@
                 });
             };
 
-            if(lastReportData.myStats) {
-                drawBlock(lastReportData.myStats, 'My Trades');
+            if(data.myStats) {
+                drawBlock(data.myStats, 'My Trades');
             } else {
                 checkPageBreak(30);
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(20, 20, 20);
@@ -4340,8 +4330,8 @@
             doc.line(marginX, y, pageWidth - marginX, y);
             y += 25;
 
-            if(lastReportData.sigStats) {
-                drawBlock(lastReportData.sigStats, 'Signal Trades');
+            if(data.sigStats) {
+                drawBlock(data.sigStats, 'Signal Trades');
             } else {
                 checkPageBreak(30);
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(20, 20, 20);
@@ -4350,12 +4340,23 @@
                 doc.text('No signal trades logged this period.', marginX, y); y += 20;
             }
 
+            if(notes && notes.length) {
+                y += 20;
+                checkPageBreak(60);
+                doc.setDrawColor(220, 220, 220); doc.line(marginX, y, pageWidth - marginX, y); y += 25;
+                notes.forEach(([label, text]) => {
+                    checkPageBreak(40);
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(20, 20, 20);
+                    doc.text(label, marginX, y); y += 16;
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(60, 60, 60);
+                    doc.splitTextToSize(String(text), pageWidth - marginX * 2).forEach(line => { checkPageBreak(15); doc.text(line, marginX, y); y += 15; });
+                    y += 10;
+                });
+            }
             doc.setFontSize(8);
             doc.setTextColor(150, 150, 150);
             doc.text(`Generated ${new Date().toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' })}`, marginX, pageHeight - 30);
 
-            const fileLabel = `${lastReportData.typeLabel}_${lastReportData.periodLabel}`.replace(/[^a-z0-9]+/gi, '_');
-            pdfFinish(doc, `TradeReport_${fileLabel}.pdf`);
         }
 
         function copyPeriodReport() {

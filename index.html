@@ -4024,7 +4024,7 @@
             }
 
             // Symbol / Day-of-week / Session breakdowns, each reduced to its best and worst performer by P&L
-            const buildBreakdown = (keyFn) => {
+            const buildBreakdown = (keyFn, rankBy = 'pnl') => {
                 const map = {};
                 scoped.forEach(t => {
                     const key = keyFn(t);
@@ -4035,17 +4035,25 @@
                     map[key].rr += (parseFloat(t.rr) || 0);
                     map[key].pnl += t.pnl;
                 });
-                const rows = Object.values(map).map(d => ({ ...d, winRate: (d.trades - d.be) > 0 ? (d.wins / (d.trades - d.be)) * 100 : 0 }));
+                const rows = Object.values(map).map(d => ({ ...d, losses: d.trades - d.wins - d.be, winRate: (d.trades - d.be) > 0 ? (d.wins / (d.trades - d.be)) * 100 : 0 }));
                 let best = null, worst = null;
-                rows.forEach(r => {
-                    if(best === null || r.pnl > best.pnl) best = r;
-                    if(worst === null || r.pnl < worst.pnl) worst = r;
-                });
+                if(rankBy === 'winrate') {
+                    // Best: highest win rate (ties go to more wins). Worst: lowest win rate (ties go to more losses).
+                    rows.forEach(r => {
+                        if(best === null || r.winRate > best.winRate || (r.winRate === best.winRate && r.wins > best.wins)) best = r;
+                        if(worst === null || r.winRate < worst.winRate || (r.winRate === worst.winRate && r.losses > worst.losses)) worst = r;
+                    });
+                } else {
+                    rows.forEach(r => {
+                        if(best === null || r.pnl > best.pnl) best = r;
+                        if(worst === null || r.pnl < worst.pnl) worst = r;
+                    });
+                }
                 return { rows, best, worst };
             };
             const dayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             const sessionLabels = { 'AS': 'Asian', 'LO': 'London', 'NY AM': 'New York AM', 'NY PM': 'New York PM', 'LC': 'London Close', '': 'Not Specified' };
-            const symbolBreakdown = buildBreakdown(t => t.symbol || 'Unknown');
+            const symbolBreakdown = buildBreakdown(t => t.symbol || 'Unknown', 'winrate');
             const dayBreakdown = buildBreakdown(t => dayLabels[new Date(t.date + 'T00:00:00').getDay()]);
             const sessionBreakdown = buildBreakdown(t => sessionLabels[t.session || ''] || (t.session || 'Not Specified'));
 

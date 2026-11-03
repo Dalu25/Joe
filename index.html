@@ -544,7 +544,10 @@
                 <div class="chart-container">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem;">
                         <h3 style="margin:0; color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">Cumulative P&L Curve</h3>
-                        <select id="pnlChartAccount" class="select-toggle" onchange="updateUI()" aria-label="Chart account"></select>
+                        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-left:auto;">
+                            <div id="dashLimitNote" style="display:none; font-size:0.8rem; font-weight:400; text-align:right;"></div>
+                            <select id="pnlChartAccount" class="select-toggle" onchange="updateUI()" aria-label="Chart account"></select>
+                        </div>
                     </div>
                     <div style="position: relative; height: 260px; width: 100%;"><canvas id="pnlChart"></canvas></div>
                 </div>
@@ -1066,12 +1069,12 @@
                 
                 <div class="form-group">
                     <label>Chart Link</label>
-                    <div style="display:flex; gap:0.5rem;"><input type="url" id="tradeLink" class="form-control" style="flex:1;" placeholder="https://tradingview.com/x/... "><button type="button" class="btn btn-outline" onclick="pasteChartLink()">Paste</button></div>
+                    <div style="display:flex; gap:0.5rem;"><input type="url" id="tradeLink" class="form-control" style="flex:1;" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="https://tradingview.com/x/... "><button type="button" class="btn btn-outline" onclick="pasteChartLink()">Paste</button></div>
                 </div>
 
                 <div class="form-group">
                     <label>Notion Link</label>
-                    <div style="display:flex; gap:0.5rem;"><input type="url" id="tradeNotionLink" class="form-control" style="flex:1;" placeholder="https://www.notion.so/..."><button type="button" class="btn btn-outline" onclick="pasteNotionLink()">Paste</button></div>
+                    <div style="display:flex; gap:0.5rem;"><input type="url" id="tradeNotionLink" class="form-control" style="flex:1;" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="https://www.notion.so/..."><button type="button" class="btn btn-outline" onclick="pasteNotionLink()">Paste</button></div>
                 </div>
                 
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.5rem;">
@@ -4712,10 +4715,27 @@
             el.innerHTML = lines.map(l => `<div>${l}</div>`).join('') + `<div style="margin-top:0.35rem; font-size:0.8rem; color:var(--text-secondary);">Resets at 5 PM EST.</div>`;
         }
 
+        // Dashboard notice: shows every active account whose daily loss limit or daily target is hit today.
+        function renderDashLimitNote() {
+            const el = document.getElementById('dashLimitNote');
+            if (!el) return;
+            const lines = [];
+            accounts.filter(a => !a.isClosed).forEach(a => {
+                const pnl = accountTodayPnl(a);
+                const lim = Math.abs(Number(a.dailyLossLimit)) || 0;
+                const tgt = Number(a.dailyProfitTarget) || 0;
+                if (lim > 0 && pnl <= -lim) lines.push(`<div style="color:var(--danger);">${jEsc(a.name)}: daily loss limit hit (${fmtMoney(pnl)})</div>`);
+                if (tgt > 0 && pnl >= tgt) lines.push(`<div style="color:var(--success);">${jEsc(a.name)}: daily target hit (${fmtMoney(pnl)})</div>`);
+            });
+            el.innerHTML = lines.join('');
+            el.style.display = lines.length ? 'block' : 'none';
+        }
+
         // CENTRAL PROCESSING DASHBOARD UPDATES WITH RECTIFIED DATA VISUALS
         function updateDashboard() {
             const { from: dashFrom, to: dashTo, pair } = getSharedFilter();
             syncCalendarToDashRange(dashFrom, dashTo);
+            renderDashLimitNote();
 
             const baseTradesRaw = applySharedFilter(trades);
 
